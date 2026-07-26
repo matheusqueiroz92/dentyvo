@@ -1,0 +1,16 @@
+{
+  "name": "Dentyvo Design System",
+  "version": "1.0.0",
+  "brandColors": {
+    "navy950": "#07143F",
+    "navy900": "#0A1643",
+    "blue600": "#0863C5",
+    "blue500": "#108ECB",
+    "cyan500": "#0EB6C6",
+    "teal400": "#18C7B8"
+  },
+  "fontFamily": "Inter",
+  "iconLibrary": "Lucide React",
+  "locale": "pt-BR",
+  "currency": "BRL"
+}

@@ -1,0 +1,42 @@
+---
+description: Arquitetura Hexagonal + DDD — regras estruturais do projeto
+alwaysApply: true
+---
+
+# Arquitetura
+
+Este projeto segue Arquitetura Hexagonal (Ports & Adapters) com DDD, igual ao
+projeto de referência M. Agendy. Estrutura por módulo dentro de `src/core`:
+
+```
+src/core/<modulo>/
+├── domain/          # entidades, value objects, regras de negócio puras.
+│                     # PROIBIDO: import de Next.js, Drizzle, fetch, etc.
+├── application/
+│   ├── use-cases/    # orquestram domínio + ports. Um caso de uso = uma ação de negócio.
+│   └── ports/         # interfaces que a application define e a infra implementa
+└── infra/
+    └── adapters/       # implementações concretas (banco, API externa, fila)
+```
+
+Fora de `src/core`:
+
+```
+src/app/           # rotas Next.js (App Router) — delivery layer, fina, sem regra de negócio
+src/actions/         # server actions (next-safe-action) — chamam use-cases, não implementam lógica
+src/components/     # UI (ShadCN/ui + Tailwind)
+src/db/               # schema Drizzle + migrations
+```
+
+## Regras obrigatórias
+
+1. `domain/` nunca depende de `application/` ou `infra/`. Dependência sempre aponta
+   pra dentro (Dependency Rule).
+2. Casos de uso em `application/use-cases/` dependem de `ports/` (interfaces), nunca
+   de adapters concretos diretamente.
+3. Toda integração externa (banco, API de terceiro, fila, WhatsApp) é acessada via
+   port + adapter — nunca chamada direta de um `fetch`/query dentro de `application/`
+   ou `domain/`.
+4. Uma rota (`src/app`) ou server action (`src/actions`) não deve conter regra de
+   negócio — apenas validação de entrada (Zod) e chamada ao caso de uso.
+5. Ao criar um módulo novo, siga a mesma estrutura de pastas dos módulos existentes.

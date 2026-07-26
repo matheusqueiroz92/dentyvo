@@ -1,0 +1,27 @@
+---
+description: Regras obrigatórias de UI e UX da Dentyvo
+globs:
+  - "apps/**/*.{ts,tsx,css}"
+  - "src/**/*.{ts,tsx,css}"
+  - "components/**/*.{ts,tsx}"
+alwaysApply: true
+---
+
+# Dentyvo UI Rules
+
+- Consulte `docs/DESIGN_SYSTEM.md` antes de decisões visuais.
+- Use tokens CSS semânticos: `background`, `foreground`, `primary`, `muted`, `border`, `success`, `warning`, `destructive` e `info`.
+- Não escreva HEX, RGB ou HSL diretamente em componentes.
+- Use Inter como fonte principal e números tabulares para horários, métricas e moeda.
+- Use Lucide React como biblioteca de ícones.
+- Priorize shadcn/ui e Radix UI.
+- Componentes genéricos ficam em `components/ui`; componentes clínicos ficam em `components/domain`.
+- Toda tela deve prever loading, vazio, erro e ausência de permissão.
+- Formulários devem usar labels reais, mensagens próximas ao campo e foco no primeiro erro.
+- Ações destrutivas exigem confirmação e explicação de consequência.
+- Status nunca é comunicado apenas por cor.
+- Use `Intl.DateTimeFormat("pt-BR")` e `Intl.NumberFormat("pt-BR")`.
+- Alvos de toque no mobile devem ter pelo menos 44 px.
+- Layouts devem funcionar em 360, 768, 1024 e 1440 px.
+- Evite dashboards decorativos; cada indicador deve apoiar uma decisão ou ação.
+- Fluxos intensivos priorizam desktop; mobile prioriza consulta e ações rápidas.

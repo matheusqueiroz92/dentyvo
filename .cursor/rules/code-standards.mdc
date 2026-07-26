@@ -1,0 +1,36 @@
+---
+description: SOLID, DRY e convenções de código
+alwaysApply: true
+---
+
+# Padrões de código
+
+## SOLID (aplicado no contexto hexagonal)
+
+- **S**: cada caso de uso em `application/use-cases/` faz uma única ação de negócio
+  (ex: `MarcarConsulta`, não `GerenciarAgendamento` genérico demais).
+- **O**: novos comportamentos entram como novos adapters/estratégias, evite `if/switch`
+  crescente sobre tipo de clínica/segmento — prefira strategy/polimorfismo quando o
+  branching passar de 2-3 casos.
+- **L**: implementações de uma mesma `port` devem ser substituíveis sem quebrar o
+  caso de uso que a consome.
+- **I**: ports pequenas e específicas (ex: `NotificacaoPort` separada de
+  `AgendamentoRepositoryPort`) em vez de uma interface gigante.
+- **D**: `application/` depende de abstrações (`ports/`), a `infra/` implementa —
+  nunca o inverso.
+
+## DRY
+
+- Antes de criar uma função/regra nova, verifique se já existe algo equivalente em
+  outro módulo de `src/core` (especialmente lógica de agendamento, notificação e
+  multi-tenant, que são transversais).
+- Lógica compartilhada entre módulos vai para um pacote/util comum, não é copiada.
+
+## Convenções
+
+- Nomes de entidades, casos de uso e tabelas em português, alinhados aos termos do
+  domínio odontológico definidos em `specs/02-domain-model.md` (ex: `Paciente`,
+  `Anamnese`, `Odontograma`, não `Patient`/`ClinicalRecord`).
+- Um arquivo por caso de uso em `application/use-cases/`.
+- Erros de domínio são classes específicas (ex: `HorarioIndisponivelError`), não
+  `throw new Error("string genérica")`.

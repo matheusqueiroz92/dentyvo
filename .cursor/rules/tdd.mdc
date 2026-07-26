@@ -1,0 +1,34 @@
+---
+description: TDD obrigatório — testes antes da implementação
+alwaysApply: true
+---
+
+# TDD (Test-Driven Development)
+
+Nenhum código de produção deve ser escrito sem um teste que falhe primeiro.
+
+## Ciclo obrigatório
+
+1. **Red** — escreva o teste que descreve o comportamento esperado (a partir dos
+   critérios de aceite da spec em `specs/features/`). Rode e confirme que falha.
+2. **Green** — escreva o código mínimo necessário para o teste passar. Não
+   implemente nada além do que o teste exige.
+3. **Refactor** — limpe duplicação e melhore legibilidade mantendo os testes verdes.
+
+## O que testar em cada camada
+
+- `domain/`: testes unitários puros, sem mocks de infraestrutura — são as regras
+  de negócio mais críticas (ex: "um agendamento não pode sobrepor outro do mesmo
+  profissional").
+- `application/use-cases/`: testes unitários com ports mockados/fake.
+- `infra/adapters/`: testes de integração (podem usar banco de teste/containers).
+- `src/actions` e `src/app`: testes de contrato/e2e apenas nos fluxos críticos
+  (agendamento, conexão WhatsApp, geração de receita).
+
+## Regras
+
+- Nunca altere um teste só para fazê-lo passar sem mudar o comportamento real.
+- Se a spec não define um critério de aceite claro o suficiente para virar teste,
+  pare e sinalize a ambiguidade em vez de assumir um comportamento.
+- Prefira testes que descrevam comportamento de negócio ("agenda não permite
+  overbooking") a testes que descrevam implementação ("chama o método X").
