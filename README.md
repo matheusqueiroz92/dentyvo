@@ -12,7 +12,7 @@ linha de código de funcionalidade é escrita antes de existir uma spec aprovada
 
 1. Abra este diretório como projeto no Cursor.
 2. As regras em `.cursor/rules/*.mdc` são carregadas automaticamente e valem para
-   qualquer agente/chat dentro do projeto — definem arquitetura, TDD, SOLID/DRY e
+   qualquer agente/chat dentro do projeto — definem arquitetura, UI, TDD, SOLID/DRY e
    convenções de nomenclatura.
 3. Leia `AGENTS.md` — define os papéis de agente (Planejador, Arquiteto de Domínio,
    Implementador, Engenheiro de Testes, Revisor) e a ordem de execução.
