@@ -52,7 +52,7 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 
 ### ClinicWhatsappAccount
 - id, clinicaId, wabaId, phoneNumberId, accessToken (criptografado),
-  status (pendente|conectado|desconectado), conectadoEm
+  status (pendente|conectado|desconectado), conectadoEm, tokenExpiraEm
 
 ### ConversaBot
 - id, clinicaId, telefonePaciente, etapaAtual (enum da máquina de estados),
