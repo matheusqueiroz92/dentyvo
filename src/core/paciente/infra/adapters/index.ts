@@ -1,0 +1,1 @@
+export { DrizzlePacienteRepository } from "./DrizzlePacienteRepository";

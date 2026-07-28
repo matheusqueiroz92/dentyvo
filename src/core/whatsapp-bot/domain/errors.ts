@@ -1,0 +1,43 @@
+export {
+  DadosInvalidosError,
+  PermissaoNegadaError,
+  TenantMismatchError,
+} from "@/core/shared/errors";
+
+export class ContaWhatsappNaoEncontradaError extends Error {
+  readonly nome = "ContaWhatsappNaoEncontradaError" as const;
+
+  constructor(readonly clinicaId: string) {
+    super("Conta WhatsApp não encontrada para esta clínica.");
+    this.name = this.nome;
+  }
+}
+
+export class CodigoOAuthInvalidoError extends Error {
+  readonly nome = "CodigoOAuthInvalidoError" as const;
+
+  constructor() {
+    super("Código OAuth inválido ou expirado; a conexão não foi concluída.");
+    this.name = this.nome;
+  }
+}
+
+export class WhatsappNaoConectadoError extends Error {
+  readonly nome = "WhatsappNaoConectadoError" as const;
+
+  constructor(readonly clinicaId: string) {
+    super(
+      "WhatsApp da clínica não está conectado; envio de mensagens bloqueado.",
+    );
+    this.name = this.nome;
+  }
+}
+
+export class TokenWhatsappInvalidoError extends Error {
+  readonly nome = "TokenWhatsappInvalidoError" as const;
+
+  constructor(readonly clinicaId: string) {
+    super("Token WhatsApp inválido, expirado ou revogado.");
+    this.name = this.nome;
+  }
+}

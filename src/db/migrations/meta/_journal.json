@@ -15,6 +15,13 @@
       "when": 1785205814101,
       "tag": "0001_shiny_sugar_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785241513139,
+      "tag": "0002_thick_longshot",
+      "breakpoints": true
     }
   ]
 }

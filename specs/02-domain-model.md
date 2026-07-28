@@ -6,10 +6,18 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 ## Entidades principais
 
 ### Clinica (tenant)
-- id, nome, cnpj, endereço, plano de assinatura, status
+- id, nome, endereço, documento fiscal (`tipoDocumento`: `cpf`|`cnpj` + valor
+  normalizado; exatamente um dos dois — autônomos podem usar CPF), plano de
+  assinatura (spec 010), status (`ativa`|`inativa`; cadastro inicia como `ativa`)
 
 ### Profissional
-- id, clinicaId, nome, cro (registro no conselho), especialidade, usuarioId (auth)
+- id, clinicaId, nome, papel (`admin`|`dentista`|`recepcao`), cro (obrigatório
+  se `dentista`), especialidade (opcional), usuarioId (auth BetterAuth)
+
+### Convite
+- id, clinicaId, email, papel (`admin`|`dentista`|`recepcao`), token, expiresAt
+  (TTL 72h), aceitoEm (nullable), convidadoPorUsuarioId
+  — uso único; ver feature 001
 
 ### Paciente
 - id, clinicaId, nome, cpf, telefone (WhatsApp), dataNascimento, contatoEmergencia
@@ -70,6 +78,10 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 
 ## Regras de negócio centrais (candidatas a teste de domínio)
 
+- Um usuário (BetterAuth) pertence a exatamente uma clínica no MVP, via um
+  único `Profissional`.
+- Documento fiscal da `Clinica` (CPF ou CNPJ) é único na plataforma.
+- Convite é de uso único e expira em 72 horas.
 - Um agendamento não pode sobrepor outro do mesmo profissional na mesma clínica.
 - Um paciente só pertence a uma clínica por registro (não há paciente
   compartilhado entre tenants).

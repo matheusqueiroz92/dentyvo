@@ -1,0 +1,96 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  CroObrigatorioError,
+  DadosInvalidosError,
+  TenantMismatchError,
+} from "./errors";
+import { Profissional } from "./Profissional";
+
+describe("Profissional", () => {
+  it("permite admin e recepção sem CRO", () => {
+    const admin = Profissional.criar({
+      id: "p1",
+      clinicaId: "c1",
+      usuarioId: "u1",
+      nome: "Ana",
+      papel: "admin",
+    });
+    const recepcao = Profissional.criar({
+      id: "p2",
+      clinicaId: "c1",
+      usuarioId: "u2",
+      nome: "Bia",
+      papel: "recepcao",
+    });
+
+    expect(admin.cro).toBeNull();
+    expect(recepcao.cro).toBeNull();
+  });
+
+  it("exige CRO para dentista", () => {
+    expect(() =>
+      Profissional.criar({
+        id: "p1",
+        clinicaId: "c1",
+        usuarioId: "u1",
+        nome: "Dr. Carlos",
+        papel: "dentista",
+      }),
+    ).toThrow(CroObrigatorioError);
+  });
+
+  it("cria dentista com CRO", () => {
+    const dentista = Profissional.criar({
+      id: "p1",
+      clinicaId: "c1",
+      usuarioId: "u1",
+      nome: "Dr. Carlos",
+      papel: "dentista",
+      cro: "12345",
+      especialidade: "Endodontia",
+    });
+
+    expect(dentista.papel).toBe("dentista");
+    expect(dentista.cro).toBe("12345");
+  });
+
+  it("rejeita nome vazio", () => {
+    expect(() =>
+      Profissional.criar({
+        id: "p1",
+        clinicaId: "c1",
+        usuarioId: "u1",
+        nome: "  ",
+        papel: "admin",
+      }),
+    ).toThrow(DadosInvalidosError);
+  });
+
+  it("falha ao afirmar pertencimento a outra clínica", () => {
+    const profissional = Profissional.criar({
+      id: "p1",
+      clinicaId: "c1",
+      usuarioId: "u1",
+      nome: "Ana",
+      papel: "admin",
+    });
+
+    expect(() => profissional.assertPertenceAClinica("outra")).toThrow(
+      TenantMismatchError,
+    );
+  });
+
+  it("ao alterar papel para dentista exige CRO", () => {
+    const recepcao = Profissional.criar({
+      id: "p1",
+      clinicaId: "c1",
+      usuarioId: "u1",
+      nome: "Bia",
+      papel: "recepcao",
+    });
+
+    expect(() => recepcao.alterarPapel("dentista")).toThrow(CroObrigatorioError);
+    expect(recepcao.alterarPapel("dentista", "999").papel).toBe("dentista");
+  });
+});
