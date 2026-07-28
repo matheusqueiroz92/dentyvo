@@ -1,0 +1,721 @@
+/**
+ * Teste de integração manual (FORA do Vitest).
+ *
+ * Exercita o fluxo de negócio completo chamando os casos de uso reais através
+ * dos composition roots já existentes (`create-*-module.ts`), contra o banco
+ * real definido em `DATABASE_URL` (`.env.local` — mesmo Neon usado pelo app
+ * em dev, via pooler).
+ *
+ * Fluxo:
+ *   1. CriarClinicaComAdmin        — clínica de teste com CPF válido
+ *   2. ConvidarUsuario             — convida usuário (papel recepcao)
+ *   3. AceitarConvite              — usuário convidado aceita o convite
+ *   4. CriarPaciente               — cadastra paciente de teste
+ *   5. DefinirDisponibilidadeProfissional — janela do admin/dentista do passo 1
+ *   6. MarcarConsulta              — marca consulta do paciente
+ *   7. CriarProntuario             — cria prontuário do paciente
+ *   8. PreencherAnamnese           — preenche anamnese inicial
+ *   9. RegistrarEvolucao           — registra evolução de atendimento
+ *
+ * (Passo extra 4.1 — CriarProcedimento: não pedido explicitamente, mas é
+ * pré-requisito obrigatório de `MarcarConsulta`, que exige `procedimentoId`.)
+ * (Passo extra 9.1 — ConsultarProntuario: confirma que a leitura gera uma
+ * nova entrada de auditoria com `acao = "leitura"` no banco.)
+ * (Passo extra 9.2 — RBAC negado: confirma que `recepcao` NÃO pode
+ * `CriarProntuario`; espera `PermissaoNegadaError`.)
+ * (Passo extra 9.3 — Isolamento de tenant: confirma que uma segunda clínica
+ * não consegue enxergar o prontuário da primeira via `ConsultarProntuario`.)
+ *
+ * Uso:
+ *   npm run teste:integracao
+ *   (equivalente a `npx tsx scripts/teste-integracao-manual.mjs`)
+ *
+ * Importante:
+ * - NÃO é um teste automatizado — é um script manual para inspecionar o
+ *   resultado depois no Neon.
+ * - NÃO apaga nenhum dado ao final. Cada execução gera clínica, e-mails e CPF
+ *   novos (sufixo por timestamp) para não colidir com execuções anteriores.
+ * - Se qualquer passo falhar, o script para imediatamente e imprime o erro
+ *   completo (stack incluída) — não continua silenciosamente.
+ */
+
+import { config } from "dotenv";
+
+config({ path: ".env.local" });
+
+if (!process.env.DATABASE_URL) {
+  console.error(
+    "[erro] DATABASE_URL não definida em .env.local — abortando antes de conectar.",
+  );
+  process.exit(1);
+}
+
+const SEPARADOR = "=".repeat(72);
+const TIMEZONE = "America/Sao_Paulo";
+
+function logPasso(numero, titulo) {
+  console.log(`\n${SEPARADOR}`);
+  console.log(`PASSO ${numero}: ${titulo}`);
+  console.log(SEPARADOR);
+}
+
+function formatarValor(valor) {
+  if (valor instanceof Date) return valor.toISOString();
+  if (typeof valor === "object" && valor !== null) return JSON.stringify(valor);
+  return String(valor);
+}
+
+function logResumo(resumo) {
+  for (const [chave, valor] of Object.entries(resumo)) {
+    console.log(`  ${chave}: ${formatarValor(valor)}`);
+  }
+}
+
+/** Gera um CPF sintético válido (dígitos verificadores corretos), único por execução. */
+function gerarCpfValido() {
+  let base;
+  do {
+    base = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));
+  } while (base.every((digito) => digito === base[0]));
+
+  const d1 = calcularDigitoVerificadorCpf(base, 10);
+  const d2 = calcularDigitoVerificadorCpf([...base, d1], 11);
+  return [...base, d1, d2].join("");
+}
+
+function calcularDigitoVerificadorCpf(digitos, fatorInicial) {
+  let soma = 0;
+  for (let i = 0; i < digitos.length; i++) {
+    soma += digitos[i] * (fatorInicial - i);
+  }
+  const resto = (soma * 10) % 11;
+  return resto === 10 ? 0 : resto;
+}
+
+/** Dia da semana (0=domingo…6=sábado) no timezone operacional da clínica. */
+function diaDaSemanaEmSaoPaulo(date) {
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIMEZONE,
+    weekday: "short",
+  }).format(date);
+  const mapa = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return mapa[weekday];
+}
+
+/** Componentes ano/mês/dia da data no timezone operacional da clínica. */
+function partesDataEmSaoPaulo(date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  return {
+    ano: parts.find((p) => p.type === "year").value,
+    mes: parts.find((p) => p.type === "month").value,
+    dia: parts.find((p) => p.type === "day").value,
+  };
+}
+
+async function main() {
+  console.log(SEPARADOR);
+  console.log("TESTE DE INTEGRAÇÃO MANUAL — fluxo completo Dentyvo");
+  console.log(`Banco alvo: DATABASE_URL (${mascarar(process.env.DATABASE_URL)})`);
+  console.log(SEPARADOR);
+
+  // Importado dinamicamente DEPOIS do dotenv.config(), pois `@/db` lê
+  // `process.env.DATABASE_URL` no momento do import.
+  const { createAuthModule } = await import(
+    "@/core/auth/infra/create-auth-module"
+  );
+  const { CriarClinicaComAdmin } = await import(
+    "@/core/auth/application/use-cases/CriarClinicaComAdmin"
+  );
+  const { ConvidarUsuario } = await import(
+    "@/core/auth/application/use-cases/ConvidarUsuario"
+  );
+  const { AceitarConvite } = await import(
+    "@/core/auth/application/use-cases/AceitarConvite"
+  );
+
+  const { createPacienteModule } = await import(
+    "@/core/paciente/infra/create-paciente-module"
+  );
+  const { CriarPaciente } = await import(
+    "@/core/paciente/application/use-cases/CriarPaciente"
+  );
+
+  const { createAgendamentoModule } = await import(
+    "@/core/agendamento/infra/create-agendamento-module"
+  );
+  const { CriarProcedimento } = await import(
+    "@/core/agendamento/application/use-cases/CriarProcedimento"
+  );
+  const { DefinirDisponibilidadeProfissional } = await import(
+    "@/core/agendamento/application/use-cases/DefinirDisponibilidadeProfissional"
+  );
+  const { MarcarConsulta } = await import(
+    "@/core/agendamento/application/use-cases/MarcarConsulta"
+  );
+
+  const { createProntuarioModule } = await import(
+    "@/core/prontuario/infra/create-prontuario-module"
+  );
+  const { CriarProntuario } = await import(
+    "@/core/prontuario/application/use-cases/CriarProntuario"
+  );
+  const { RegistrarEvolucao } = await import(
+    "@/core/prontuario/application/use-cases/RegistrarEvolucao"
+  );
+  const { ConsultarProntuario } = await import(
+    "@/core/prontuario/application/use-cases/ConsultarProntuario"
+  );
+  const { ProntuarioNaoEncontradoError } = await import(
+    "@/core/prontuario/domain/errors"
+  );
+
+  const { PermissaoNegadaError, TenantMismatchError } = await import(
+    "@/core/shared/errors"
+  );
+
+  const { createAnamneseModule } = await import(
+    "@/core/anamnese/infra/create-anamnese-module"
+  );
+  const { PreencherAnamnese } = await import(
+    "@/core/anamnese/application/use-cases/PreencherAnamnese"
+  );
+
+  const authModule = createAuthModule();
+  const pacienteModule = createPacienteModule();
+  const agendamentoModule = createAgendamentoModule();
+  const prontuarioModule = createProntuarioModule();
+  const anamneseModule = createAnamneseModule();
+
+  const criarClinicaComAdmin = new CriarClinicaComAdmin(
+    authModule.clinicaRepo,
+    authModule.profissionalRepo,
+    authModule.authPort,
+  );
+  const convidarUsuario = new ConvidarUsuario(
+    authModule.conviteRepo,
+    authModule.profissionalRepo,
+    authModule.clinicaRepo,
+    authModule.authPort,
+    authModule.email,
+  );
+  const aceitarConvite = new AceitarConvite(
+    authModule.conviteRepo,
+    authModule.profissionalRepo,
+    authModule.authPort,
+  );
+
+  const criarPaciente = new CriarPaciente(
+    pacienteModule.pacienteRepo,
+    pacienteModule.profissionalRepo,
+  );
+
+  const criarProcedimento = new CriarProcedimento(
+    agendamentoModule.procedimentoRepo,
+    agendamentoModule.profissionalRepo,
+  );
+  const definirDisponibilidadeProfissional =
+    new DefinirDisponibilidadeProfissional(
+      agendamentoModule.disponibilidadeRepo,
+      agendamentoModule.profissionalRepo,
+    );
+  const marcarConsulta = new MarcarConsulta(
+    agendamentoModule.agendamentoRepo,
+    agendamentoModule.disponibilidadeRepo,
+    agendamentoModule.procedimentoRepo,
+    agendamentoModule.pacienteRepo,
+    agendamentoModule.profissionalRepo,
+    agendamentoModule.lembrete,
+  );
+
+  const criarProntuario = new CriarProntuario(
+    prontuarioModule.prontuarioRepo,
+    prontuarioModule.pacienteRepo,
+    prontuarioModule.profissionalRepo,
+    prontuarioModule.auditoria,
+  );
+  const registrarEvolucao = new RegistrarEvolucao(
+    prontuarioModule.evolucaoRepo,
+    prontuarioModule.prontuarioRepo,
+    prontuarioModule.profissionalRepo,
+    prontuarioModule.auditoria,
+  );
+  const consultarProntuario = new ConsultarProntuario(
+    prontuarioModule.prontuarioRepo,
+    prontuarioModule.profissionalRepo,
+    prontuarioModule.auditoria,
+  );
+
+  const preencherAnamnese = new PreencherAnamnese(
+    anamneseModule.anamneseRepo,
+    anamneseModule.prontuarioRepo,
+    anamneseModule.profissionalRepo,
+    anamneseModule.auditoria,
+  );
+
+  // Dados sintéticos únicos por execução (evita colisão com execuções
+  // anteriores que permanecem no banco — nada é apagado ao final).
+  const agora = Date.now();
+  const emailAdmin = `admin.teste.${agora}@dentyvo-teste.local`;
+  const emailRecepcao = `recepcao.teste.${agora}@dentyvo-teste.local`;
+  const cpfClinica = gerarCpfValido();
+  const cpfPaciente = gerarCpfValido();
+
+  // ---------------------------------------------------------------------
+  // PASSO 1 — CriarClinicaComAdmin
+  // ---------------------------------------------------------------------
+  logPasso(1, "CriarClinicaComAdmin — cria clínica de teste com CPF válido");
+  const clinica = await criarClinicaComAdmin.executar({
+    clinica: {
+      nome: `Clínica Teste ${agora}`,
+      endereco: "Rua de Teste, 123 - São Paulo/SP",
+      tipoDocumento: "cpf",
+      documento: cpfClinica,
+    },
+    admin: {
+      nome: "Admin Teste",
+      email: emailAdmin,
+      senha: "SenhaForte!123",
+    },
+  });
+  logResumo({
+    clinicaId: clinica.id,
+    nome: clinica.nome,
+    documento: cpfClinica,
+    status: clinica.status,
+    emailAdmin,
+  });
+
+  const usuarioAdmin =
+    await authModule.authPort.buscarUsuarioPorEmail(emailAdmin);
+  if (!usuarioAdmin) {
+    throw new Error("Usuário admin não encontrado após CriarClinicaComAdmin.");
+  }
+  const profissionalAdmin = await authModule.profissionalRepo.buscarPorUsuarioId(
+    usuarioAdmin.id,
+  );
+  if (!profissionalAdmin) {
+    throw new Error(
+      "Profissional admin não encontrado após CriarClinicaComAdmin.",
+    );
+  }
+  logResumo({
+    usuarioAdminId: usuarioAdmin.id,
+    profissionalAdminId: profissionalAdmin.id,
+    papelAdmin: profissionalAdmin.papel,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 2 — ConvidarUsuario
+  // ---------------------------------------------------------------------
+  logPasso(2, "ConvidarUsuario — convida um segundo usuário (papel recepcao)");
+  const convite = await convidarUsuario.executar({
+    clinicaId: clinica.id,
+    email: emailRecepcao,
+    papel: "recepcao",
+    convidadoPorUsuarioId: usuarioAdmin.id,
+  });
+  logResumo({
+    conviteId: convite.id,
+    email: convite.email,
+    papel: convite.papel,
+    token: convite.token,
+    expiresAt: convite.expiresAt,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 3 — AceitarConvite
+  // ---------------------------------------------------------------------
+  logPasso(3, "AceitarConvite — simula o usuário convidado aceitando o convite");
+  const profissionalRecepcao = await aceitarConvite.executar({
+    token: convite.token,
+    nome: "Recepção Teste",
+    senha: "SenhaForte!123",
+  });
+  logResumo({
+    profissionalId: profissionalRecepcao.id,
+    usuarioId: profissionalRecepcao.usuarioId,
+    papel: profissionalRecepcao.papel,
+    clinicaId: profissionalRecepcao.clinicaId,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 4 — CriarPaciente (executado pelo usuário recepcao recém-aceito)
+  // ---------------------------------------------------------------------
+  logPasso(4, "CriarPaciente — cadastra um paciente de teste");
+  const paciente = await criarPaciente.executar({
+    clinicaId: clinica.id,
+    solicitadoPorUsuarioId: profissionalRecepcao.usuarioId,
+    nome: "Paciente Teste",
+    cpf: cpfPaciente,
+    telefone: "11999998888",
+    dataNascimento: new Date("1990-05-20T00:00:00-03:00"),
+    contatoEmergencia: "11988887777",
+  });
+  logResumo({
+    pacienteId: paciente.id,
+    nome: paciente.nome,
+    cpf: cpfPaciente,
+    telefone: paciente.telefone,
+    dataNascimento: paciente.dataNascimento,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 4.1 — CriarProcedimento (pré-requisito não pedido explicitamente,
+  // mas MarcarConsulta exige `procedimentoId` de um procedimento existente).
+  // ---------------------------------------------------------------------
+  logPasso(
+    "4.1",
+    "CriarProcedimento — pré-requisito de MarcarConsulta (não pedido, mas obrigatório)",
+  );
+  const procedimento = await criarProcedimento.executar({
+    clinicaId: clinica.id,
+    solicitadoPorUsuarioId: usuarioAdmin.id,
+    nome: "Consulta de avaliação",
+    duracaoPadraoMinutos: 30,
+    valor: 150,
+  });
+  logResumo({
+    procedimentoId: procedimento.id,
+    nome: procedimento.nome,
+    duracaoPadraoMinutos: procedimento.duracaoPadraoMinutos,
+    valor: procedimento.valor,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 5 — DefinirDisponibilidadeProfissional
+  // ---------------------------------------------------------------------
+  logPasso(
+    5,
+    "DefinirDisponibilidadeProfissional — janela do admin/dentista do passo 1",
+  );
+  const diaDaSemana = diaDaSemanaEmSaoPaulo(new Date());
+  const janelas = await definirDisponibilidadeProfissional.executar({
+    clinicaId: clinica.id,
+    solicitadoPorUsuarioId: usuarioAdmin.id,
+    profissionalId: profissionalAdmin.id,
+    janelas: [{ diaDaSemana, horaInicio: "08:00", horaFim: "18:00" }],
+  });
+  logResumo({
+    quantidadeJanelas: janelas.length,
+    diaDaSemana,
+    horaInicio: janelas[0].horaInicio,
+    horaFim: janelas[0].horaFim,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 6 — MarcarConsulta (executado pelo usuário recepcao)
+  // ---------------------------------------------------------------------
+  logPasso(6, "MarcarConsulta — marca uma consulta para o paciente");
+  // +7 dias garante o MESMO dia da semana da janela definida acima e uma
+  // data no futuro (evita cair fora da disponibilidade ou no passado).
+  const dataBase = new Date(agora + 7 * 24 * 60 * 60 * 1000);
+  const { ano, mes, dia } = partesDataEmSaoPaulo(dataBase);
+  const dataHoraInicio = new Date(`${ano}-${mes}-${dia}T10:00:00-03:00`);
+  const agendamento = await marcarConsulta.executar({
+    clinicaId: clinica.id,
+    solicitadoPorUsuarioId: profissionalRecepcao.usuarioId,
+    pacienteId: paciente.id,
+    profissionalId: profissionalAdmin.id,
+    procedimentoId: procedimento.id,
+    dataHoraInicio,
+    origem: "painel",
+  });
+  logResumo({
+    agendamentoId: agendamento.id,
+    status: agendamento.status,
+    dataHoraInicio: agendamento.dataHoraInicio,
+    dataHoraFim: agendamento.dataHoraFim,
+    origem: agendamento.origem,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 7 — CriarProntuario
+  // ---------------------------------------------------------------------
+  logPasso(7, "CriarProntuario — cria o prontuário do paciente");
+  const prontuario = await criarProntuario.executar({
+    clinicaId: clinica.id,
+    solicitadoPorUsuarioId: usuarioAdmin.id,
+    pacienteId: paciente.id,
+  });
+  logResumo({
+    prontuarioId: prontuario.id,
+    pacienteId: prontuario.pacienteId,
+    criadoEm: prontuario.criadoEm,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 8 — PreencherAnamnese
+  // ---------------------------------------------------------------------
+  logPasso(8, "PreencherAnamnese — preenche a anamnese inicial");
+  const anamnese = await preencherAnamnese.executar({
+    clinicaId: clinica.id,
+    solicitadoPorUsuarioId: usuarioAdmin.id,
+    prontuarioId: prontuario.id,
+    respostas: {
+      historicoMedico: { texto: "Hipertensão controlada.", negado: false },
+      alergias: { texto: null, negado: true },
+      medicacoesEmUso: { texto: "Losartana 50mg, 1x ao dia.", negado: false },
+      condicoesPreexistentes: { texto: null, negado: true },
+    },
+  });
+  logResumo({
+    anamneseId: anamnese.id,
+    versao: anamnese.versao,
+    prontuarioId: anamnese.prontuarioId,
+    preenchidoPorProfissionalId: anamnese.preenchidoPorProfissionalId,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 9 — RegistrarEvolucao
+  // ---------------------------------------------------------------------
+  logPasso(9, "RegistrarEvolucao — registra uma evolução de atendimento");
+  const evolucao = await registrarEvolucao.executar({
+    clinicaId: clinica.id,
+    solicitadoPorUsuarioId: usuarioAdmin.id,
+    prontuarioId: prontuario.id,
+    descricao: "Consulta de avaliação inicial realizada sem intercorrências.",
+    procedimentoId: procedimento.id,
+  });
+  logResumo({
+    evolucaoId: evolucao.id,
+    tipo: evolucao.tipo,
+    registradoEm: evolucao.registradoEm,
+    profissionalId: evolucao.profissionalId,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 9.1 — ConsultarProntuario (solicitante: admin/profissional do
+  // passo 1) + confirmação de que gerou auditoria de leitura no banco.
+  // ---------------------------------------------------------------------
+  logPasso(
+    "9.1",
+    "ConsultarProntuario — consulta o prontuário como o admin do passo 1 e confirma auditoria de leitura",
+  );
+  // `ConsultarProntuarioInput.solicitadoPorUsuarioId` espera o id de usuário
+  // (BetterAuth), o mesmo usado em todos os passos anteriores para
+  // identificar o `profissionalAdmin` — não o `profissionalId` diretamente.
+  const antesDaConsulta = new Date();
+  const prontuarioConsultado = await consultarProntuario.executar({
+    clinicaId: clinica.id,
+    solicitadoPorUsuarioId: usuarioAdmin.id,
+    prontuarioId: prontuario.id,
+  });
+  logResumo({
+    prontuarioId: prontuarioConsultado.id,
+    pacienteId: prontuarioConsultado.pacienteId,
+    criadoEm: prontuarioConsultado.criadoEm,
+    solicitanteUsuarioId: usuarioAdmin.id,
+    solicitanteProfissionalId: profissionalAdmin.id,
+  });
+
+  // Confirma no banco (fora do port, só para inspeção do teste manual) que
+  // `ConsultarProntuario` gravou uma nova entrada de auditoria de leitura.
+  const { db } = await import("@/db");
+  const { auditoriaLog } = await import("@/db/schema");
+  const { and, desc, eq } = await import("drizzle-orm");
+
+  const entradasAuditoriaLeitura = await db.query.auditoriaLog.findMany({
+    where: and(
+      eq(auditoriaLog.recursoTipo, "prontuario"),
+      eq(auditoriaLog.recursoId, prontuario.id),
+      eq(auditoriaLog.acao, "leitura"),
+    ),
+    orderBy: [desc(auditoriaLog.ocorridoEm)],
+  });
+  const novaAuditoriaLeitura = entradasAuditoriaLeitura.find(
+    (linha) => linha.ocorridoEm.getTime() >= antesDaConsulta.getTime(),
+  );
+  if (!novaAuditoriaLeitura) {
+    throw new Error(
+      `ConsultarProntuario não gerou nova entrada de auditoria com acao="leitura" ` +
+        `para o prontuário ${prontuario.id} (encontradas ${entradasAuditoriaLeitura.length} entrada(s) anterior(es)).`,
+    );
+  }
+  console.log("  Confirmado: nova entrada de auditoria de leitura no banco.");
+  logResumo({
+    auditoriaId: novaAuditoriaLeitura.id,
+    acao: novaAuditoriaLeitura.acao,
+    recursoTipo: novaAuditoriaLeitura.recursoTipo,
+    recursoId: novaAuditoriaLeitura.recursoId,
+    atorUsuarioId: novaAuditoriaLeitura.atorUsuarioId,
+    atorProfissionalId: novaAuditoriaLeitura.atorProfissionalId,
+    pacienteId: novaAuditoriaLeitura.pacienteId,
+    ocorridoEm: novaAuditoriaLeitura.ocorridoEm,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 9.2 — RBAC negado: `recepcao` não pode CriarProntuario.
+  // ---------------------------------------------------------------------
+  logPasso(
+    "9.2",
+    "RBAC negado — CriarProntuario com solicitante papel recepcao deve ser barrado",
+  );
+  let recepcaoConseguiuCriarProntuario = false;
+  try {
+    await criarProntuario.executar({
+      clinicaId: clinica.id,
+      solicitadoPorUsuarioId: profissionalRecepcao.usuarioId,
+      pacienteId: paciente.id,
+    });
+    // Se chegou aqui, o RBAC NÃO barrou — falha de segurança.
+    recepcaoConseguiuCriarProntuario = true;
+  } catch (erro) {
+    if (!(erro instanceof PermissaoNegadaError)) {
+      // Erro inesperado (não é o RBAC funcionando) — propaga para o
+      // handler global, que imprime a stack completa e interrompe o script.
+      throw erro;
+    }
+    logResumo({
+      excecaoRecebida: erro.nome,
+      mensagem: erro.message,
+      papelSolicitante: profissionalRecepcao.papel,
+    });
+    console.log("RBAC OK: recepcao negado corretamente");
+  }
+
+  if (recepcaoConseguiuCriarProntuario) {
+    console.error("FALHA DE SEGURANÇA: recepcao conseguiu criar prontuário");
+    process.exit(1);
+  }
+
+  // ---------------------------------------------------------------------
+  // PASSO 9.3 — Isolamento de tenant: segunda clínica não pode enxergar o
+  // prontuário da primeira via ConsultarProntuario.
+  // ---------------------------------------------------------------------
+  logPasso(
+    "9.3",
+    "Isolamento de tenant — segunda clínica não pode consultar prontuário da primeira",
+  );
+
+  const emailAdmin2 = `admin2.teste.${agora}@dentyvo-teste.local`;
+  const cpfClinica2 = gerarCpfValido();
+  const clinica2 = await criarClinicaComAdmin.executar({
+    clinica: {
+      nome: `Clínica Teste B ${agora}`,
+      endereco: "Av. Isolamento, 456 - Rio de Janeiro/RJ",
+      tipoDocumento: "cpf",
+      documento: cpfClinica2,
+    },
+    admin: {
+      nome: "Admin Teste B",
+      email: emailAdmin2,
+      senha: "SenhaForte!123",
+    },
+  });
+  const usuarioAdmin2 =
+    await authModule.authPort.buscarUsuarioPorEmail(emailAdmin2);
+  if (!usuarioAdmin2) {
+    throw new Error("Usuário admin da segunda clínica não encontrado.");
+  }
+  const profissionalAdmin2 = await authModule.profissionalRepo.buscarPorUsuarioId(
+    usuarioAdmin2.id,
+  );
+  if (!profissionalAdmin2) {
+    throw new Error("Profissional admin da segunda clínica não encontrado.");
+  }
+  logResumo({
+    clinicaSegundaId: clinica2.id,
+    nome: clinica2.nome,
+    usuarioAdmin2Id: usuarioAdmin2.id,
+    profissionalAdmin2Id: profissionalAdmin2.id,
+  });
+
+  let vazouDadoEntreClinicas = false;
+  try {
+    // Contexto de tenant do solicitante é o da SEGUNDA clínica (como viria
+    // da sessão dele), mas o `prontuarioId` pertence à PRIMEIRA clínica.
+    const prontuarioCruzado = await consultarProntuario.executar({
+      clinicaId: clinica2.id,
+      solicitadoPorUsuarioId: usuarioAdmin2.id,
+      prontuarioId: prontuario.id,
+    });
+    // Se não lançou, o repositório vazou um prontuário de outra clínica.
+    vazouDadoEntreClinicas = true;
+    console.error("FALHA DE ISOLAMENTO: vazou dado entre clínicas");
+    console.error(
+      `  prontuário retornado indevidamente: ${JSON.stringify({
+        prontuarioId: prontuarioCruzado.id,
+        clinicaIdRetornado: prontuarioCruzado.clinicaId,
+        clinicaIdEsperadoDoSolicitante: clinica2.id,
+        clinicaIdRealDoProntuario: clinica.id,
+      })}`,
+    );
+  } catch (erro) {
+    if (
+      !(erro instanceof ProntuarioNaoEncontradoError) &&
+      !(erro instanceof TenantMismatchError)
+    ) {
+      // Erro inesperado (não é o isolamento funcionando) — propaga.
+      throw erro;
+    }
+    logResumo({
+      excecaoRecebida: erro.nome,
+      mensagem: erro.message,
+    });
+    console.log("ISOLAMENTO OK");
+  }
+
+  if (vazouDadoEntreClinicas) {
+    process.exit(1);
+  }
+
+  console.log(`\n${SEPARADOR}`);
+  console.log("FLUXO COMPLETO EXECUTADO COM SUCESSO. Nenhum dado foi apagado.");
+  console.log(SEPARADOR);
+  console.log("IDs gerados nesta execução (para inspecionar no Neon):");
+  console.log(
+    JSON.stringify(
+      {
+        clinicaId: clinica.id,
+        usuarioAdminId: usuarioAdmin.id,
+        profissionalAdminId: profissionalAdmin.id,
+        usuarioRecepcaoId: profissionalRecepcao.usuarioId,
+        profissionalRecepcaoId: profissionalRecepcao.id,
+        pacienteId: paciente.id,
+        procedimentoId: procedimento.id,
+        agendamentoId: agendamento.id,
+        prontuarioId: prontuario.id,
+        anamneseId: anamnese.id,
+        evolucaoId: evolucao.id,
+        auditoriaLeituraId: novaAuditoriaLeitura.id,
+        rbacRecepcaoNegadoOk: !recepcaoConseguiuCriarProntuario,
+        clinicaSegundaId: clinica2.id,
+        isolamentoTenantOk: !vazouDadoEntreClinicas,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+/** Mascara credenciais da connection string ao logar qual banco será usado. */
+function mascarar(connectionString) {
+  try {
+    const url = new URL(connectionString);
+    return `${url.protocol}//${url.hostname}${url.pathname}`;
+  } catch {
+    return "(connection string ilegível)";
+  }
+}
+
+main()
+  .then(() => {
+    // Encerra explicitamente: o pool de conexões do `pg` (singleton em
+    // `@/db`) só fecha sozinho após o idle timeout, o que deixaria o
+    // processo pendurado por alguns segundos sem necessidade.
+    process.exit(0);
+  })
+  .catch((erro) => {
+    console.error(`\n${SEPARADOR}`);
+    console.error(
+      "FALHA NO TESTE DE INTEGRAÇÃO MANUAL — execução interrompida no passo acima.",
+    );
+    console.error(SEPARADOR);
+    console.error(erro);
+    process.exit(1);
+  });
