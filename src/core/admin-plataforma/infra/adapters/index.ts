@@ -1,0 +1,1 @@
+export { DrizzleUsuarioPlataformaRepository } from "./DrizzleUsuarioPlataformaRepository";

@@ -1,12 +1,24 @@
+import { randomUUID } from "node:crypto";
+
 import type { AuthPort } from "@/core/auth/application/ports/AuthPort";
 import type { ClinicaRepositoryPort } from "@/core/auth/application/ports/ClinicaRepositoryPort";
 import type { ProfissionalRepositoryPort } from "@/core/auth/application/ports/ProfissionalRepositoryPort";
-import type { Clinica } from "@/core/auth/domain/Clinica";
+import { Clinica } from "@/core/auth/domain/Clinica";
+import { DocumentoFiscal } from "@/core/auth/domain/DocumentoFiscal";
 import type { TipoDocumentoFiscal } from "@/core/auth/domain/DocumentoFiscal";
+import {
+  DocumentoClinicaDuplicadoError,
+  UsuarioJaVinculadoAClinicaError,
+} from "@/core/auth/domain/errors";
+import { Profissional } from "@/core/auth/domain/Profissional";
 import type { AuditoriaLogPort } from "@/core/prontuario/application/ports/AuditoriaLogPort";
 
 import type { UsuarioPlataformaRepositoryPort } from "../ports/UsuarioPlataformaRepositoryPort";
-import { CasoDeUsoNaoImplementadoError } from "./nao-implementado";
+import {
+  autorizar,
+  obterSolicitantePlataforma,
+  registrarAuditoriaPlataforma,
+} from "./helpers";
 
 export type CriarClinicaManualmenteInput = {
   solicitadoPorUsuarioPlataformaId: string;
@@ -38,12 +50,62 @@ export class CriarClinicaManualmente {
   ) {}
 
   async executar(input: CriarClinicaManualmenteInput): Promise<Clinica> {
-    void this.clinicaRepo;
-    void this.profissionalRepo;
-    void this.usuarioPlataformaRepo;
-    void this.auth;
-    void this.auditoria;
-    void input;
-    throw new CasoDeUsoNaoImplementadoError("CriarClinicaManualmente");
+    const solicitante = await obterSolicitantePlataforma(
+      this.usuarioPlataformaRepo,
+      input.solicitadoPorUsuarioPlataformaId,
+    );
+    autorizar(solicitante, "criar_clinica");
+
+    const documento = DocumentoFiscal.criar(
+      input.clinica.tipoDocumento,
+      input.clinica.documento,
+    );
+
+    const clinicaExistente =
+      await this.clinicaRepo.buscarPorDocumento(documento);
+    if (clinicaExistente) {
+      throw new DocumentoClinicaDuplicadoError(documento.valor);
+    }
+
+    const email = input.admin.email.trim().toLowerCase();
+    const usuarioExistente = await this.auth.buscarUsuarioPorEmail(email);
+    if (usuarioExistente) {
+      throw new UsuarioJaVinculadoAClinicaError(email);
+    }
+
+    const clinica = Clinica.criar({
+      id: randomUUID(),
+      nome: input.clinica.nome,
+      endereco: input.clinica.endereco,
+      documento,
+    });
+
+    const usuario = await this.auth.criarUsuario({
+      nome: input.admin.nome,
+      email,
+      senha: input.admin.senha,
+    });
+
+    const profissional = Profissional.criar({
+      id: randomUUID(),
+      clinicaId: clinica.id,
+      usuarioId: usuario.id,
+      nome: input.admin.nome,
+      papel: "admin",
+    });
+
+    await this.clinicaRepo.salvar(clinica);
+    await this.profissionalRepo.salvar(profissional);
+
+    await registrarAuditoriaPlataforma({
+      auditoria: this.auditoria,
+      solicitante,
+      clinicaId: clinica.id,
+      acao: "escrita",
+      recursoTipo: "clinica",
+      recursoId: clinica.id,
+    });
+
+    return clinica;
   }
 }

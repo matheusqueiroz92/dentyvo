@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, ilike } from "drizzle-orm";
 
 import type {
   ClinicaRepositoryPort,
@@ -56,11 +56,20 @@ export class DrizzleClinicaRepository implements ClinicaRepositoryPort {
     return row ? toDomain(row) : null;
   }
 
-  /** Spec 009 — implementação completa fica no adapter quando a feature for entregue. */
-  async listar(_filtros?: FiltrosListagemClinicas): Promise<Clinica[]> {
-    throw new Error(
-      "ClinicaRepositoryPort.listar ainda não implementado (spec 009).",
-    );
+  async listar(filtros?: FiltrosListagemClinicas): Promise<Clinica[]> {
+    const condicoes = [];
+    if (filtros?.status) {
+      condicoes.push(eq(clinicaTable.status, filtros.status));
+    }
+    if (filtros?.busca?.trim()) {
+      condicoes.push(ilike(clinicaTable.nome, `%${filtros.busca.trim()}%`));
+    }
+
+    const rows = await this.db.query.clinica.findMany({
+      where: condicoes.length > 0 ? and(...condicoes) : undefined,
+    });
+
+    return rows.map(toDomain);
   }
 }
 

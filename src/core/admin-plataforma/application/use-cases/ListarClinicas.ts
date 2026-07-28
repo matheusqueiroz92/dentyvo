@@ -6,7 +6,11 @@ import type { Clinica } from "@/core/auth/domain/Clinica";
 import type { AuditoriaLogPort } from "@/core/prontuario/application/ports/AuditoriaLogPort";
 
 import type { UsuarioPlataformaRepositoryPort } from "../ports/UsuarioPlataformaRepositoryPort";
-import { CasoDeUsoNaoImplementadoError } from "./nao-implementado";
+import {
+  autorizar,
+  obterSolicitantePlataforma,
+  registrarAuditoriaPlataforma,
+} from "./helpers";
 
 export type ListarClinicasInput = {
   solicitadoPorUsuarioPlataformaId: string;
@@ -25,10 +29,23 @@ export class ListarClinicas {
   ) {}
 
   async executar(input: ListarClinicasInput): Promise<Clinica[]> {
-    void this.clinicaRepo;
-    void this.usuarioPlataformaRepo;
-    void this.auditoria;
-    void input;
-    throw new CasoDeUsoNaoImplementadoError("ListarClinicas");
+    const solicitante = await obterSolicitantePlataforma(
+      this.usuarioPlataformaRepo,
+      input.solicitadoPorUsuarioPlataformaId,
+    );
+    autorizar(solicitante, "listar_clinicas");
+
+    const clinicas = await this.clinicaRepo.listar(input.filtros);
+
+    await registrarAuditoriaPlataforma({
+      auditoria: this.auditoria,
+      solicitante,
+      clinicaId: null,
+      acao: "leitura",
+      recursoTipo: "clinica",
+      recursoId: "listagem",
+    });
+
+    return clinicas;
   }
 }

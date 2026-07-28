@@ -13,7 +13,8 @@ import type { UsuarioPlataforma } from "./UsuarioPlataforma";
  * - No MVP só existe `super-admin` (spec: fora de escopo múltiplos níveis);
  *   uma `Record<Acao, ["super-admin"]>` seria cerimônia sem ganho.
  *
- * Reaproveitamos apenas `PermissaoNegadaError` de `shared/errors`.
+ * Reaproveitamos `PermissaoNegadaError` e `DadosInvalidosError` de
+ * `shared/errors`.
  */
 export const ACOES_ADMIN_PLATAFORMA = [
   "listar_clinicas",
@@ -22,14 +23,19 @@ export const ACOES_ADMIN_PLATAFORMA = [
   "desativar_clinica",
   "listar_usuarios_clinica",
   "remover_usuario",
+  "revogar_sessoes_usuario",
+  "trocar_papel_usuario",
+  /** Próxima iteração (spec 009) — assinatura existe; não implementar no MVP. */
+  "resetar_senha_usuario",
 ] as const;
 
 export type AcaoAdminPlataforma = (typeof ACOES_ADMIN_PLATAFORMA)[number];
 
 export function pode(
   usuario: UsuarioPlataforma,
-  _acao: AcaoAdminPlataforma,
+  acao: AcaoAdminPlataforma,
 ): boolean {
+  void acao;
   return usuario.papel === "super-admin";
 }
 

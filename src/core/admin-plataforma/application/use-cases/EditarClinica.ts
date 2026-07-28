@@ -2,8 +2,13 @@ import type { ClinicaRepositoryPort } from "@/core/auth/application/ports/Clinic
 import type { Clinica } from "@/core/auth/domain/Clinica";
 import type { AuditoriaLogPort } from "@/core/prontuario/application/ports/AuditoriaLogPort";
 
+import { ClinicaNaoEncontradaError } from "../../domain/errors";
 import type { UsuarioPlataformaRepositoryPort } from "../ports/UsuarioPlataformaRepositoryPort";
-import { CasoDeUsoNaoImplementadoError } from "./nao-implementado";
+import {
+  autorizar,
+  obterSolicitantePlataforma,
+  registrarAuditoriaPlataforma,
+} from "./helpers";
 
 export type EditarClinicaInput = {
   solicitadoPorUsuarioPlataformaId: string;
@@ -23,10 +28,32 @@ export class EditarClinica {
   ) {}
 
   async executar(input: EditarClinicaInput): Promise<Clinica> {
-    void this.clinicaRepo;
-    void this.usuarioPlataformaRepo;
-    void this.auditoria;
-    void input;
-    throw new CasoDeUsoNaoImplementadoError("EditarClinica");
+    const solicitante = await obterSolicitantePlataforma(
+      this.usuarioPlataformaRepo,
+      input.solicitadoPorUsuarioPlataformaId,
+    );
+    autorizar(solicitante, "editar_clinica");
+
+    const clinica = await this.clinicaRepo.buscarPorId(input.clinicaId);
+    if (!clinica) {
+      throw new ClinicaNaoEncontradaError(input.clinicaId);
+    }
+
+    const atualizada = clinica.atualizarDadosCadastrais({
+      nome: input.nome,
+      endereco: input.endereco,
+    });
+    await this.clinicaRepo.salvar(atualizada);
+
+    await registrarAuditoriaPlataforma({
+      auditoria: this.auditoria,
+      solicitante,
+      clinicaId: atualizada.id,
+      acao: "escrita",
+      recursoTipo: "clinica",
+      recursoId: atualizada.id,
+    });
+
+    return atualizada;
   }
 }

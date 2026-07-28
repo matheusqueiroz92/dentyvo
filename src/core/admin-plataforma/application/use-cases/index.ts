@@ -23,3 +23,15 @@ export {
   RemoverUsuario,
   type RemoverUsuarioInput,
 } from "./RemoverUsuario";
+export {
+  ResetarSenhaUsuario,
+  type ResetarSenhaUsuarioInput,
+} from "./ResetarSenhaUsuario";
+export {
+  RevogarSessoesDoUsuario,
+  type RevogarSessoesDoUsuarioInput,
+} from "./RevogarSessoesDoUsuario";
+export {
+  TrocarPapelUsuario,
+  type TrocarPapelUsuarioInput,
+} from "./TrocarPapelUsuario";

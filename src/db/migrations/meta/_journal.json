@@ -22,6 +22,20 @@
       "when": 1785241513139,
       "tag": "0002_thick_longshot",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785243591894,
+      "tag": "0003_smooth_invisible_woman",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785244662628,
+      "tag": "0004_medical_omega_sentinel",
+      "breakpoints": true
     }
   ]
 }

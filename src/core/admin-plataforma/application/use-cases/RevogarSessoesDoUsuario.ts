@@ -10,17 +10,21 @@ import {
   registrarAuditoriaPlataforma,
 } from "./helpers";
 
-export type RemoverUsuarioInput = {
+export type RevogarSessoesDoUsuarioInput = {
   solicitadoPorUsuarioPlataformaId: string;
-  /** `usuarioId` BetterAuth (spec 009) — resolve o `Profissional` vinculado. */
+  /** `usuarioId` BetterAuth — alvo das sessões a revogar. */
   usuarioId: string;
 };
 
 /**
- * Remove o vínculo profissional/usuário de uma clínica (spec 009).
- * Cross-tenant: não exige `clinicaId` no input — obtido do profissional.
+ * Revoga todas as sessões ativas do usuário BetterAuth (spec 009).
+ * Mesma semântica de `RevogarSessoesDoMembro` (001), cross-tenant.
+ * Reutiliza `AuthPort.revogarSessoesDoUsuario` — não recria integração BetterAuth.
+ *
+ * Não altera senha: o usuário pode logar de novo com as mesmas credenciais.
+ * Reset de senha é `ResetarSenhaUsuario` (próxima iteração).
  */
-export class RemoverUsuario {
+export class RevogarSessoesDoUsuario {
   constructor(
     private readonly profissionalRepo: ProfissionalRepositoryPort,
     private readonly usuarioPlataformaRepo: UsuarioPlataformaRepositoryPort,
@@ -28,20 +32,19 @@ export class RemoverUsuario {
     private readonly auditoria: AuditoriaLogPort,
   ) {}
 
-  async executar(input: RemoverUsuarioInput): Promise<void> {
-    void this.auth;
+  async executar(input: RevogarSessoesDoUsuarioInput): Promise<void> {
     const solicitante = await obterSolicitantePlataforma(
       this.usuarioPlataformaRepo,
       input.solicitadoPorUsuarioPlataformaId,
     );
-    autorizar(solicitante, "remover_usuario");
+    autorizar(solicitante, "revogar_sessoes_usuario");
 
     const alvo = await this.profissionalRepo.buscarPorUsuarioId(input.usuarioId);
     if (!alvo) {
       throw new UsuarioDaClinicaNaoEncontradoError(input.usuarioId);
     }
 
-    await this.profissionalRepo.remover(alvo.clinicaId, alvo.id);
+    await this.auth.revogarSessoesDoUsuario(alvo.usuarioId);
 
     await registrarAuditoriaPlataforma({
       auditoria: this.auditoria,
