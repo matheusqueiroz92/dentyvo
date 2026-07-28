@@ -74,6 +74,7 @@ export class ConcluirConexaoWhatsapp {
     );
 
     await this.metaGraph.inscreverWebhook({
+      wabaId: troca.wabaId,
       phoneNumberId: troca.phoneNumberId,
       accessToken: troca.accessToken,
     });

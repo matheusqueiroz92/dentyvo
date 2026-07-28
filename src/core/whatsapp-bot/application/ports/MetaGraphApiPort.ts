@@ -19,6 +19,7 @@ export interface MetaGraphApiPort {
   trocarCodigoPorToken(codigoOAuth: string): Promise<ResultadoTrocaCodigoMeta>;
 
   inscreverWebhook(input: {
+    wabaId: string;
     phoneNumberId: string;
     accessToken: string;
   }): Promise<void>;
