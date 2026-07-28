@@ -150,6 +150,12 @@ export class ClinicWhatsappAccount {
   }
 
   desconectar(): ClinicWhatsappAccount {
+    if (this.status === "desconectado") {
+      throw new DadosInvalidosError(
+        "Conta WhatsApp já está desconectada; transição inválida.",
+      );
+    }
+
     return new ClinicWhatsappAccount({
       id: this.id,
       clinicaId: this.clinicaId,

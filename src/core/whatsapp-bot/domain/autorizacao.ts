@@ -2,12 +2,9 @@ import type { Papel } from "@/core/auth/domain/Papel";
 import { criarVerificadorAutorizacao } from "@/core/shared/autorizacao";
 
 /**
- * Ações da matriz de permissões do módulo WhatsApp (spec 008).
- *
- * Nota: a spec 008 não traz tabela RBAC explícita. A user story fala em
- * "dono de clínica" e o paralelo em auth é `editar_clinica` (só admin).
- * `renovar_token_whatsapp` é job de sistema — fora da matriz de papéis de
- * clínica (sem checagem de `Profissional`).
+ * Ações da matriz de permissões do módulo WhatsApp (spec 008, aprovada).
+ * Só `admin` inicia/conclui/desconecta. `RenovarTokenWhatsapp` é job de
+ * sistema — fora desta matriz (sem checagem de `Profissional`).
  */
 export const ACOES_WHATSAPP = [
   "iniciar_conexao_whatsapp",
