@@ -12,6 +12,8 @@ export const RECURSOS_AUDITORIA = [
   "profissional",
   /** Spec 010 — concessão manual de acesso / ações de assinatura. */
   "assinatura",
+  /** Spec 011 — falhas / trilha de envio de notificação (sem PHI). */
+  "notificacao",
 ] as const;
 export type RecursoAuditoria = (typeof RECURSOS_AUDITORIA)[number];
 
@@ -26,6 +28,11 @@ export type DetalheAuditoria = {
   acaoNegada?: string;
   /** Motivo de desativação de clínica (spec 009) — sem PHI. */
   motivo?: string;
+  /** Spec 011 — metadados de notificação (sem conteúdo clínico). */
+  notificacaoId?: string;
+  tipoNotificacao?: string;
+  canalNotificacao?: string;
+  statusEnvio?: string;
 };
 
 export type AuditoriaLogProps = {
@@ -203,6 +210,30 @@ function sanitizarDetalhe(
   }
   if (detalhe.motivo !== undefined) {
     limpo.motivo = assertCampo(detalhe.motivo, "detalhe.motivo");
+  }
+  if (detalhe.notificacaoId !== undefined) {
+    limpo.notificacaoId = assertCampo(
+      detalhe.notificacaoId,
+      "detalhe.notificacaoId",
+    );
+  }
+  if (detalhe.tipoNotificacao !== undefined) {
+    limpo.tipoNotificacao = assertCampo(
+      detalhe.tipoNotificacao,
+      "detalhe.tipoNotificacao",
+    );
+  }
+  if (detalhe.canalNotificacao !== undefined) {
+    limpo.canalNotificacao = assertCampo(
+      detalhe.canalNotificacao,
+      "detalhe.canalNotificacao",
+    );
+  }
+  if (detalhe.statusEnvio !== undefined) {
+    limpo.statusEnvio = assertCampo(
+      detalhe.statusEnvio,
+      "detalhe.statusEnvio",
+    );
   }
 
   return Object.keys(limpo).length > 0 ? limpo : null;

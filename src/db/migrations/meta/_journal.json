@@ -43,6 +43,13 @@
       "when": 1785283988406,
       "tag": "0005_useful_maggott",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785331365619,
+      "tag": "0006_small_skaar",
+      "breakpoints": true
     }
   ]
 }

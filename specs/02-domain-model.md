@@ -40,15 +40,28 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
   medicações em uso, condições preexistentes), preenchidoEm, preenchidoPor
 
 ### Receita
-- id, prontuarioId, profissionalId, itens (medicamento, dosagem, posologia),
-  emitidaEm, assinaturaDigitalId (nullable — v2)
+- id, clinicaId, prontuarioId, profissionalId, emitidaEm,
+  itens[] (`ItemReceita`: medicamento, dosagem, posologia, duracao — textos
+  livres estruturados),
+  snapshot de cabeçalho persistido na emissão (obrigatórios: clinicaNome,
+  clinicaEndereco, profissionalNome, profissionalCro, pacienteNome,
+  pacienteCpf; opcionais: pacienteDataNascimento, profissionalEspecialidade;
+  documento fiscal da clínica fora do MVP — ver feature 006),
+  assinaturaDigitalId (nullable — v2; assinatura digital fora do MVP)
 
 ### Odontograma (v2)
-- id, prontuarioId, dentes[] (numeração, faces, condição/procedimento por face)
+- id, prontuarioId, dentes[] (numeracaoDente, faces, condição/procedimento por
+  face)
+- `numeracaoDente`: padrão **FDI por quadrante** (não Universal) — campo já
+  travado; demais detalhes do modelo aguardam imagens de referência (spec 004)
 
 ### Periograma (v2)
-- id, prontuarioId, medicoes[] (dente, face, profundidade de sondagem,
-  sangramento, mobilidade)
+- id, prontuarioId, medicoes[] (dente, profundidade de sondagem, sangramento,
+  mobilidade)
+- `mobilidade`: escala de **Miller** (grau 0, 1, 2 e 3) — campo já travado
+- `medicoes`: **6 pontos de sondagem por dente** (três na face vestibular e
+  três na face lingual/palatina: mesial, médio e distal) — estrutura já travada
+- Demais detalhes do modelo aguardam imagens de referência (spec 005)
 
 ### ClinicWhatsappAccount
 - id, clinicaId, wabaId, phoneNumberId, accessToken (criptografado),
@@ -75,6 +88,26 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 ### Cobranca
 - id, assinaturaId, gatewayCobrancaId, valor, metodo (`pix`|`boleto`|`cartao`),
   status (`pendente`|`paga`|`vencida`|`estornada`), vencimento, pagaEm
+
+### Notificacao (spec 011)
+- id
+- destinatário XOR: `destinatarioUsuarioId` **ou**
+  `destinatarioUsuarioPlataformaId`
+- `tipo` (`aviso_aumento_preco` | `lembrete_consulta` | `trial_acabando` |
+  `cobranca_vencida` | `convite_usuario`)
+- `chaveNegocio` (nullable) — id opaco do evento de origem; com chave, dedup
+  por tipo + destinatário + chave no **balde horário fixo** de 1h
+  (`janelaDedup = floor(criadaEm / 1h)`); baldes vizinhos (ex. 12:59 / 13:01)
+  não deduplicam — limitação consciente (spec 011), não bug
+- `conteudo` — allowlist operacional **sem PHI** (mesmo espírito de
+  `DetalheAuditoria`: titulo, mensagem, linkAcao, ids de plano/assinatura/
+  cobrança/convite/agendamento, dataReferenciaIso, valorCentavos)
+- envios por canal — no domínio, coleção no agregado; na **persistência**,
+  tabela normalizada `notificacao_envio` (não JSON na linha de
+  `notificacao`): `notificacaoId`, `canal` (`email`|`in_app`), `statusEnvio`
+  (`pendente` → `enviada` | `falhou`; terminais no MVP, sem retry)
+- `lida` / `lidaEm`, `criadaEm`
+- RBAC: só o destinatário lista/marca as próprias (sem inbox cross-tenant)
 
 ## Regras de negócio centrais (candidatas a teste de domínio)
 

@@ -56,3 +56,9 @@ automaticamente.
 - Prescrição de medicamentos controlados segue exigências do CFO/Anvisa
   (validar necessidade de assinatura digital com validade jurídica antes do
   lançamento dessa funcionalidade).
+- **Bloqueante antes do primeiro cliente real:** `EmailPort` (001) e
+  `EmailNotificacaoCanalAdapter` (011) ainda são implementações console-only
+  (log, sem envio real). Escolher provedor de e-mail transacional (ex: Resend,
+  Amazon SES, SendGridBrasil) e substituir os adapters antes de onboardar
+  qualquer clínica fora do ambiente de teste — sem isso, convites e avisos de
+  cobrança nunca chegam ao destinatário real.
