@@ -9,7 +9,6 @@ import { VagaPromocional } from "../../domain/VagaPromocional";
 import { EnviarAvisoAumentoPreco } from "./EnviarAvisoAumentoPreco";
 import {
   CLINICA_ID,
-  PLANO_ID,
   criarContextoAssinatura,
   seedTrialAtivo,
 } from "./helpers-test";
