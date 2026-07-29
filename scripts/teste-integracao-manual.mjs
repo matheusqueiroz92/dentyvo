@@ -7,7 +7,7 @@
  * em dev, via pooler).
  *
  * Fluxo:
- *   1. CriarClinicaComAdmin        — clínica de teste com CPF válido
+ *   1. cadastrarClinicaComTrial   — delivery: CriarClinicaComAdmin + IniciarTrial
  *   2. ConvidarUsuario             — convida usuário (papel recepcao)
  *   3. AceitarConvite              — usuário convidado aceita o convite
  *   4. CriarPaciente               — cadastra paciente de teste
@@ -16,6 +16,12 @@
  *   7. CriarProntuario             — cria prontuário do paciente
  *   8. PreencherAnamnese           — preenche anamnese inicial
  *   9. RegistrarEvolucao           — registra evolução de atendimento
+ *  10. EmitirReceita               — emite receita com 1 item para o paciente
+ *  11. GerarPdfReceita             — gera o PDF da receita emitida
+ *  12. RBAC negado — recepcao não pode EmitirReceita
+ *  13. IniciarTrial                — confirma Assinatura trialing (já criada no passo 1)
+ *  14. VerificarAcessoAtivo        — confirma permitido=true, motivo=trialing
+ *  15. RBAC plataforma negado — admin de clínica não pode ConcederAcessoManual
  *
  * (Passo extra 4.1 — CriarProcedimento: não pedido explicitamente, mas é
  * pré-requisito obrigatório de `MarcarConsulta`, que exige `procedimentoId`.)
@@ -25,6 +31,9 @@
  * `CriarProntuario`; espera `PermissaoNegadaError`.)
  * (Passo extra 9.3 — Isolamento de tenant: confirma que uma segunda clínica
  * não consegue enxergar o prontuário da primeira via `ConsultarProntuario`.)
+ * (Passo extra 9.4 — AlterarPapelMembro: promove profissionalAdmin a
+ * dentista com CRO, pré-requisito de EmitirReceita — a matriz RBAC de
+ * `receituario` só permite papel "dentista", CRO sozinho não basta.)
  *
  * Uso:
  *   npm run teste:integracao
@@ -131,6 +140,9 @@ async function main() {
   const { CriarClinicaComAdmin } = await import(
     "@/core/auth/application/use-cases/CriarClinicaComAdmin"
   );
+  const { cadastrarClinicaComTrial } = await import(
+    "@/actions/cadastrar-clinica-com-trial"
+  );
   const { ConvidarUsuario } = await import(
     "@/core/auth/application/use-cases/ConvidarUsuario"
   );
@@ -185,14 +197,43 @@ async function main() {
     "@/core/anamnese/application/use-cases/PreencherAnamnese"
   );
 
+  const { AlterarPapelMembro } = await import(
+    "@/core/auth/application/use-cases/AlterarPapelMembro"
+  );
+
+  const { createReceituarioModule } = await import(
+    "@/core/receituario/infra/create-receituario-module"
+  );
+
+  // `createAssinaturaModule` exige config do gateway Asaas, mas os passos
+  // usados aqui (IniciarTrial/VerificarAcessoAtivo/ConcederAcessoManual) não
+  // fazem nenhuma chamada de rede — só `CriarAssinatura`/webhook usariam o
+  // gateway de fato. Placeholder evita depender de ASAAS_API_KEY real só
+  // para este teste manual.
+  const { createAssinaturaModule } = await import(
+    "@/core/assinatura/infra/create-assinatura-module"
+  );
+  const { UsuarioPlataformaNaoEncontradoError } = await import(
+    "@/core/admin-plataforma/domain/errors"
+  );
+
   const authModule = createAuthModule();
   const pacienteModule = createPacienteModule();
   const agendamentoModule = createAgendamentoModule();
   const prontuarioModule = createProntuarioModule();
   const anamneseModule = createAnamneseModule();
+  const receituarioModule = createReceituarioModule();
+  const assinaturaModule = createAssinaturaModule({
+    asaasApiKey: "manual-test-placeholder",
+    asaasWebhookToken: "manual-test-placeholder",
+  });
 
   const criarClinicaComAdmin = new CriarClinicaComAdmin(
     authModule.clinicaRepo,
+    authModule.profissionalRepo,
+    authModule.authPort,
+  );
+  const alterarPapelMembro = new AlterarPapelMembro(
     authModule.profissionalRepo,
     authModule.authPort,
   );
@@ -266,22 +307,31 @@ async function main() {
   const cpfPaciente = gerarCpfValido();
 
   // ---------------------------------------------------------------------
-  // PASSO 1 — CriarClinicaComAdmin
+  // PASSO 1 — Delivery: CriarClinicaComAdmin + IniciarTrial (orquestração)
   // ---------------------------------------------------------------------
-  logPasso(1, "CriarClinicaComAdmin — cria clínica de teste com CPF válido");
-  const clinica = await criarClinicaComAdmin.executar({
-    clinica: {
-      nome: `Clínica Teste ${agora}`,
-      endereco: "Rua de Teste, 123 - São Paulo/SP",
-      tipoDocumento: "cpf",
-      documento: cpfClinica,
+  logPasso(
+    1,
+    "cadastrarClinicaComTrial — cria clínica + dispara IniciarTrial (delivery)",
+  );
+  const clinica = await cadastrarClinicaComTrial(
+    {
+      criarClinicaComAdmin,
+      iniciarTrial: assinaturaModule.iniciarTrial,
     },
-    admin: {
-      nome: "Admin Teste",
-      email: emailAdmin,
-      senha: "SenhaForte!123",
+    {
+      clinica: {
+        nome: `Clínica Teste ${agora}`,
+        endereco: "Rua de Teste, 123 - São Paulo/SP",
+        tipoDocumento: "cpf",
+        documento: cpfClinica,
+      },
+      admin: {
+        nome: "Admin Teste",
+        email: emailAdmin,
+        senha: "SenhaForte!123",
+      },
     },
-  });
+  );
   logResumo({
     clinicaId: clinica.id,
     nome: clinica.nome,
@@ -664,6 +714,224 @@ async function main() {
     process.exit(1);
   }
 
+  // ---------------------------------------------------------------------
+  // PASSO 9.4 — AlterarPapelMembro (pré-requisito não pedido explicitamente).
+  //
+  // A matriz RBAC de `receituario` (`emitir_receita: ["dentista"]`) só
+  // permite o papel "dentista" — CRO presente não é suficiente, e `admin`
+  // é sempre barrado ANTES da checagem de CRO. Para reaproveitar o mesmo
+  // `profissionalAdminId` do passo 1 no passo 10 (como pedido), é preciso
+  // promovê-lo a "dentista" e atribuir um CRO válido primeiro.
+  // ---------------------------------------------------------------------
+  logPasso(
+    "9.4",
+    "AlterarPapelMembro — promove profissionalAdmin a dentista com CRO (pré-requisito de EmitirReceita)",
+  );
+  const croProfissionalAdmin = "12345-SP";
+  const profissionalAdminDentista = await alterarPapelMembro.executar({
+    clinicaId: clinica.id,
+    profissionalId: profissionalAdmin.id,
+    novoPapel: "dentista",
+    solicitadoPorUsuarioId: usuarioAdmin.id,
+    cro: croProfissionalAdmin,
+  });
+  logResumo({
+    profissionalId: profissionalAdminDentista.id,
+    papelAnterior: "admin",
+    papelAtual: profissionalAdminDentista.papel,
+    cro: profissionalAdminDentista.cro,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 10 — EmitirReceita (solicitante: profissionalAdminId, agora
+  // dentista com CRO válido) para o paciente/prontuário já criados.
+  // ---------------------------------------------------------------------
+  logPasso(
+    10,
+    "EmitirReceita — emite receita com 1 item para o paciente (solicitante: profissionalAdminId)",
+  );
+  const receita = await receituarioModule.emitirReceita.executar({
+    clinicaId: clinica.id,
+    solicitadoPorUsuarioId: usuarioAdmin.id,
+    prontuarioId: prontuario.id,
+    itens: [
+      {
+        medicamento: "Amoxicilina",
+        dosagem: "500 mg",
+        posologia: "1 comprimido de 8/8h",
+        duracao: "7 dias",
+      },
+    ],
+  });
+  logResumo({
+    receitaId: receita.id,
+    prontuarioId: receita.prontuarioId,
+    profissionalId: receita.profissionalId,
+    quantidadeItens: receita.itens.length,
+    emitidaEm: receita.emitidaEm,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 11 — GerarPdfReceita: confirma bytes não vazios (sem imprimir
+  // conteúdo, só o tamanho).
+  // ---------------------------------------------------------------------
+  logPasso(11, "GerarPdfReceita — gera o PDF da receita emitida");
+  const pdfReceita = await receituarioModule.gerarPdfReceita.executar({
+    clinicaId: clinica.id,
+    solicitadoPorUsuarioId: usuarioAdmin.id,
+    receitaId: receita.id,
+  });
+  if (!(pdfReceita.bytes instanceof Uint8Array) || pdfReceita.bytes.length === 0) {
+    throw new Error(
+      `GerarPdfReceita retornou bytes vazios/ inválidos para a receita ${receita.id}.`,
+    );
+  }
+  logResumo({
+    nomeArquivo: pdfReceita.nomeArquivo,
+    contentType: pdfReceita.contentType,
+    tamanhoBytes: pdfReceita.bytes.length,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 12 — RBAC negado: recepcao não pode EmitirReceita.
+  // ---------------------------------------------------------------------
+  logPasso(
+    12,
+    "RBAC negado — EmitirReceita com solicitante papel recepcao deve ser barrado",
+  );
+  let recepcaoConseguiuEmitirReceita = false;
+  try {
+    await receituarioModule.emitirReceita.executar({
+      clinicaId: clinica.id,
+      solicitadoPorUsuarioId: profissionalRecepcao.usuarioId,
+      prontuarioId: prontuario.id,
+      itens: [
+        {
+          medicamento: "Dipirona",
+          dosagem: "1g",
+          posologia: "1 comprimido de 6/6h se dor",
+          duracao: "3 dias",
+        },
+      ],
+    });
+    recepcaoConseguiuEmitirReceita = true;
+  } catch (erro) {
+    if (!(erro instanceof PermissaoNegadaError)) {
+      throw erro;
+    }
+    logResumo({
+      excecaoRecebida: erro.nome,
+      mensagem: erro.message,
+      papelSolicitante: profissionalRecepcao.papel,
+    });
+    console.log("RBAC OK");
+  }
+
+  if (recepcaoConseguiuEmitirReceita) {
+    console.error("FALHA DE SEGURANÇA: recepcao conseguiu emitir receita");
+    process.exit(1);
+  }
+
+  // ---------------------------------------------------------------------
+  // PASSO 13 — Confirma Assinatura em trialing criada automaticamente no
+  // passo 1 pela orquestração de delivery (cadastrarClinicaComTrial).
+  // ---------------------------------------------------------------------
+  logPasso(
+    13,
+    "IniciarTrial — confirma Assinatura em trialing já criada no passo 1 (sem chamada manual)",
+  );
+  const assinatura = await assinaturaModule.assinaturaRepo.buscarPorClinicaId(
+    clinica.id,
+  );
+  if (!assinatura) {
+    throw new Error(
+      "Esperava Assinatura trialing criada automaticamente por cadastrarClinicaComTrial no passo 1.",
+    );
+  }
+  if (assinatura.status !== "trialing") {
+    throw new Error(
+      `Assinatura encontrada com status inesperado: ${assinatura.status} (esperado: trialing).`,
+    );
+  }
+  console.log(
+    "  Assinatura já existia (disparada automaticamente no passo 1).",
+  );
+  logResumo({
+    assinaturaId: assinatura.id,
+    clinicaId: assinatura.clinicaId,
+    status: assinatura.status,
+    dataInicio: assinatura.dataInicio,
+    dataFimTrial: assinatura.dataFimTrial,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 14 — VerificarAcessoAtivo: permitido=true, motivo="trialing".
+  // ---------------------------------------------------------------------
+  logPasso(
+    14,
+    "VerificarAcessoAtivo — confirma acesso permitido com motivo trialing",
+  );
+  const resultadoAcesso = await assinaturaModule.verificarAcessoAtivo.executar({
+    clinicaId: clinica.id,
+  });
+  if (resultadoAcesso.permitido !== true || resultadoAcesso.motivo !== "trialing") {
+    throw new Error(
+      `VerificarAcessoAtivo retornou resultado inesperado para clínica em trial: ${JSON.stringify(resultadoAcesso)}`,
+    );
+  }
+  logResumo(resultadoAcesso);
+
+  // ---------------------------------------------------------------------
+  // PASSO 15 — RBAC negado (plataforma): admin de clínica não pode
+  // ConcederAcessoManual.
+  //
+  // `ConcederAcessoManualInput.solicitadoPorUsuarioPlataformaId` é resolvido
+  // contra a tabela `usuario_plataforma` — completamente separada de
+  // `profissional`. Por isso, passar o `profissionalAdminId` (id de um
+  // `Profissional` de clínica) lança `UsuarioPlataformaNaoEncontradoError`
+  // (não encontrado nesse espaço de ids) em vez de `PermissaoNegadaError`
+  // — mas o resultado de segurança é o mesmo: acesso negado. Aceitamos
+  // ambas as exceções como "negado corretamente".
+  // Nota: `profissionalAdminId` foi promovido a "dentista" no passo 9.4;
+  // o teste continua válido pois o que se valida é que um id de
+  // `Profissional` (qualquer papel de clínica) nunca é um super-admin.
+  // ---------------------------------------------------------------------
+  logPasso(
+    15,
+    "RBAC plataforma negado — ConcederAcessoManual com solicitante profissionalAdminId deve ser barrado",
+  );
+  let profissionalConseguiuConcederAcesso = false;
+  try {
+    await assinaturaModule.concederAcessoManual.executar({
+      solicitadoPorUsuarioPlataformaId: profissionalAdmin.id,
+      clinicaId: clinica.id,
+      motivo: "tentativa indevida via teste de integração manual",
+      ateData: new Date(agora + 30 * 24 * 60 * 60 * 1000),
+    });
+    profissionalConseguiuConcederAcesso = true;
+  } catch (erro) {
+    if (
+      !(erro instanceof PermissaoNegadaError) &&
+      !(erro instanceof UsuarioPlataformaNaoEncontradoError)
+    ) {
+      throw erro;
+    }
+    logResumo({
+      excecaoRecebida: erro.nome,
+      mensagem: erro.message,
+      idUsado: profissionalAdmin.id,
+      papelAtualDoProfissional: profissionalAdminDentista.papel,
+    });
+    console.log("RBAC plataforma OK");
+  }
+
+  if (profissionalConseguiuConcederAcesso) {
+    console.error(
+      "FALHA DE SEGURANÇA: profissional de clínica conseguiu conceder acesso manual de plataforma",
+    );
+    process.exit(1);
+  }
+
   console.log(`\n${SEPARADOR}`);
   console.log("FLUXO COMPLETO EXECUTADO COM SUCESSO. Nenhum dado foi apagado.");
   console.log(SEPARADOR);
@@ -686,6 +954,13 @@ async function main() {
         rbacRecepcaoNegadoOk: !recepcaoConseguiuCriarProntuario,
         clinicaSegundaId: clinica2.id,
         isolamentoTenantOk: !vazouDadoEntreClinicas,
+        receitaId: receita.id,
+        pdfReceitaTamanhoBytes: pdfReceita.bytes.length,
+        rbacReceitaRecepcaoNegadoOk: !recepcaoConseguiuEmitirReceita,
+        assinaturaId: assinatura.id,
+        assinaturaStatus: assinatura.status,
+        acessoAtivoMotivo: resultadoAcesso.motivo,
+        rbacPlataformaNegadoOk: !profissionalConseguiuConcederAcesso,
       },
       null,
       2,

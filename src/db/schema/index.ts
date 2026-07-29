@@ -4,6 +4,7 @@
  */
 export * from "./agendamento";
 export * from "./anamnese";
+export * from "./assinatura";
 export * from "./auditoria-log";
 export * from "./auth";
 export * from "./clinic-whatsapp-account";

@@ -10,6 +10,8 @@ export const RECURSOS_AUDITORIA = [
   /** Spec 009 — ações do admin da plataforma sobre tenant/membros. */
   "clinica",
   "profissional",
+  /** Spec 010 — concessão manual de acesso / ações de assinatura. */
+  "assinatura",
 ] as const;
 export type RecursoAuditoria = (typeof RECURSOS_AUDITORIA)[number];
 
