@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { TenantMismatchError } from "@/core/shared/errors";
 
-import { TipoPeriogramaInvalidoError } from "./errors";
+import {
+  DenteDuplicadoNoPeriogramaError,
+  TipoPeriogramaInvalidoError,
+} from "./errors";
 import { Periograma } from "./Periograma";
 
 describe("Periograma", () => {
@@ -19,6 +22,8 @@ describe("Periograma", () => {
         {
           numeroDente: 16,
           mobilidade: 1,
+          implante: false,
+          nota: "Furca vestibular representativa",
           classificacaoFurca: { sistema: "hamp", grau: 2 },
           pontos: [
             {
@@ -32,6 +37,8 @@ describe("Periograma", () => {
         {
           numeroDente: 11,
           mobilidade: null,
+          implante: true,
+          nota: null,
           pontos: [],
         },
       ],
@@ -42,6 +49,26 @@ describe("Periograma", () => {
     expect(periograma.dentes).toHaveLength(2);
     expect(periograma.dentes[0]?.pontos).toHaveLength(1);
     expect(periograma.dentes[0]?.pontos[0]?.margemGengival).toBe(-1);
+    expect(periograma.dentes[0]?.implante).toBe(false);
+    expect(periograma.dentes[0]?.nota).toBe("Furca vestibular representativa");
+    expect(periograma.dentes[1]?.implante).toBe(true);
+    expect(periograma.dentes[1]?.nota).toBeNull();
+  });
+
+  it("rejeita numeroDente duplicado no mesmo periograma", () => {
+    expect(() =>
+      Periograma.registrar({
+        id: "perio-1",
+        clinicaId: "clinica-1",
+        prontuarioId: "pront-1",
+        profissionalId: "prof-1",
+        tipo: "exame_inicial",
+        dentes: [
+          { numeroDente: 16, mobilidade: 1 },
+          { numeroDente: 16, mobilidade: 2 },
+        ],
+      }),
+    ).toThrow(DenteDuplicadoNoPeriogramaError);
   });
 
   it("reconstitui periograma persistido", () => {

@@ -124,3 +124,15 @@ export class TipoPeriogramaInvalidoError extends Error {
     this.name = this.nome;
   }
 }
+
+/** Mesmo `numeroDente` não pode aparecer mais de uma vez no mesmo periograma. */
+export class DenteDuplicadoNoPeriogramaError extends Error {
+  readonly nome = "DenteDuplicadoNoPeriogramaError" as const;
+
+  constructor(readonly numeroDente: number) {
+    super(
+      `Dente FDI ${numeroDente} está duplicado neste periograma; cada dente pode aparecer no máximo uma vez.`,
+    );
+    this.name = this.nome;
+  }
+}

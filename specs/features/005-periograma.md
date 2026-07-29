@@ -285,7 +285,10 @@ Server actions clínicas (padrão next-safe-action + Zod), escopadas por
 - **Aplicação:** registro com tipo + profissional + data; listagem
   ordenada por data; rejeição de edição; isolamento por `clinicaId`; RBAC
   (recepção negada).
-- **Integração:** adapter de repositório (quando existir).
+- **Integração:** adapter Drizzle (`DrizzlePeriogramaRepository`) —
+  **backlog explícito** (revisão 005 / P3). Cobrir round-trip, transação
+  atômica das 3 tabelas e cascade em teste de integração (ou validação
+  manual equivalente) antes de evoluções de schema; ainda não automatizado.
 - **Contrato/e2e:** fluxo crítico de registro/listagem no prontuário
   (quando UI existir).
 

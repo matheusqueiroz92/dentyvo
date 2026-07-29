@@ -25,6 +25,9 @@ type Database = typeof Db;
  * Persistência Drizzle do periograma (spec 005).
  * Append-only: `salvar` só insere; sem update.
  * Dentes e pontos em tabelas normalizadas (transação atômica).
+ *
+ * Backlog (revisão 005 / P3): teste de integração contra banco real
+ * (round-trip + tx + cascade) ainda não automatizado.
  */
 export class DrizzlePeriogramaRepository implements PeriogramaRepositoryPort {
   constructor(private readonly db: Database) {}

@@ -5,7 +5,10 @@ import {
   type DentePeriogramaCriarInput,
   type DentePeriogramaProps,
 } from "./DentePeriograma";
-import { TipoPeriogramaInvalidoError } from "./errors";
+import {
+  DenteDuplicadoNoPeriogramaError,
+  TipoPeriogramaInvalidoError,
+} from "./errors";
 
 export const TIPOS_PERIOGRAMA = ["exame_inicial", "reavaliacao"] as const;
 export type TipoPeriograma = (typeof TIPOS_PERIOGRAMA)[number];
@@ -63,6 +66,9 @@ export class Periograma {
     const registradoEm = input.registradoEm ?? new Date();
     assertDataValida(registradoEm, "registradoEm");
 
+    const dentes = (input.dentes ?? []).map((d) => DentePeriograma.criar(d));
+    assertDentesSemDuplicata(dentes);
+
     return new Periograma({
       id: assertCampo(input.id, "id"),
       clinicaId: assertCampo(input.clinicaId, "clinicaId"),
@@ -70,7 +76,7 @@ export class Periograma {
       profissionalId: assertCampo(input.profissionalId, "profissionalId"),
       tipo: assertTipo(input.tipo),
       registradoEm,
-      dentes: (input.dentes ?? []).map((d) => DentePeriograma.criar(d)),
+      dentes,
     });
   }
 
@@ -123,5 +129,16 @@ function assertTipo(tipo: string): TipoPeriograma {
 function assertDataValida(data: Date, campo: string): void {
   if (!(data instanceof Date) || Number.isNaN(data.getTime())) {
     throw new DadosInvalidosError(`${campo} inválida.`);
+  }
+}
+
+function assertDentesSemDuplicata(dentes: readonly DentePeriograma[]): void {
+  const vistos = new Set<number>();
+  for (const dente of dentes) {
+    const numero = dente.numeroDenteValor;
+    if (vistos.has(numero)) {
+      throw new DenteDuplicadoNoPeriogramaError(numero);
+    }
+    vistos.add(numero);
   }
 }

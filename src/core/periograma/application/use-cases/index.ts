@@ -10,4 +10,3 @@ export {
   RegistrarPeriograma,
   type RegistrarPeriogramaInput,
 } from "./RegistrarPeriograma";
-export { CasoDeUsoNaoImplementadoError } from "./nao-implementado";

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { NumeroDenteInvalidoError } from "@/core/odontograma/domain/errors";
+import { DadosInvalidosError } from "@/core/shared/errors";
 
 import { DentePeriograma } from "./DentePeriograma";
 import {
@@ -118,5 +119,39 @@ describe("DentePeriograma", () => {
     expect(() => DentePeriograma.criar({ numeroDente: 19 })).toThrow(
       NumeroDenteInvalidoError,
     );
+  });
+
+  it("aceita implante true/false e null (não avaliado)", () => {
+    expect(
+      DentePeriograma.criar({ numeroDente: 11, implante: true }).implante,
+    ).toBe(true);
+    expect(
+      DentePeriograma.criar({ numeroDente: 11, implante: false }).implante,
+    ).toBe(false);
+    expect(
+      DentePeriograma.criar({ numeroDente: 11, implante: null }).implante,
+    ).toBeNull();
+  });
+
+  it("rejeita implante não booleano", () => {
+    expect(() =>
+      DentePeriograma.criar({
+        numeroDente: 11,
+        implante: "sim" as unknown as boolean,
+      }),
+    ).toThrow(DadosInvalidosError);
+  });
+
+  it("persiste nota e normaliza texto vazio para null", () => {
+    expect(
+      DentePeriograma.criar({
+        numeroDente: 16,
+        nota: "  Sangramento residual  ",
+      }).nota,
+    ).toBe("Sangramento residual");
+    expect(
+      DentePeriograma.criar({ numeroDente: 16, nota: "   " }).nota,
+    ).toBeNull();
+    expect(DentePeriograma.criar({ numeroDente: 16, nota: null }).nota).toBeNull();
   });
 });
