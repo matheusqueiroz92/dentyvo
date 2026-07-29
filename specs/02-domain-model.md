@@ -49,11 +49,28 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
   documento fiscal da clínica fora do MVP — ver feature 006),
   assinaturaDigitalId (nullable — v2; assinatura digital fora do MVP)
 
-### Odontograma (v2)
-- id, prontuarioId, dentes[] (numeracaoDente, faces, condição/procedimento por
-  face)
-- `numeracaoDente`: padrão **FDI por quadrante** (não Universal) — campo já
-  travado; demais detalhes do modelo aguardam imagens de referência (spec 004)
+### Odontograma (v2 — spec 004)
+- Fonte de verdade: eventos append-only `EventoOdontograma` (sem snapshot
+  completo). Estado vigente = projeção do evento mais recente por
+  `numeroDente`+`face` (nível face) ou por `numeroDente` (nível dente).
+- Ordenação determinística: `registradoEm` asc, depois `sequencia` asc
+  (bigserial no banco — desempate monotônico; **não** usar `id` UUID).
+- `EventoOdontograma`: id, clinicaId, prontuarioId, numeroDente, nivel
+  (`face`|`dente`), face? (obrigatória se nível face), estadoNovo,
+  procedimentoId?, registradoEm, profissionalId, sequencia (null só antes
+  de persistir; preenchida pelo adapter no insert)
+- `salvarEventos`: **atômico (tudo-ou-nada)** — transação explícita no
+  adapter; falha em qualquer item ⇒ nenhum evento do lote persiste
+- `numeroDente`: FDI — permanentes `{11–18,21–28,31–38,41–48}` + decíduos
+  `{51–55,61–65,71–75,81–85}`; fora disso → `NumeroDenteInvalidoError`
+- Faces: vestibular, lingual_palatina, mesial, distal, oclusal
+- `EstadoOdontograma` (enum extensível): higido, cariado, restaurado,
+  ausente_extraido, indicado_extracao, protese_coroa, implante, fraturado,
+  tratamento_endodontico, selante
+- `ausente_extraido`: estado no **nível do dente**; dente ausente não tem
+  faces vigentes (eventos de face rejeitados enquanto ausente — valida
+  contra vigente reconstruído do histórico persistido, não só o lote)
+- RBAC: admin + dentista (igual 003); recepção sem acesso
 
 ### Periograma (v2)
 - id, prontuarioId, medicoes[] (dente, profundidade de sondagem, sangramento,

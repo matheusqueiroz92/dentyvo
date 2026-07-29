@@ -11,6 +11,7 @@ export * from "./clinic-whatsapp-account";
 export * from "./clinica";
 export * from "./convite";
 export * from "./notificacao";
+export * from "./odontograma";
 export * from "./paciente";
 export * from "./profissional";
 export * from "./prontuario";

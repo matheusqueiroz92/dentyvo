@@ -1,0 +1,1 @@
+export { DrizzleOdontogramaRepository } from "./DrizzleOdontogramaRepository";
