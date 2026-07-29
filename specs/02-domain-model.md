@@ -80,10 +80,27 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 - id, clinicaId, planoId, status (`trialing`|`ativa`|`inadimplente`|`cancelada`),
   gatewayAssinaturaId (id da assinatura no gateway de pagamento),
   dataInicio, dataProximaCobranca, dataCanceladaEm
+- acessoManualAte / acessoManualMotivo (override 010)
+- **Promoção de lançamento (012)** — cópia operacional (fonte de verdade =
+  `VagaPromocional`):
+  - `precoPromocionalCentavos` (nullable)
+  - `precoPromocionalAte` (nullable)
+  - `avisoAumentoPrecoEnviadoEm` (nullable; camada 1 de idempotência do aviso)
+  - `migradaParaPrecoCheioEm` (nullable; idempotência de
+    `MigrarPrecoPosPromocao` — se setado, job não chama o gateway de novo)
+
+### VagaPromocional (spec 012)
+- Fonte de verdade da reserva do cupom de lançamento (máx. 30)
+- `posicao` (1..30, PK + CHECK), `clinicaId` (UNIQUE), `assinaturaId`,
+  `reservadaEm`
+- Cancelamento **não** libera a posição; campos promocionais na `Assinatura`
+  são cópia na criação, sem edição independente
 
 ### Plano
-- id, nome (ex: "Básico", "Pro"), valorMensal, limitesDeUso (ex: nº de
+- id, nome (ex: "Básico", "Médio", "Full"), valorMensal, limitesDeUso (ex: nº de
   profissionais, nº de mensagens do bot/mês — a definir conforme precificação)
+- Elegíveis à promoção 012: Básico (R$ 59) e Médio (R$ 99); Full não consome
+  vaga
 
 ### Cobranca
 - id, assinaturaId, gatewayCobrancaId, valor, metodo (`pix`|`boleto`|`cartao`),

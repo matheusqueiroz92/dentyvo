@@ -56,6 +56,17 @@ export interface AssinaturaGatewayPort {
 
   cancelarAssinatura(gatewayAssinaturaId: string): Promise<void>;
 
+  /**
+   * Atualiza o valor recorrente no gateway (migração pós-promoção — spec 012).
+   *
+   * Vocabulário **genérico** (provedor-agnóstico): mesmos ids opacos e
+   * `valorMensal` em reais de `criarAssinatura`. Nenhum termo Asaas/Vindi/Iugu.
+   */
+  atualizarValorAssinatura(input: {
+    gatewayAssinaturaId: string;
+    valorMensal: number;
+  }): Promise<void>;
+
   consultarCobranca(
     gatewayCobrancaId: string,
   ): Promise<CobrancaGatewaySnapshot>;

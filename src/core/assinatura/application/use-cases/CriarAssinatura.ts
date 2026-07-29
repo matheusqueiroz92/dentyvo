@@ -8,10 +8,16 @@ import type { MetodoPagamentoMvp } from "../../domain/MetodoPagamento";
 import {
   AssinaturaNaoEncontradaError,
   PlanoNaoEncontradoError,
+  VagasPromocionaisEsgotadasError,
 } from "../../domain/errors";
+import {
+  planoElegivelParaPromocao,
+  precoPromocionalCentavosParaPlano,
+} from "../../domain/elegibilidadePromocional";
 import type { AssinaturaGatewayPort } from "../ports/AssinaturaGatewayPort";
 import type { AssinaturaRepositoryPort } from "../ports/AssinaturaRepositoryPort";
 import type { PlanoRepositoryPort } from "../ports/PlanoRepositoryPort";
+import type { VagaPromocionalRepositoryPort } from "../ports/VagaPromocionalRepositoryPort";
 import { autorizarClinica, obterSolicitanteNaClinica } from "./helpers";
 
 export type CriarAssinaturaInput = {
@@ -23,9 +29,10 @@ export type CriarAssinaturaInput = {
 };
 
 /**
- * Escolhe plano e cria assinatura recorrente mensal no gateway (spec 010).
+ * Escolhe plano e cria assinatura recorrente mensal no gateway (spec 010 + 012).
  *
- * Assinatura: `CriarAssinatura(clinicaId, planoId, metodoPagamento) → Assinatura`
+ * E1/E2/E3: com `vagaRepo` injetado, tenta promoção de lançamento.
+ * Sem `vagaRepo`, mantém comportamento 010 (sempre preço cheio).
  */
 export class CriarAssinatura {
   constructor(
@@ -34,6 +41,8 @@ export class CriarAssinatura {
     private readonly gateway: AssinaturaGatewayPort,
     private readonly clinicaRepo: ClinicaRepositoryPort,
     private readonly profissionalRepo: ProfissionalRepositoryPort,
+    /** Spec 012 — opcional para não quebrar call-sites 010 nos testes legados. */
+    private readonly vagaRepo?: VagaPromocionalRepositoryPort,
   ) {}
 
   async executar(input: CriarAssinaturaInput): Promise<Assinatura> {
@@ -63,6 +72,31 @@ export class CriarAssinatura {
       throw new AssinaturaNaoEncontradaError(input.clinicaId);
     }
 
+    const agora = new Date();
+    let valorMensal = plano.valorMensal;
+    let vagaReservada: Awaited<
+      ReturnType<VagaPromocionalRepositoryPort["reservarAtomico"]>
+    > | null = null;
+
+    if (this.vagaRepo && planoElegivelParaPromocao(plano)) {
+      try {
+        vagaReservada = await this.vagaRepo.reservarAtomico({
+          clinicaId: input.clinicaId,
+          assinaturaId: assinatura.id,
+          agora,
+        });
+        const centavos = precoPromocionalCentavosParaPlano(plano);
+        if (centavos != null) {
+          valorMensal = centavos / 100;
+        }
+      } catch (error) {
+        if (!(error instanceof VagasPromocionaisEsgotadasError)) {
+          throw error;
+        }
+        vagaReservada = null;
+      }
+    }
+
     const cliente = await this.gateway.criarCliente({
       referenciaExterna: clinica.id,
       nome: clinica.nome,
@@ -75,18 +109,29 @@ export class CriarAssinatura {
 
     const criadaNoGateway = await this.gateway.criarAssinatura({
       gatewayClienteId: cliente.gatewayClienteId,
-      valorMensal: plano.valorMensal,
+      valorMensal,
       metodo,
       descricao: `Plano ${plano.nome}`,
       proximoVencimento,
     });
 
-    const atualizada = assinatura.vincularPlanoNoGateway({
+    let atualizada = assinatura.vincularPlanoNoGateway({
       planoId: plano.id,
       gatewayClienteId: cliente.gatewayClienteId,
       gatewayAssinaturaId: criadaNoGateway.gatewayAssinaturaId,
       dataProximaCobranca: criadaNoGateway.dataProximaCobranca,
     });
+
+    if (vagaReservada) {
+      const centavos = precoPromocionalCentavosParaPlano(plano);
+      if (centavos != null) {
+        atualizada = atualizada.aplicarCopiaPromocionalDaVaga({
+          vaga: vagaReservada,
+          precoPromocionalCentavos: centavos,
+        });
+      }
+    }
+
     await this.assinaturaRepo.salvar(atualizada);
     return atualizada;
   }

@@ -7,6 +7,11 @@ import { PermissaoNegadaError } from "@/core/shared/errors";
  * Ações intra-tenant do módulo de assinatura (spec 010).
  * Só `admin` da clínica cria assinatura paga.
  *
+ * Spec 012 (promoção): **não** introduz nova dimensão de autorização —
+ * `ReservarVagaPromocional` / cópia promocional rodam sob `criar_assinatura`
+ * (via `CriarAssinatura`); jobs de aviso/migração são de sistema (como
+ * webhook / `VerificarAcessoAtivo`).
+ *
  * `IniciarTrial` é orquestrado por `src/actions` (sem RBAC de clínica).
  * `ProcessarWebhookPagamento` e `VerificarAcessoAtivo` são de sistema.
  * `ConcederAcessoManual` usa checagem de plataforma (abaixo).

@@ -73,10 +73,18 @@ escopo; pare e sinalize.
 **Objetivo:** fazer os testes passarem com a implementação mais simples possível
 (green), depois refatorar mantendo os testes verdes (refactor) — incluindo
 substituir `CasoDeUsoNaoImplementadoError` pelo corpo real dos use cases.
+**Checklist final (etapa só concluída após o último item):**
+1. Rode `npm run test` e `npm run lint` e confirme tudo verde.
+2. Se houver schema novo: `npm run db:generate` e `node scripts/migrate.mjs`.
+3. Rode `git status` para confirmar o que mudou, `git add .`, `git commit`
+   com mensagem descritiva da feature, e `git push` — **antes** de considerar
+   a etapa do Implementador concluída (e antes de iniciar a próxima feature).
 **Prompt-base sugerido:**
 > "Aja como o Implementador. Os testes em `<caminho>` estão falhando. Implemente o
 > código mínimo necessário para passá-los, seguindo SOLID e DRY, sem alterar os
-> testes. Depois, refatore se necessário mantendo os testes verdes."
+> testes. Depois, refatore se necessário mantendo os testes verdes. Ao final:
+> test + lint verdes, migration se houver schema novo, e commit + push antes
+> de encerrar."
 
 ### 5. Revisor (Reviewer)
 **Objetivo:** revisar aderência arquitetural antes do merge.
@@ -99,3 +107,25 @@ substituir `CasoDeUsoNaoImplementadoError` pelo corpo real dos use cases.
 - Se uma spec estiver ambígua ou incompleta, pare e sinalize — não assuma.
 - Mantenha `domain/` livre de dependências de framework (sem imports de Next.js,
   Drizzle, etc. dentro de `domain/`).
+
+### Commit ao final de cada Implementador
+
+Depois que o Implementador de qualquer feature terminar (testes verdes, lint
+limpo, migration aplicada se houver schema novo), o **commit deve acontecer
+ANTES de iniciar a próxima feature** — nunca acumular múltiplas features
+implementadas e não commitadas esperando o fim de uma onda inteira.
+
+**Motivo (lição registrada):** a feature 006 (receituário) foi implementada e
+validada com testes passando, mas ficou sem commit por várias etapas
+seguintes enquanto o trabalho avançava para outras features (010, 011). Só
+foi descoberta como código não versionado quando um `git status` de rotina,
+pedido antes de outro commit, revelou os arquivos como "untracked" — ou seja,
+esse trabalho existiu só no disco local por um período, sem nenhuma cópia de
+segurança no repositório remoto.
+
+Checklist do Implementador (último passo padrão): depois de “rode npm run
+test e npm run lint e confirme tudo verde” (e, se aplicável, “rode
+db:generate e scripts/migrate.mjs”), adicionar: “rode git status para
+confirmar o que mudou, git add ., git commit com mensagem descritiva da
+feature, e git push — antes de considerar a etapa do Implementador
+concluída.”

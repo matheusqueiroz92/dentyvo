@@ -1,11 +1,15 @@
 import {
+  check,
   doublePrecision,
+  integer,
   jsonb,
   pgTable,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 import { clinica } from "./clinica";
 
@@ -26,6 +30,7 @@ export const plano = pgTable("plano", {
 /**
  * Assinatura da clínica (trial / paga / inadimplente).
  * Ids de gateway são opacos (provedor agnóstico).
+ * Campos promocionais (012): cópia operacional; fonte de verdade = vaga.
  */
 export const assinatura = pgTable(
   "assinatura",
@@ -59,11 +64,52 @@ export const assinatura = pgTable(
       mode: "date",
     }),
     acessoManualMotivo: text("acesso_manual_motivo"),
+    precoPromocionalCentavos: integer("preco_promocional_centavos"),
+    precoPromocionalAte: timestamp("preco_promocional_ate", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    avisoAumentoPrecoEnviadoEm: timestamp("aviso_aumento_preco_enviado_em", {
+      withTimezone: true,
+      mode: "date",
+    }),
+    migradaParaPrecoCheioEm: timestamp("migrada_para_preco_cheio_em", {
+      withTimezone: true,
+      mode: "date",
+    }),
   },
   (t) => [
     uniqueIndex("assinatura_clinica_id_uidx").on(t.clinicaId),
     uniqueIndex("assinatura_gateway_assinatura_id_uidx").on(
       t.gatewayAssinaturaId,
+    ),
+  ],
+);
+
+/**
+ * Cupom de lançamento — fonte de verdade da reserva (spec 012, D3/D6).
+ * PK + CHECK em `posicao` (1..30); UNIQUE em `clinica_id`.
+ */
+export const vagaPromocionalLancamento = pgTable(
+  "vaga_promocional_lancamento",
+  {
+    posicao: smallint("posicao").primaryKey(),
+    clinicaId: text("clinica_id")
+      .notNull()
+      .references(() => clinica.id, { onDelete: "restrict" }),
+    assinaturaId: text("assinatura_id")
+      .notNull()
+      .references(() => assinatura.id, { onDelete: "restrict" }),
+    reservadaEm: timestamp("reservada_em", {
+      withTimezone: true,
+      mode: "date",
+    }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("vaga_promocional_lancamento_clinica_id_uidx").on(t.clinicaId),
+    check(
+      "vaga_promocional_lancamento_posicao_check",
+      sql`${t.posicao} >= 1 AND ${t.posicao} <= 30`,
     ),
   ],
 );

@@ -50,6 +50,13 @@
       "when": 1785331365619,
       "tag": "0006_small_skaar",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785343416412,
+      "tag": "0007_lazy_vulcan",
+      "breakpoints": true
     }
   ]
 }

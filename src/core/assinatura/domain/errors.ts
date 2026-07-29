@@ -74,3 +74,38 @@ export class CobrancaNaoEncontradaError extends Error {
     this.name = this.nome;
   }
 }
+
+/** Cupom de lançamento esgotado (30 vagas) — spec 012, D3. */
+export class VagasPromocionaisEsgotadasError extends Error {
+  readonly nome = "VagasPromocionaisEsgotadasError" as const;
+
+  constructor() {
+    super("Vagas da promoção de lançamento esgotadas.");
+    this.name = this.nome;
+  }
+}
+
+/**
+ * Tentativa de alterar a cópia promocional na Assinatura de forma
+ * independente / divergente da `VagaPromocional` (spec 012, D6).
+ */
+export class CopiaPromocionalDivergenteError extends Error {
+  readonly nome = "CopiaPromocionalDivergenteError" as const;
+
+  constructor(readonly assinaturaId: string) {
+    super(
+      "Cópia promocional na assinatura diverge da vaga (fonte de verdade).",
+    );
+    this.name = this.nome;
+  }
+}
+
+/** Plano sem preço promocional (ex.: Full) — spec 012, D2. */
+export class PlanoNaoElegivelParaPromocaoError extends Error {
+  readonly nome = "PlanoNaoElegivelParaPromocaoError" as const;
+
+  constructor(readonly planoId: string) {
+    super("Plano não é elegível à promoção de lançamento.");
+    this.name = this.nome;
+  }
+}

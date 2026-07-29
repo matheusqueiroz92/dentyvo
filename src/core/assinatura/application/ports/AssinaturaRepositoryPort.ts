@@ -7,4 +7,15 @@ export interface AssinaturaRepositoryPort {
   buscarPorGatewayAssinaturaId(
     gatewayAssinaturaId: string,
   ): Promise<Assinatura | null>;
+
+  /**
+   * Assinaturas com cópia promocional, sem `avisoAumentoPrecoEnviadoEm`,
+   * cujo `precoPromocionalAte` está a ≤ `antecedenciaDias` de `agora`
+   * (spec 012 — job de aviso).
+   */
+  listarComAvisoAumentoPrecoPendente(input: {
+    agora: Date;
+    antecedenciaDias: number;
+    limite?: number;
+  }): Promise<Assinatura[]>;
 }

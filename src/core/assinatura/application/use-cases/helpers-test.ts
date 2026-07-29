@@ -11,26 +11,51 @@ import { Clinica } from "@/core/auth/domain/Clinica";
 import { DocumentoFiscal } from "@/core/auth/domain/DocumentoFiscal";
 import { Profissional } from "@/core/auth/domain/Profissional";
 import type { Papel } from "@/core/auth/domain/Papel";
+import type { EnviarNotificacaoInput } from "@/core/notificacao/application/use-cases/EnviarNotificacao";
+import type { Notificacao } from "@/core/notificacao/domain";
+import { Notificacao as NotificacaoEntity } from "@/core/notificacao/domain/Notificacao";
 import { FakeAuditoriaLogPort } from "@/core/prontuario/application/test-doubles/fakes";
 
 import { Assinatura } from "../../domain/Assinatura";
 import { Plano } from "../../domain/Plano";
+import type { EnviarNotificacaoPort } from "../ports/EnviarNotificacaoPort";
 import {
   FakeAssinaturaGateway,
   FakeAssinaturaRepository,
   FakeCobrancaRepository,
   FakeEventoWebhookProcessadoPort,
   FakePlanoRepository,
+  FakeVagaPromocionalRepository,
 } from "../test-doubles/fakes";
 
 export const CLINICA_ID = "clinica-assinatura-1";
 export const PLANO_ID = "plano-basico";
+export const PLANO_MEDIO_ID = "plano-medio";
+export const PLANO_FULL_ID = "plano-full";
 export const SUPER_ADMIN_ID = "plat-super-assinatura";
+
+export class FakeEnviarNotificacaoPort implements EnviarNotificacaoPort {
+  readonly chamadas: EnviarNotificacaoInput[] = [];
+
+  async executar(input: EnviarNotificacaoInput): Promise<Notificacao> {
+    this.chamadas.push(input);
+    return NotificacaoEntity.criar({
+      id: input.id,
+      destinatario: input.destinatario,
+      tipo: input.tipo,
+      canais: input.canais,
+      conteudo: input.conteudo,
+      chaveNegocio: input.chaveNegocio,
+      criadaEm: input.agora ?? new Date(),
+    });
+  }
+}
 
 export async function criarContextoAssinatura(papel: Papel = "admin") {
   const assinaturaRepo = new FakeAssinaturaRepository();
   const cobrancaRepo = new FakeCobrancaRepository();
   const planoRepo = new FakePlanoRepository();
+  const vagaRepo = new FakeVagaPromocionalRepository();
   const gateway = new FakeAssinaturaGateway();
   const eventosProcessados = new FakeEventoWebhookProcessadoPort();
   const clinicaRepo = new FakeClinicaRepository();
@@ -38,6 +63,7 @@ export async function criarContextoAssinatura(papel: Papel = "admin") {
   const usuarioPlataformaRepo = new FakeUsuarioPlataformaRepository();
   const auth = new FakeAuthPort();
   const auditoria = new FakeAuditoriaLogPort();
+  const enviarNotificacao = new FakeEnviarNotificacaoPort();
 
   const clinica = Clinica.criar({
     id: CLINICA_ID,
@@ -54,6 +80,20 @@ export async function criarContextoAssinatura(papel: Papel = "admin") {
     limitesDeUso: { maxProfissionais: 3 },
   });
   await planoRepo.salvar(plano);
+
+  const planoMedio = Plano.criar({
+    id: PLANO_MEDIO_ID,
+    nome: "Médio",
+    valorMensal: 159,
+  });
+  await planoRepo.salvar(planoMedio);
+
+  const planoFull = Plano.criar({
+    id: PLANO_FULL_ID,
+    nome: "Full",
+    valorMensal: 279,
+  });
+  await planoRepo.salvar(planoFull);
 
   const usuario = await auth.criarUsuario({
     nome: "Usuário Clínica",
@@ -81,6 +121,7 @@ export async function criarContextoAssinatura(papel: Papel = "admin") {
     assinaturaRepo,
     cobrancaRepo,
     planoRepo,
+    vagaRepo,
     gateway,
     eventosProcessados,
     clinicaRepo,
@@ -88,8 +129,11 @@ export async function criarContextoAssinatura(papel: Papel = "admin") {
     usuarioPlataformaRepo,
     auth,
     auditoria,
+    enviarNotificacao,
     clinica,
     plano,
+    planoMedio,
+    planoFull,
     profissional,
     solicitadoPorUsuarioId: usuario.id,
     superAdmin,
@@ -107,6 +151,19 @@ export async function seedTrialAtivo(
   });
   await ctx.assinaturaRepo.salvar(trial);
   return trial;
+}
+
+export async function esgotarVagasPromocionais(
+  ctx: Awaited<ReturnType<typeof criarContextoAssinatura>>,
+  agora = new Date("2026-07-01T12:00:00.000Z"),
+): Promise<void> {
+  for (let i = 1; i <= 30; i++) {
+    await ctx.vagaRepo.reservarAtomico({
+      clinicaId: `clinica-ocupante-${i}`,
+      assinaturaId: `assinatura-ocupante-${i}`,
+      agora,
+    });
+  }
 }
 
 /** Impostor só para testar o gate binário — bypassa factory de papel. */

@@ -1,7 +1,14 @@
 import type { Assinatura } from "../../domain/Assinatura";
+import { assinaturaPendenteDeAvisoAumentoPreco } from "../../domain/avisoAumentoPreco";
 import type { Cobranca } from "../../domain/Cobranca";
+import {
+  LIMITE_VAGAS_PROMOCIONAIS_LANCAMENTO,
+  MAX_RETRIES_RESERVA_VAGA_POSICAO,
+} from "../../domain/constants";
+import { VagasPromocionaisEsgotadasError } from "../../domain/errors";
 import type { MetodoPagamentoMvp } from "../../domain/MetodoPagamento";
 import type { Plano } from "../../domain/Plano";
+import { VagaPromocional } from "../../domain/VagaPromocional";
 import type {
   AssinaturaGatewayPort,
   CobrancaGatewaySnapshot,
@@ -14,6 +21,10 @@ import type { AssinaturaRepositoryPort } from "../ports/AssinaturaRepositoryPort
 import type { CobrancaRepositoryPort } from "../ports/CobrancaRepositoryPort";
 import type { EventoWebhookProcessadoPort } from "../ports/EventoWebhookProcessadoPort";
 import type { PlanoRepositoryPort } from "../ports/PlanoRepositoryPort";
+import type {
+  ReservarVagaPromocionalAtomicoInput,
+  VagaPromocionalRepositoryPort,
+} from "../ports/VagaPromocionalRepositoryPort";
 
 export class FakeAssinaturaRepository implements AssinaturaRepositoryPort {
   readonly items = new Map<string, Assinatura>();
@@ -40,6 +51,20 @@ export class FakeAssinaturaRepository implements AssinaturaRepositoryPort {
         (a) => a.gatewayAssinaturaId === gatewayAssinaturaId,
       ) ?? null
     );
+  }
+
+  async listarComAvisoAumentoPrecoPendente(input: {
+    agora: Date;
+    antecedenciaDias: number;
+    limite?: number;
+  }): Promise<Assinatura[]> {
+    void input.antecedenciaDias;
+    const candidatas = [...this.items.values()].filter((a) =>
+      assinaturaPendenteDeAvisoAumentoPreco(a, input.agora),
+    );
+    return input.limite != null
+      ? candidatas.slice(0, input.limite)
+      : candidatas;
   }
 }
 
@@ -111,6 +136,10 @@ export class FakeAssinaturaGateway implements AssinaturaGatewayPort {
   readonly assinaturasCriadas: CriarAssinaturaGatewayInput[] = [];
   readonly cobrancas = new Map<string, CobrancaGatewaySnapshot>();
   cancelamentos: string[] = [];
+  readonly valoresAtualizados: Array<{
+    gatewayAssinaturaId: string;
+    valorMensal: number;
+  }> = [];
 
   proximoClienteId = "gw-cli-1";
   proximoAssinaturaId = "gw-sub-1";
@@ -136,6 +165,13 @@ export class FakeAssinaturaGateway implements AssinaturaGatewayPort {
     this.cancelamentos.push(gatewayAssinaturaId);
   }
 
+  async atualizarValorAssinatura(input: {
+    gatewayAssinaturaId: string;
+    valorMensal: number;
+  }): Promise<void> {
+    this.valoresAtualizados.push(input);
+  }
+
   async consultarCobranca(
     gatewayCobrancaId: string,
   ): Promise<CobrancaGatewaySnapshot> {
@@ -157,6 +193,95 @@ export class FakeAssinaturaGateway implements AssinaturaGatewayPort {
   /** Helper de teste — registra snapshot genérico (status/método do domínio). */
   registrarCobranca(snapshot: CobrancaGatewaySnapshot): void {
     this.cobrancas.set(snapshot.gatewayCobrancaId, snapshot);
+  }
+}
+
+/**
+ * Fake in-memory da reserva promocional.
+ * **Não** é o adapter de produção: o adapter real deve usar `INSERT … SELECT`
+ * atômico (D3). Este fake espelha o **contrato** de retry em
+ * `unique_violation` de `posicao` para os testes documentarem o comportamento
+ * esperado do adapter.
+ */
+export class FakeVagaPromocionalRepository
+  implements VagaPromocionalRepositoryPort
+{
+  readonly items = new Map<string, VagaPromocional>();
+  /** Contagem de tentativas de insert (inclui retries por conflito de posição). */
+  tentativasInsert = 0;
+  /**
+   * Quantos conflitos de `posicao` injetar antes de gravar com sucesso
+   * (simula `unique_violation` sob corrida — o fake retenta na mesma chamada).
+   */
+  conflitosPosicaoPendentes = 0;
+
+  async reservarAtomico(
+    input: ReservarVagaPromocionalAtomicoInput,
+  ): Promise<VagaPromocional> {
+    const existente = [...this.items.values()].find(
+      (v) => v.clinicaId === input.clinicaId,
+    );
+    if (existente) return existente;
+
+    for (
+      let tentativa = 0;
+      tentativa < MAX_RETRIES_RESERVA_VAGA_POSICAO;
+      tentativa++
+    ) {
+      this.tentativasInsert += 1;
+
+      if (this.items.size >= LIMITE_VAGAS_PROMOCIONAIS_LANCAMENTO) {
+        throw new VagasPromocionaisEsgotadasError();
+      }
+
+      const posicoesUsadas = new Set(
+        [...this.items.values()].map((v) => v.posicao),
+      );
+      let posicao = 0;
+      for (let p = 1; p <= LIMITE_VAGAS_PROMOCIONAIS_LANCAMENTO; p++) {
+        if (!posicoesUsadas.has(p)) {
+          posicao = p;
+          break;
+        }
+      }
+      if (posicao === 0) throw new VagasPromocionaisEsgotadasError();
+
+      if (this.conflitosPosicaoPendentes > 0) {
+        this.conflitosPosicaoPendentes -= 1;
+        // unique_violation em posicao → retry da mesma operação (contrato D3)
+        continue;
+      }
+
+      const vaga = VagaPromocional.criar({
+        posicao,
+        clinicaId: input.clinicaId,
+        assinaturaId: input.assinaturaId,
+        reservadaEm: input.agora,
+      });
+      this.items.set(`${vaga.clinicaId}:${vaga.posicao}`, vaga);
+      return vaga;
+    }
+
+    throw new VagasPromocionaisEsgotadasError();
+  }
+
+  async buscarPorClinica(clinicaId: string): Promise<VagaPromocional | null> {
+    return (
+      [...this.items.values()].find((v) => v.clinicaId === clinicaId) ?? null
+    );
+  }
+
+  async buscarPorAssinaturaId(
+    assinaturaId: string,
+  ): Promise<VagaPromocional | null> {
+    return (
+      [...this.items.values()].find((v) => v.assinaturaId === assinaturaId) ??
+      null
+    );
+  }
+
+  async contarReservadas(): Promise<number> {
+    return this.items.size;
   }
 }
 

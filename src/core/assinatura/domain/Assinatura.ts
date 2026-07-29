@@ -8,9 +8,13 @@ import {
   DURACAO_TRIAL_DIAS,
   TOLERANCIA_INADIMPLENCIA_DIAS,
 } from "./constants";
-import { TransicaoStatusAssinaturaInvalidaError } from "./errors";
+import {
+  CopiaPromocionalDivergenteError,
+  TransicaoStatusAssinaturaInvalidaError,
+} from "./errors";
 import type { ResultadoAcesso } from "./ResultadoAcesso";
 import type { StatusAssinatura } from "./StatusAssinatura";
+import type { VagaPromocional } from "./VagaPromocional";
 
 export type AssinaturaProps = {
   id: string;
@@ -33,6 +37,24 @@ export type AssinaturaProps = {
    */
   acessoManualAte: Date | null;
   acessoManualMotivo: string | null;
+  /**
+   * Cópia operacional da promoção (spec 012, D6) — gravada **somente** via
+   * `aplicarCopiaPromocionalDaVaga` a partir da `VagaPromocional` (fonte de
+   * verdade). Nunca editar de forma independente.
+   */
+  precoPromocionalCentavos: number | null;
+  precoPromocionalAte: Date | null;
+  /**
+   * Camada 1 da idempotência do aviso de aumento (spec 012, D7).
+   * Estado do ciclo de aviso — não faz parte da reserva (`VagaPromocional`).
+   */
+  avisoAumentoPrecoEnviadoEm: Date | null;
+  /**
+   * Idempotência de `MigrarPrecoPosPromocao` (spec 012): se `!= null`, o job
+   * **não** chama o gateway de novo (mesmo espírito de
+   * `avisoAumentoPrecoEnviadoEm`).
+   */
+  migradaParaPrecoCheioEm: Date | null;
 };
 
 const TRANSICOES_ASSINATURA: Record<
@@ -62,6 +84,10 @@ export class Assinatura {
   readonly dataCanceladaEm: Date | null;
   readonly acessoManualAte: Date | null;
   readonly acessoManualMotivo: string | null;
+  readonly precoPromocionalCentavos: number | null;
+  readonly precoPromocionalAte: Date | null;
+  readonly avisoAumentoPrecoEnviadoEm: Date | null;
+  readonly migradaParaPrecoCheioEm: Date | null;
 
   private constructor(props: AssinaturaProps) {
     this.id = props.id;
@@ -76,6 +102,10 @@ export class Assinatura {
     this.dataCanceladaEm = props.dataCanceladaEm;
     this.acessoManualAte = props.acessoManualAte;
     this.acessoManualMotivo = props.acessoManualMotivo;
+    this.precoPromocionalCentavos = props.precoPromocionalCentavos;
+    this.precoPromocionalAte = props.precoPromocionalAte;
+    this.avisoAumentoPrecoEnviadoEm = props.avisoAumentoPrecoEnviadoEm;
+    this.migradaParaPrecoCheioEm = props.migradaParaPrecoCheioEm;
   }
 
   /**
@@ -111,6 +141,10 @@ export class Assinatura {
       dataCanceladaEm: null,
       acessoManualAte: null,
       acessoManualMotivo: null,
+      precoPromocionalCentavos: null,
+      precoPromocionalAte: null,
+      avisoAumentoPrecoEnviadoEm: null,
+      migradaParaPrecoCheioEm: null,
     });
   }
 
@@ -292,6 +326,105 @@ export class Assinatura {
     });
   }
 
+  temCopiaPromocional(): boolean {
+    return (
+      this.precoPromocionalCentavos != null && this.precoPromocionalAte != null
+    );
+  }
+
+  /**
+   * Preço promocional ainda vigente (`agora < precoPromocionalAte`).
+   * Cancelamento não apaga a cópia (D5) — o relógio original permanece.
+   */
+  temPrecoPromocionalAtivo(agora: Date = new Date()): boolean {
+    if (!this.temCopiaPromocional() || this.precoPromocionalAte == null) {
+      return false;
+    }
+    return agora.getTime() < this.precoPromocionalAte.getTime();
+  }
+
+  /**
+   * Copia operacional a partir da `VagaPromocional` (fonte de verdade — D6).
+   * Único caminho de domínio para preencher `precoPromocional*`.
+   * Idempotente se a cópia já for idêntica; rejeita divergência.
+   */
+  aplicarCopiaPromocionalDaVaga(input: {
+    vaga: VagaPromocional;
+    precoPromocionalCentavos: number;
+  }): Assinatura {
+    const { vaga, precoPromocionalCentavos } = input;
+    if (vaga.assinaturaId !== this.id) {
+      throw new DadosInvalidosError(
+        "Vaga promocional não pertence a esta assinatura.",
+      );
+    }
+    if (vaga.clinicaId !== this.clinicaId) {
+      throw new TenantMismatchError(this.clinicaId, vaga.clinicaId);
+    }
+    if (
+      typeof precoPromocionalCentavos !== "number" ||
+      !Number.isInteger(precoPromocionalCentavos) ||
+      precoPromocionalCentavos <= 0
+    ) {
+      throw new DadosInvalidosError(
+        "precoPromocionalCentavos deve ser inteiro positivo.",
+      );
+    }
+
+    const precoPromocionalAte = vaga.calcularPrecoPromocionalAte();
+
+    if (this.temCopiaPromocional()) {
+      const mesmaCopia =
+        this.precoPromocionalCentavos === precoPromocionalCentavos &&
+        this.precoPromocionalAte!.getTime() === precoPromocionalAte.getTime();
+      if (mesmaCopia) return this;
+      throw new CopiaPromocionalDivergenteError(this.id);
+    }
+
+    return this.clonar({
+      precoPromocionalCentavos,
+      precoPromocionalAte,
+    });
+  }
+
+  /**
+   * Marca a camada 1 de idempotência do aviso (D7) após
+   * `EnviarNotificacao` persistido com sucesso.
+   */
+  marcarAvisoAumentoPrecoEnviado(agora: Date = new Date()): Assinatura {
+    assertDataValida(agora, "agora");
+    if (this.avisoAumentoPrecoEnviadoEm != null) {
+      return this;
+    }
+    if (!this.temCopiaPromocional()) {
+      throw new DadosInvalidosError(
+        "Não há promoção na assinatura para marcar aviso de aumento.",
+      );
+    }
+    return this.clonar({ avisoAumentoPrecoEnviadoEm: agora });
+  }
+
+  jaMigradaParaPrecoCheio(): boolean {
+    return this.migradaParaPrecoCheioEm != null;
+  }
+
+  /**
+   * Idempotência de migração pós-promoção: se já migrada, no-op.
+   * Gravada **depois** de `atualizarValorAssinatura` no gateway ter sucesso.
+   */
+  marcarMigradaParaPrecoCheio(agora: Date = new Date()): Assinatura {
+    assertDataValida(agora, "agora");
+    if (this.migradaParaPrecoCheioEm != null) {
+      return this;
+    }
+    if (!this.temCopiaPromocional()) {
+      throw new DadosInvalidosError(
+        "Não há promoção na assinatura para marcar migração de preço.",
+      );
+    }
+    return this.clonar({ migradaParaPrecoCheioEm: agora });
+  }
+
   /**
    * Cobrança vencida há mais de `TOLERANCIA_INADIMPLENCIA_DIAS` dias corridos
    * (contado a partir de `vencidaEm`).
@@ -333,6 +466,10 @@ export class Assinatura {
       dataCanceladaEm: this.dataCanceladaEm,
       acessoManualAte: this.acessoManualAte,
       acessoManualMotivo: this.acessoManualMotivo,
+      precoPromocionalCentavos: this.precoPromocionalCentavos,
+      precoPromocionalAte: this.precoPromocionalAte,
+      avisoAumentoPrecoEnviadoEm: this.avisoAumentoPrecoEnviadoEm,
+      migradaParaPrecoCheioEm: this.migradaParaPrecoCheioEm,
       ...patch,
     });
   }

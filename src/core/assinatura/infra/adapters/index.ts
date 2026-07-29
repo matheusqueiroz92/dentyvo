@@ -12,3 +12,4 @@ export { DrizzleAssinaturaRepository } from "./DrizzleAssinaturaRepository";
 export { DrizzleCobrancaRepository } from "./DrizzleCobrancaRepository";
 export { DrizzleEventoWebhookProcessadoAdapter } from "./DrizzleEventoWebhookProcessadoAdapter";
 export { DrizzlePlanoRepository } from "./DrizzlePlanoRepository";
+export { DrizzleVagaPromocionalRepository } from "./DrizzleVagaPromocionalRepository";

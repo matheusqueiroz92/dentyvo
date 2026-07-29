@@ -96,6 +96,24 @@ export class AsaasGatewayAdapter implements AssinaturaGatewayPort {
     );
   }
 
+  /**
+   * Spec 012 — atualiza `value` da subscription Asaas (vocabulário Asaas
+   * confinado aqui; a port usa `gatewayAssinaturaId` + `valorMensal`).
+   */
+  async atualizarValorAssinatura(input: {
+    gatewayAssinaturaId: string;
+    valorMensal: number;
+  }): Promise<void> {
+    await this.request(
+      "PUT",
+      `/subscriptions/${encodeURIComponent(input.gatewayAssinaturaId)}`,
+      {
+        value: input.valorMensal,
+        updatePendingPayments: true,
+      },
+    );
+  }
+
   async consultarCobranca(
     gatewayCobrancaId: string,
   ): Promise<CobrancaGatewaySnapshot> {
