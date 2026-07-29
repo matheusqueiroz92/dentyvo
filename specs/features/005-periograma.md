@@ -1,15 +1,13 @@
 # 005 — Periograma (v2)
 
 ## Status
-`rascunho` — **bloqueada apenas pela confirmação de furca** com a dentista
-de referência. Todo o restante está decidido e pronto para aprovação assim
-que a furca for confirmada (ou substituída por outra escala).
+`aprovada`
 
 > **Modelo baseado em imagens de referência reais fornecidas pelo usuário
 > (formato Universidade de Berna adaptado, e template odontograma
-> multi-dentição); furca com classificação de Glickman ainda pendente de
-> confirmação final com a dentista de referência antes da aprovação.**
-
+> multi-dentição). Classificação de furca confirmada clinicamente:
+> Hamp (rotina) e Glickman (periodontite aguda), via VO
+> `ClassificacaoFurca`.**
 ## Contexto
 Registro periodontal (sondagem, margem gengival, placa, sangramento,
 mobilidade, implante, furca) usado em avaliações periodontais. Menos
@@ -39,7 +37,10 @@ saúde periodontal do paciente ao longo do tempo.
 | 8 | Comparação | **Sem** caso de uso dedicado — só listagem por data; UI/relatório futuro |
 | 9 | Métricas agregadas / nível de inserção | Derivadas sob demanda; **fora de escopo desta spec de backend** |
 | 10 | RBAC | Mesma matriz da feature 003: `admin` + `dentista`; `recepcao` sem acesso |
-| 11 | Furca | **Proposta:** Glickman I–IV — **PENDENTE DE CONFIRMAÇÃO** (única pendência) |
+| 11 | Furca | VO `ClassificacaoFurca` com **dois sistemas** (Hamp I–III rotina; Glickman I–IV periodontite aguda); só multirradiculares/molares; `null` sem avaliação |
+| 12 | Escolha do sistema de furca | **Livre** no momento do registro — sem regra automática no domínio |
+| 13 | Mistura de sistemas no exame | **Aceitável** misturar Hamp e Glickman em dentes diferentes do mesmo periograma |
+| 14 | Granularidade da furca (MVP) | **Uma** `ClassificacaoFurca` por dente (sem face/sítio); ver nota de escopo |
 
 ### Estrutura por ponto de sondagem (`PontoSondagem`)
 Até 6 pontos por dente (3 vestibular + 3 palatina/lingual). Cada ponto
@@ -67,17 +68,72 @@ todo ponto é sondável em toda consulta.
 | `numeroDente` | FDI | **Mesma validação da 004** (permanente + decídua) |
 | `mobilidade` | 0–3 \| null | Escala de Miller; opcional no salvamento parcial |
 | `implante` | booleano \| null | Indica se o “dente” é implante |
-| `furca` | grau \| null | **Proposta PENDENTE:** Glickman I–IV; só multirradiculares/molares; **null / N-A** nos demais |
+| `furca` | `ClassificacaoFurca` \| null | Só multirradiculares/molares; **null** quando não há avaliação de furca naquele dente |
 | `nota` | texto livre opcional | Observação clínica do dente |
 
-### Furca — interpretação proposta (PENDENTE DE CONFIRMAÇÃO)
-- Interpretação proposta: **classificação de Glickman**, graus **I, II, III
-  e IV**.
-- Aplicável apenas a dentes **multirradiculares / molares**; demais →
-  `null` (não aplicável).
-- **Única pendência que mantém esta spec em `rascunho`.** Confirmar com a
-  dentista de referência antes de aprovar / enviar ao Arquiteto. Se outra
-  escala for adotada, atualizar só este campo na spec.
+### Furca — `ClassificacaoFurca` (confirmado)
+
+A dentista de referência usa **dois sistemas**, conforme o contexto
+clínico — **não** um sistema único. Os graus **não são comparáveis** entre
+sistemas (Hamp grau II ≠ Glickman grau II clinicamente).
+
+#### Value Object `ClassificacaoFurca`
+
+| Campo | Tipo | Observação |
+|---|---|---|
+| `sistema` | `"hamp"` \| `"glickman"` | Sistema de classificação escolhido |
+| `grau` | inteiro | Validado **conforme o sistema** (ver abaixo) |
+
+**Validação de domínio:**
+- `sistema === "hamp"` → `grau` ∈ {1, 2, 3}
+- `sistema === "glickman"` → `grau` ∈ {1, 2, 3, 4}
+- Combinação inválida (ex.: `hamp` + grau `4`) → rejeitar com erro
+  específico `GrauForaDoSistemaError` (não aceitar silêncio nem coerção).
+
+**Aplicabilidade:** apenas dentes **multirradiculares (molares)**. Nos
+demais dentes, ou quando não há avaliação de furca naquele dente →
+`furca: null`.
+
+**Documentação no código:** as descrições clínicas de cada grau/sistema
+devem aparecer como **comentário** no VO (ou constantes documentadas),
+pois são clinicamente distintas e não intercambiáveis.
+
+#### Hamp — uso rotineiro (3 graus)
+
+Critério objetivo de **profundidade horizontal de sondagem**:
+
+| Grau | Descrição clínica |
+|---|---|
+| I | Perda horizontal; sonda penetra **até 3 mm** |
+| II | Perda horizontal; sonda penetra **mais de 3 mm** |
+| III | Destruição horizontal de lado a lado (**comunicação total**) |
+
+#### Glickman — periodontite aguda (4 graus)
+
+Inclui fatores anatômicos/radiográficos e visibilidade clínica:
+
+| Grau | Descrição clínica |
+|---|---|
+| I | Início da perda óssea |
+| II | Perda parcial |
+| III | Comunicação total entre as furcas |
+| IV | Recessão gengival com furca **totalmente visível** |
+
+#### Escolha do sistema (aprovado)
+
+O profissional escolhe **livremente** qual sistema (`hamp` \| `glickman`)
+usar **no momento do registro** de cada avaliação de furca — não há regra
+automática no domínio que force Hamp em “rotina” ou Glickman em
+“periodontite aguda”. O contexto clínico (rotina vs. aguda) é orientação
+de uso, não invariante de software. Misturar sistemas em dentes
+diferentes do **mesmo** periograma é aceitável.
+
+#### Nota de escopo consciente — furca por face (fora do MVP)
+
+Furca por face individual (ex.: vestibular vs. distal) fica **fora do
+MVP**; o registro reflete uma avaliação **única por dente**, a critério
+do profissional sobre qual sítio/quadro é mais representativo —
+reavaliar se a prática clínica real demandar granularidade maior.
 
 ### Métricas agregadas e nível de inserção — fora de escopo (backend)
 Médias e percentuais (profundidade de sondagem, nível de inserção, % placa,
@@ -110,15 +166,24 @@ anterior (alinhado ao espírito de evolução clínica da 003).
       `sangramentoSondagem` (boolean) — cada campo individualmente
       opcional.
 - [ ] No nível do dente: `mobilidade` (Miller 0–3), `implante`, `furca`
-      (proposta Glickman I–IV ou null/N-A — a confirmar), `nota` opcional.
+      (`ClassificacaoFurca` \| null), `nota` opcional.
+- [ ] `ClassificacaoFurca` possui `sistema` (`"hamp"` \| `"glickman"`) e
+      `grau` (inteiro); Hamp aceita graus 1–3; Glickman aceita graus 1–4;
+      combinação inválida lança `GrauForaDoSistemaError`.
+- [ ] As descrições clínicas de cada grau/sistema estão documentadas como
+      comentário no código do VO (sistemas clinicamente distintos, graus
+      não comparáveis entre si).
+- [ ] `furca` aplica-se só a dentes multirradiculares (molares); `null`
+      quando não há avaliação de furca naquele dente (ou dente não
+      elegível).
 - [ ] `numeroDente` usa a **mesma validação** da feature 004 (FDI
       permanente + decídua).
 - [ ] Periograma tem `tipo` (`exame_inicial` \| `reavaliacao`), vínculo ao
       prontuário, profissional responsável e data.
 - [ ] Periograma é **imutável** após salvo; correção = novo exame
       `reavaliacao`.
-- [ ] `ListarPeriogramasDoProntuario` retorna exames ordenados por data
-      (mais recente primeiro ou crescente — definir no Arquiteto); **sem**
+- [ ] `ListarPeriogramasDoProntuario` retorna exames ordenados por
+      `registradoEm` **descendente** (mais recente primeiro); **sem**
       caso de uso `CompararPeriogramas`.
 - [ ] Cálculo de métricas agregadas / nível de inserção **fora** desta
       spec de backend.
@@ -131,8 +196,15 @@ anterior (alinhado ao espírito de evolução clínica da 003).
   salvar.
 - `margemGengival` admite valores negativos (recessão).
 - `numeroDente`: mesmos conjuntos FDI da 004; rejeitar fora do conjunto.
-- `furca` (enquanto a proposta Glickman vigorar): graus I–IV só quando
-  aplicável; caso contrário `null`.
+- `furca`: VO `ClassificacaoFurca` (`sistema` + `grau`) só em
+  multirradiculares/molares; `null` sem avaliação; grau validado pelo
+  sistema (`GrauForaDoSistemaError` se fora do intervalo).
+- Escolha do sistema é **livre** no registro; misturar Hamp e Glickman
+  no mesmo periograma é permitido.
+- Uma única `ClassificacaoFurca` por dente (MVP); sem granularidade por
+  face/sítio.
+- Graus Hamp e Glickman **não** são intercambiáveis nem comparáveis;
+  sempre persistir o `sistema` junto com o `grau`.
 - Exame persistido é imutável (sem edição; novo exame para correção).
 - Isolamento multi-tenant e vínculo ao `Prontuario` (padrão 003/006).
 
@@ -145,9 +217,9 @@ anterior (alinhado ao espírito de evolução clínica da 003).
 | Listar periogramas do prontuário | sim | sim | não |
 
 ## Modelo de domínio envolvido
-`Periograma` (com `DentePeriograma` e `PontoSondagem`); consome
-`Prontuario` / profissional via ports — alinhar `specs/02-domain-model.md`
-após aprovação (pós-confirmação da furca).
+`Periograma` (com `DentePeriograma`, `PontoSondagem` e VO
+`ClassificacaoFurca`); consome `Prontuario` / profissional via ports —
+alinhar `specs/02-domain-model.md` na etapa do Arquiteto.
 
 ### Estrutura conceitual (alto nível — sem schema de banco)
 ```
@@ -157,7 +229,10 @@ Periograma                         // imutável após salvo
     numeroDente                    // validação idêntica à 004
     mobilidade?                    // Miller 0–3
     implante?
-    furca?                         // Glickman I–IV | null  (PENDENTE CONFIRMAÇÃO)
+    furca?                         // ClassificacaoFurca | null
+                                   //   { sistema: "hamp"|"glickman", grau: int }
+                                   //   hamp: 1–3; glickman: 1–4
+                                   //   só molares; null = sem avaliação
     nota?
     pontos[]:                      // 0..6; medições opcionais
       lado                         // vestibular | palatina_lingual
@@ -173,7 +248,8 @@ Periograma                         // imutável após salvo
   — `profissionalId` = sessão; exame fica imutável após persistir.
 - `ConsultarPeriograma({ periogramaId }, contexto) → Periograma`
 - `ListarPeriogramasDoProntuario({ prontuarioId }, contexto) → Periograma[]`
-  — ordenado por `registradoEm`; base para comparação visual futura na UI.
+  — ordenado por `registradoEm` **descendente** (mais recente primeiro);
+  base para comparação visual futura na UI.
 
 **Não incluir** `CompararPeriogramas` nesta feature.
 
@@ -184,7 +260,7 @@ Periograma                         // imutável após salvo
 
 ## Contrato de API / Server Action (se aplicável)
 Server actions clínicas (padrão next-safe-action + Zod), escopadas por
-`ContextoSessao` — detalhar payloads no Arquiteto após aprovação.
+`ContextoSessao` — detalhar payloads no Arquiteto.
 
 ## Fora de escopo
 - **Cálculo de métricas agregadas e fórmula do nível de inserção** (UI /
@@ -192,16 +268,20 @@ Server actions clínicas (padrão next-safe-action + Zod), escopadas por
 - Caso de uso dedicado de comparação entre exames (só listagem por data).
 - Gráficos visuais avançados tipo Berna completo.
 - Persistência de médias/% como colunas próprias.
-- Definição definitiva de furca **antes** da confirmação da dentista — a
-  proposta Glickman fica explícita, mas não aprovada clinicamente.
+- Regra automática que force Hamp vs. Glickman conforme diagnóstico
+  (escolha livre do profissional no registro).
+- Conversão / equivalência entre graus Hamp e Glickman.
+- Furca por face/sítio individual (ex.: vestibular vs. distal) — MVP
+  registra uma avaliação única por dente; reavaliar se a prática exigir.
 - IA / preenchimento automático a partir de imagem do periograma em papel.
 - Edição in-place de periograma já salvo.
 
 ## Plano de testes
 - **Domínio:** validação `numeroDente` idêntica à 004; até 6 pontos;
   medições opcionais / parciais; `margemGengival` negativa; Miller 0–3;
-  furca null fora de molares (quando confirmada); imutabilidade (sem
-  update).
+  `ClassificacaoFurca` — Hamp 1–3, Glickman 1–4, rejeição
+  `GrauForaDoSistemaError` (ex. hamp+4); furca null fora de molares /
+  sem avaliação; imutabilidade (sem update).
 - **Aplicação:** registro com tipo + profissional + data; listagem
   ordenada por data; rejeição de edição; isolamento por `clinicaId`; RBAC
   (recepção negada).
@@ -215,13 +295,12 @@ decídua).
 
 ---
 
-## Pendência restante (única)
+## Decisões de aprovação (resolvidas)
 
-**Furca — confirmação com a dentista de referência.**
-
-- Proposta atual documentada: classificação de **Glickman**, graus **I–IV**;
-  `null` / N-A para dentes que não sejam multirradiculares/molares.
-- Todo o restante desta spec está decidido e pronto para aprovação.
-- Enquanto a furca não for confirmada (ou substituída por outra escala
-  explícita), o status permanece **`rascunho`** e **não** se avança ao
-  Arquiteto de Domínio para a 005.
+1. **Escolha do sistema** — livre no momento do registro; sem regra
+   automática no domínio.
+2. **Mistura de sistemas** — aceitável no mesmo periograma (decorre da
+   decisão 1).
+3. **Granularidade** — uma `ClassificacaoFurca` por dente no MVP; furca
+   por face individual fica fora do MVP (nota de escopo consciente
+   acima).

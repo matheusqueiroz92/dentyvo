@@ -13,6 +13,7 @@ export * from "./convite";
 export * from "./notificacao";
 export * from "./odontograma";
 export * from "./paciente";
+export * from "./periograma";
 export * from "./profissional";
 export * from "./prontuario";
 export * from "./receituario";

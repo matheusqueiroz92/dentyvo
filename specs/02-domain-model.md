@@ -72,13 +72,24 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
   contra vigente reconstruído do histórico persistido, não só o lote)
 - RBAC: admin + dentista (igual 003); recepção sem acesso
 
-### Periograma (v2)
-- id, prontuarioId, medicoes[] (dente, profundidade de sondagem, sangramento,
-  mobilidade)
-- `mobilidade`: escala de **Miller** (grau 0, 1, 2 e 3) — campo já travado
-- `medicoes`: **6 pontos de sondagem por dente** (três na face vestibular e
-  três na face lingual/palatina: mesial, médio e distal) — estrutura já travada
-- Demais detalhes do modelo aguardam imagens de referência (spec 005)
+### Periograma (v2) — spec 005
+- id, clinicaId, prontuarioId, profissionalId, tipo (`exame_inicial` |
+  `reavaliacao`), registradoEm — **imutável** após salvo (correção =
+  novo exame `reavaliacao`)
+- `dentes[]` (`DentePeriograma`):
+  - `numeroDente`: FDI (mesma validação da 004 — permanente + decídua)
+  - `mobilidade`: Miller 0–3 | null
+  - `implante`: boolean | null
+  - `classificacaoFurca`: VO `{ sistema: "hamp"|"glickman", grau }` | null
+    (só molares; Hamp 1–3, Glickman 1–4; uma por dente no MVP)
+  - `nota`: texto livre opcional
+  - `pontos[]` (`PontoSondagem`, 0..6): lado (`vestibular` |
+    `palatina_lingual`) + posição (`mesial`|`central`|`distal`); medições
+    opcionais: `margemGengival` (int, pode negativo), `profundidadeSondagem`,
+    `placa`, `sangramentoSondagem`
+- Métricas agregadas / nível de inserção: **fora** do domínio persistido
+  (UI futura)
+- RBAC: admin + dentista (igual 003); recepção sem acesso
 
 ### ClinicWhatsappAccount
 - id, clinicaId, wabaId, phoneNumberId, accessToken (criptografado),
