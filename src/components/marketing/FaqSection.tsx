@@ -1,25 +1,41 @@
 import { SectionReveal } from "@/components/marketing/SectionReveal";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/Accordion";
 
 const faqs = [
   {
-    pergunta: "Preciso de cartão de crédito para começar?",
+    pergunta: "Preciso instalar algum programa?",
     resposta:
-      "Não. O MVP usa assinatura via PIX após o trial. Você testa a clínica antes de pagar.",
+      "Não, a Dentyvo funciona inteiramente pelo navegador, sem instalação.",
   },
   {
-    pergunta: "A secretária virtual substitui a recepção?",
+    pergunta: "Como funciona o período de teste?",
     resposta:
-      "Não substitui a equipe — ela cobre confirmações e respostas frequentes no WhatsApp quando a recepção está ocupada ou fora do horário de pico.",
+      "14 dias gratuitos, sem necessidade de cartão de crédito para começar.",
   },
   {
-    pergunta: "O que muda depois dos 12 meses da promoção?",
+    pergunta: "A secretária virtual do WhatsApp substitui minha recepcionista?",
     resposta:
-      "As 30 primeiras clínicas no Básico ou Médio migram automaticamente para o preço cheio do plano. Avisamos com antecedência antes da mudança.",
+      "Não, ela trabalha junto com sua equipe, atendendo automaticamente fora do horário ou quando não há ninguém disponível.",
   },
   {
-    pergunta: "Posso ter mais de um profissional?",
+    pergunta: "Meus dados e os dos meus pacientes estão seguros?",
     resposta:
-      "Sim. O plano Full inclui profissionais ilimitados; nos demais, os limites seguem o plano escolhido.",
+      "Sim, seguimos princípios de proteção de dados de saúde (LGPD), com controle de acesso e auditoria completos.",
+  },
+  {
+    pergunta: "Posso mudar de plano depois?",
+    resposta:
+      "Sim, você pode fazer upgrade ou downgrade a qualquer momento pelo painel.",
+  },
+  {
+    pergunta: "Como funciona a promoção de lançamento?",
+    resposta:
+      "As 30 primeiras clínicas garantem desconto nos planos Básico e Médio pelos primeiros 12 meses.",
   },
 ] as const;
 
@@ -45,29 +61,18 @@ export function FaqSection() {
           </h2>
         </div>
 
-        <div className="mt-10 space-y-3">
-          {faqs.map((item) => (
-            <details
-              key={item.pergunta}
-              className="group rounded-[var(--radius-lg)] border border-border bg-background px-4 py-3 open:shadow-[var(--shadow-sm)]"
-            >
-              <summary className="cursor-pointer list-none text-sm font-semibold leading-6 text-foreground marker:content-none [&::-webkit-details-marker]:hidden">
-                <span className="flex items-center justify-between gap-3">
-                  {item.pergunta}
-                  <span
-                    aria-hidden
-                    className="text-muted-foreground transition-transform duration-[var(--duration-fast)] group-open:rotate-45"
-                  >
-                    +
-                  </span>
-                </span>
-              </summary>
-              <p className="mt-3 pb-1 text-sm leading-[22px] text-muted-foreground">
-                {item.resposta}
-              </p>
-            </details>
+        <Accordion
+          type="single"
+          collapsible
+          className="mt-10 rounded-[var(--radius-lg)] border border-border bg-background px-4 shadow-[var(--shadow-sm)] sm:px-5"
+        >
+          {faqs.map((item, index) => (
+            <AccordionItem key={item.pergunta} value={`faq-${index}`}>
+              <AccordionTrigger>{item.pergunta}</AccordionTrigger>
+              <AccordionContent>{item.resposta}</AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       </div>
     </SectionReveal>
   );
