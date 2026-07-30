@@ -809,6 +809,61 @@ marketing:
 Componentes de domínio clínico continuam em `src/components/domain`.
 Layouts de shell do app (sidebar, topbar) em `src/components/layout`.
 
+
+### Composição de páginas de autenticação
+
+Fluxos públicos de autenticação (`/login`, `/cadastro`, `/forgot-password`,
+`/reset-password`) compartilham a mesma casca. A página **não** implementa
+layout próprio — só compõe:
+
+```tsx
+<PageAuthContainer>
+  <CardAuth
+    title="..."
+    description={{ text: "...", link?: { href, label } }}
+    content={<FormularioEspecifico />}
+  />
+</PageAuthContainer>
+```
+
+#### `PageAuthContainer` (`src/components/auth/PageAuthContainer.tsx`)
+
+Server component. Responsabilidades:
+
+1. Lê a sessão com `auth.api.getSession`.
+2. Se já autenticado, redireciona pelo tipo de identidade (mesma lógica do
+   pós-login): `Profissional` → `/dashboard`, `UsuarioPlataforma` → `/admin`.
+3. Renderiza o fundo padrão da área de auth, o link “Voltar ao Dentyvo”
+   (home) e `{children}`.
+
+#### `CardAuth` (`src/components/auth/CardAuth.tsx`)
+
+Client component reutilizável por todas as páginas de auth.
+
+Props:
+
+| Prop | Tipo | Uso |
+|---|---|---|
+| `title` | `string` | Título da tela |
+| `description` | `{ text: string; link?: { href: string; label: string } }` | Texto de apoio; `link` opcional (ex.: “Criar conta”) |
+| `content` | `ReactNode` | Formulário ou conteúdo específico da página |
+
+Estrutura fixa do card:
+
+1. Wordmark “Dentyvo” no topo (Inter Bold, Navy — sem ícone até o logo
+   final ser aprovado).
+2. Título.
+3. Descrição (+ link opcional).
+4. `content` (formulário da página).
+5. Rodapé com links para `/termos` e `/privacidade`.
+
+#### Anti-padrões (auth)
+
+- Duplicar fundo, logo, card ou rodapé legal em cada `page.tsx` de auth
+- Lógica de “já logado → destino” espalhada fora de `PageAuthContainer` /
+  helper compartilhado de destino pós-auth
+- Inventar logo/ícone provisório além da wordmark tipográfica
+
 ### Anti-padrões
 
 - Página com centenas de linhas misturando hero, pricing e footer
