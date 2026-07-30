@@ -19,10 +19,28 @@ M. Agendy.
 | Auth | BetterAuth (multi-tenant) |
 | Validação | Zod |
 | Server actions | next-safe-action |
-| UI | ShadCN/ui + Tailwind |
+| Estilo | Tailwind CSS (tokens em `docs/DESIGN_SYSTEM.md`) |
+| Frontend | ver **Stack de frontend** abaixo |
 | Integração WhatsApp | Meta WhatsApp Cloud API (Embedded Signup) — webhook como rota serverless normal |
 | Jobs assíncronos/agendados | Upstash QStash (lembretes, renovação de token) + Vercel Cron Jobs (tarefas periódicas simples) |
 | Testes | Vitest (unitário) + testes de integração para adapters |
+
+## Stack de frontend
+
+Decisão finalizada. Camadas client-side da UI:
+
+| Camada | Tecnologia |
+|---|---|
+| Componentes UI | ShadCN/ui (gerado via CLI, customizado com os tokens do `docs/DESIGN_SYSTEM.md`) |
+| Formulários | React Hook Form + Zod (via `@hookform/resolvers/zod`) |
+| Data fetching client-side / cache | TanStack Query — escopo: polling de notificações (011), listagens com busca/filtro/paginação client-side. **Não** substitui RSC + Server Actions para carregamento inicial de página. |
+| Tabelas/grids | TanStack Table, para os requisitos da seção "Table / Data Grid" de `docs/DESIGN_SYSTEM.md` (ordenação, filtro, paginação, colunas configuráveis) |
+| Animação | Motion (`motion/react`) + Lenis (smooth scroll) |
+| Ícones | Lucide React |
+
+### Débito técnico — migração ShadCN
+
+**Resolvido:** primitives da landing (`Button`, `Badge`, `Card`, `Accordion`) migrados para ShadCN (CLI + tokens do design system). `ButtonLink` e `PricingCard` permanecem wrappers de domínio sobre esses primitives.
 
 ## Sobre hospedagem e Docker
 
