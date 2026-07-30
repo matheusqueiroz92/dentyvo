@@ -639,3 +639,179 @@ Antes de concluir uma tela:
 - [ ] Não depende apenas de cor.
 - [ ] Componentes reutilizam primitives existentes.
 - [ ] Sem valores mágicos desnecessários.
+
+---
+
+## 17. Landing Page / Marketing
+
+Superfícies públicas (landing, páginas institucionais) usam os mesmos tokens
+e primitives do produto. Não invente paleta paralela nem tipografia fora da
+escala Inter.
+
+### Ordem canônica das seções (landing)
+
+1. Header
+2. Hero
+3. O problema (antes vs depois)
+4. Features em destaque
+5. Planos / preços
+6. (Opcional) Como funciona, FAQ, Contato
+7. Rodapé institucional
+
+A página em `src/app/(marketing)/page.tsx` apenas compõe essas seções — ver
+seção 18.
+
+### Hero
+
+| Elemento | Conteúdo / regra |
+|---|---|
+| Marca | Sinal claro de “Dentyvo” (texto com `brand-gradient-text` ou logo) |
+| Headline | “Sua clínica nunca mais deixa um paciente sem resposta.” |
+| Subtítulo | “Agendamento, prontuário e uma secretária virtual no WhatsApp que atende por você — mesmo quando não há ninguém na recepção.” |
+| CTA primário | “Começar agora” → cadastro de clínica (`/cadastro`) |
+| CTA secundário | “Ver planos” → âncora `#planos` |
+| Visual de apoio | Ilustração ou mock leve (ex.: conversa da secretária virtual); sem cards decorativos soltos no hero além do visual de produto |
+
+Regras:
+- Uma ação `primary` por contexto (CTA de cadastro).
+- Alvos de toque ≥ 44 px no mobile.
+- Background pode usar radiais suaves com tokens de marca; sem HEX hardcoded.
+
+### Seção “O problema”
+
+| Elemento | Conteúdo |
+|---|---|
+| Título | “Papel, planilha, retrabalho. Você conhece bem.” |
+| Corpo | “Muitas clínicas ainda perdem tempo precioso preenchendo anamnese à mão, procurando prontuário em pasta física, ou tentando lembrar quem confirmou a consulta de amanhã. A Dentyvo resolve isso.” |
+| Layout | Preferir contraste **antes vs depois** (ícones + texto), não só bloco tipográfico |
+
+Status nunca é só cor: ícone + rótulo (“Antes” / “Com a Dentyvo”).
+
+### Features em destaque
+
+Cards com ícone Lucide + título + descrição curta. Conjunto mínimo:
+
+- Agendamento inteligente
+- Prontuário digital completo (odontograma e periograma)
+- Secretária virtual via WhatsApp
+- Assinatura simples com PIX
+
+Usar `Card` de `components/ui`. Gradiente da marca só no ícone/assinatura, não no fundo do card inteiro.
+
+### Card de plano / preço (`PricingCard`)
+
+Primitive em `src/components/ui/PricingCard.tsx` (não em marketing).
+
+Props típicas: nome, descrição, faixa de preço cheio (`precoMinMensal` /
+`precoMaxMensal`), preço promocional opcional, lista de recursos, CTA,
+`destaque`, `badge`.
+
+Planos da landing:
+
+| Plano | Faixa mensal | Conteúdo |
+|---|---|---|
+| Básico | R$ 79–99 | Agendamento, prontuário, anamnese, receituário |
+| Médio | R$ 149–179 | Tudo do Básico + bot de WhatsApp; badge **“Mais popular”** |
+| Full | R$ 249–299 | Tudo do Médio + profissionais ilimitados + suporte prioritário + odontograma/periograma completos |
+
+Texto de apoio acima dos cards:
+- Título: “Gestão completa, sem o preço de plataforma grande.”
+- Subtítulo: “Feita para o tamanho real da sua clínica — não para redes gigantes.”
+
+Valores com `Intl.NumberFormat("pt-BR")` / `formatBRL` e `font-variant-numeric: tabular-nums` (classe `.numeric`).
+
+### Indicador de urgência / escassez (promoção de lançamento)
+
+Banner ou callout acima dos cards (não só cor):
+
+- Escopo: **30 primeiras clínicas**
+- Básico: **R$ 59/mês** e Médio: **R$ 99/mês** por **12 meses**
+- Depois migra para o preço cheio do plano
+- Usar badge + texto (`role="status"`); alinhar números às constantes de
+  `src/core/assinatura/domain/constants` quando possível
+
+Não inventar contadores animados ou countdown falso.
+
+### Prova social
+
+Quando houver depoimentos ou logos de clínicas:
+
+- Citação + identificação (nome / papel / clínica), nunca só estrelas por cor
+- Preferir seção dedicada; no MVP pode ficar fora da landing até haver conteúdo real
+- Evitar métricas decorativas sem decisão associada
+
+### Rodapé institucional
+
+- Marca + frase de posicionamento
+- Links de produto (âncoras e cadastro)
+- Contato (e-mail)
+- Copyright com ano via `Intl.DateTimeFormat("pt-BR")`
+
+Fundo escuro permitido com token Navy 950; texto com contraste adequado
+(`primary-foreground` / opacidades semânticas).
+
+### Responsividade
+
+Landing deve funcionar em **360, 768, 1024 e 1440 px**. Em mobile: CTAs
+empilhados, cards de plano em coluna, nav compacta.
+
+### Conteúdo estático
+
+Landing é majoritariamente estática. Server actions / next-safe-action só se
+um CTA exigir chamada real (ex.: formulário de contato futuro).
+
+---
+
+## 18. Convenção de Componentização
+
+### Princípio
+
+Toda página composta por múltiplas seções visuais deve dividir **cada seção
+em um componente próprio**. A rota (`page.tsx`) só importa e compõe — não
+cresce como arquivo monolítico com markup de várias seções.
+
+O mesmo princípio vale para **qualquer** página futura do produto (dashboard,
+agenda, prontuário, admin etc.): nenhuma página deve virar um único arquivo
+grande.
+
+### Marketing — estrutura de pastas
+
+```
+src/components/marketing/
+  HeroSection.tsx
+  ProblemSection.tsx
+  FeaturesSection.tsx
+  PricingSection.tsx
+  HowItWorksSection.tsx   # quando existir na landing
+  FaqSection.tsx          # quando existir na landing
+  ContactSection.tsx      # quando existir na landing
+  Header.tsx
+  Footer.tsx
+
+src/app/(marketing)/page.tsx
+  → apenas importa e compõe as seções em ordem
+```
+
+`layout.tsx` do route group pode montar `Header` + `Footer` em volta de
+`children`; a `page` permanece só com o miolo (hero → … → planos / extras).
+
+### Primitives compartilhados
+
+Ficam em `src/components/ui` e são reutilizáveis por qualquer página — não só
+marketing:
+
+- `Button` / `ButtonLink`
+- `Badge`
+- `Card` (+ Header / Title / Content / Footer)
+- `PricingCard`
+- `Accordion` (FAQ e painéis colapsáveis do produto)
+
+Componentes de domínio clínico continuam em `src/components/domain`.
+Layouts de shell do app (sidebar, topbar) em `src/components/layout`.
+
+### Anti-padrões
+
+- Página com centenas de linhas misturando hero, pricing e footer
+- Duplicar `PricingCard` ou botões só dentro de `marketing/`
+- Seção “lógica de UI” inline na `page.tsx` além da composição
+- Inventar pasta paralela de primitives por feature

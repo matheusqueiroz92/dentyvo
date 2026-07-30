@@ -66,7 +66,9 @@ export function PricingCard({
     >
       {(badge || destaque) && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <Badge variant={destaque ? "primary" : "default"}>{badge ?? "Destaque"}</Badge>
+          <Badge variant={destaque ? "primary" : "default"}>
+            {badge ?? "Destaque"}
+          </Badge>
         </div>
       )}
 

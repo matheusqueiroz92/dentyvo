@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export function MarketingFooter() {
+export function Footer() {
   const ano = new Intl.DateTimeFormat("pt-BR", { year: "numeric" }).format(
     new Date(),
   );

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
-import { MarketingFooter } from "@/components/marketing/MarketingFooter";
-import { MarketingHeader } from "@/components/marketing/MarketingHeader";
+import { Footer } from "@/components/marketing/Footer";
+import { Header } from "@/components/marketing/Header";
+import { SmoothScrollProvider } from "@/components/marketing/SmoothScrollProvider";
 
 export const metadata: Metadata = {
   title: "Dentyvo — Gestão odontológica com secretária virtual no WhatsApp",
@@ -15,10 +16,12 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-background text-foreground">
-      <MarketingHeader />
-      <div className="flex-1">{children}</div>
-      <MarketingFooter />
-    </div>
+    <SmoothScrollProvider>
+      <div className="flex min-h-full flex-1 flex-col bg-background text-foreground">
+        <Header />
+        <div className="flex-1">{children}</div>
+        <Footer />
+      </div>
+    </SmoothScrollProvider>
   );
 }

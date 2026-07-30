@@ -3,18 +3,20 @@ import Link from "next/link";
 import { ButtonLink } from "@/components/ui/button-link";
 
 const navLinks = [
-  { href: "#problema", label: "O problema" },
   { href: "#recursos", label: "Recursos" },
+  { href: "#como-funciona", label: "Como funciona" },
   { href: "#planos", label: "Planos" },
+  { href: "#faq", label: "FAQ" },
+  { href: "#contato", label: "Contato" },
 ] as const;
 
-export function MarketingHeader() {
+export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-border/80 bg-background/90 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          className="brand-gradient-text text-lg font-bold tracking-tight focus-visible:rounded-[var(--radius-sm)]"
+          className="brand-gradient-text text-lg font-bold tracking-tight focus-visible:rounded-sm"
         >
           Dentyvo
         </Link>
@@ -36,14 +38,18 @@ export function MarketingHeader() {
 
         <div className="flex items-center gap-2">
           <ButtonLink
-            href="#planos"
-            variant="ghost"
+            href="/login"
             size="md"
-            className="hidden min-h-11 sm:inline-flex"
+            className="hidden min-h-11 rounded-md border border-border bg-background text-muted-foreground hover:text-foreground sm:inline-flex"
           >
-            Ver planos
+            Entrar
           </ButtonLink>
-          <ButtonLink href="/cadastro" variant="primary" size="md" className="min-h-11">
+          <ButtonLink
+            href="/cadastro"
+            variant="primary"
+            size="md"
+            className="min-h-11 text-white hover:bg-brand-cyan-600/90"
+          >
             Começar agora
           </ButtonLink>
         </div>
