@@ -51,6 +51,14 @@ export class DrizzleUsuarioPlataformaRepository
   }
 }
 
+/**
+ * Função auxiliar que converte um registro retornado do banco de dados (linha da tabela usuarioPlataforma)
+ * para a entidade de domínio UsuarioPlataforma. Faz o casting do papel (string do banco) para o tipo PapelPlataforma
+ * e utiliza o método de reconstituição da entidade, garantindo validade das invariantes de domínio.
+ *
+ * Utilizada internamente nos métodos buscarPorId e buscarPorEmail deste adapter para transformar o formato
+ * persistido no banco no modelo de domínio utilizado pela camada application/domain.
+ */
 function toDomain(row: {
   id: string;
   nome: string;

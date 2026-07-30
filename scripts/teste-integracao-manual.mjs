@@ -22,6 +22,14 @@
  *  13. IniciarTrial                — confirma Assinatura trialing (já criada no passo 1)
  *  14. VerificarAcessoAtivo        — confirma permitido=true, motivo=trialing
  *  15. RBAC plataforma negado — admin de clínica não pode ConcederAcessoManual
+ *  16. RegistrarEventosOdontograma — eventos de face (permanente + decíduo)
+ *  17. ConsultarOdontogramaVigente — projeção vigente reflete o passo 16
+ *  18. Dente ausente — face em dente ausente_extraido (histórico) é rejeitada
+ *  19. RegistrarPeriograma — exame_inicial com furca Hamp e recessão
+ *  20. Furca em não-molar — FurcaNaoAplicavelAoDenteError
+ *  21. ListarPeriogramasDoProntuario — ordenação registradoEm descendente
+ *  22. RBAC negado — recepcao não registra odontograma nem periograma
+ *  23. Dente duplicado — DenteDuplicadoNoPeriogramaError no domínio
  *
  * (Passo extra 4.1 — CriarProcedimento: não pedido explicitamente, mas é
  * pré-requisito obrigatório de `MarcarConsulta`, que exige `procedimentoId`.)
@@ -205,6 +213,21 @@ async function main() {
     "@/core/receituario/infra/create-receituario-module"
   );
 
+  const { createOdontogramaModule } = await import(
+    "@/core/odontograma/infra/create-odontograma-module"
+  );
+  const { DenteAusenteSemFacesError } = await import(
+    "@/core/odontograma/domain/errors"
+  );
+
+  const { createPeriogramaModule } = await import(
+    "@/core/periograma/infra/create-periograma-module"
+  );
+  const {
+    DenteDuplicadoNoPeriogramaError,
+    FurcaNaoAplicavelAoDenteError,
+  } = await import("@/core/periograma/domain/errors");
+
   // `createAssinaturaModule` exige config do gateway Asaas, mas os passos
   // usados aqui (IniciarTrial/VerificarAcessoAtivo/ConcederAcessoManual) não
   // fazem nenhuma chamada de rede — só `CriarAssinatura`/webhook usariam o
@@ -223,6 +246,8 @@ async function main() {
   const prontuarioModule = createProntuarioModule();
   const anamneseModule = createAnamneseModule();
   const receituarioModule = createReceituarioModule();
+  const odontogramaModule = createOdontogramaModule();
+  const periogramaModule = createPeriogramaModule();
   const assinaturaModule = createAssinaturaModule({
     asaasApiKey: "manual-test-placeholder",
     asaasWebhookToken: "manual-test-placeholder",
@@ -932,6 +957,425 @@ async function main() {
     process.exit(1);
   }
 
+  // ---------------------------------------------------------------------
+  // PASSO 16 — RegistrarEventosOdontograma (solicitante: dentista do passo 9.4)
+  // ---------------------------------------------------------------------
+  logPasso(
+    16,
+    "RegistrarEventosOdontograma — eventos de face (permanente + decíduo) pelo dentista",
+  );
+  const eventosOdontograma = await odontogramaModule.registrarEventosOdontograma.executar(
+    {
+      clinicaId: clinica.id,
+      solicitadoPorUsuarioId: usuarioAdmin.id,
+      prontuarioId: prontuario.id,
+      eventos: [
+        {
+          numeroDente: 16,
+          nivel: "face",
+          face: "oclusal",
+          estadoNovo: "cariado",
+        },
+        {
+          numeroDente: 11,
+          nivel: "face",
+          face: "vestibular",
+          estadoNovo: "restaurado",
+        },
+        {
+          numeroDente: 54,
+          nivel: "face",
+          face: "mesial",
+          estadoNovo: "selante",
+        },
+      ],
+    },
+  );
+  logResumo({
+    quantidadeEventos: eventosOdontograma.length,
+    profissionalId: eventosOdontograma[0]?.profissionalId,
+    dentes: eventosOdontograma.map((e) => e.numeroDente).join(", "),
+    estados: eventosOdontograma.map((e) => e.estadoNovo).join(", "),
+    sequencias: eventosOdontograma.map((e) => e.sequencia).join(", "),
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 17 — ConsultarOdontogramaVigente
+  // ---------------------------------------------------------------------
+  logPasso(
+    17,
+    "ConsultarOdontogramaVigente — confirma projeção vigente dos eventos do passo 16",
+  );
+  const odontogramaVigente =
+    await odontogramaModule.consultarOdontogramaVigente.executar({
+      clinicaId: clinica.id,
+      solicitadoPorUsuarioId: usuarioAdmin.id,
+      prontuarioId: prontuario.id,
+    });
+  const dentesEsperados = new Set([16, 11, 54]);
+  const dentesVigentes = odontogramaVigente.dentes.filter((d) =>
+    dentesEsperados.has(d.numeroDente),
+  );
+  if (dentesVigentes.length !== 3) {
+    throw new Error(
+      `Odontograma vigente não refletiu os 3 dentes do passo 16 (encontrados: ${dentesVigentes.map((d) => d.numeroDente).join(", ")}).`,
+    );
+  }
+  const face16 = dentesVigentes
+    .find((d) => d.numeroDente === 16)
+    ?.faces.find((f) => f.face === "oclusal");
+  const face11 = dentesVigentes
+    .find((d) => d.numeroDente === 11)
+    ?.faces.find((f) => f.face === "vestibular");
+  const face54 = dentesVigentes
+    .find((d) => d.numeroDente === 54)
+    ?.faces.find((f) => f.face === "mesial");
+  if (
+    face16?.estado !== "cariado" ||
+    face11?.estado !== "restaurado" ||
+    face54?.estado !== "selante"
+  ) {
+    throw new Error(
+      `Estados vigentes inesperados: 16/oclusal=${face16?.estado}, 11/vestibular=${face11?.estado}, 54/mesial=${face54?.estado}`,
+    );
+  }
+  logResumo({
+    prontuarioId: odontogramaVigente.prontuarioId,
+    quantidadeDentesVigentes: odontogramaVigente.dentes.length,
+    dente16Oclusal: face16.estado,
+    dente11Vestibular: face11.estado,
+    dente54Mesial: face54.estado,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 18 — Dente ausente no histórico bloqueia face em chamada futura
+  // ---------------------------------------------------------------------
+  logPasso(
+    18,
+    "Dente ausente — ausente_extraido no histórico rejeita face em chamada separada",
+  );
+  const denteAusenteNumero = 26;
+  await odontogramaModule.registrarEventosOdontograma.executar({
+    clinicaId: clinica.id,
+    solicitadoPorUsuarioId: usuarioAdmin.id,
+    prontuarioId: prontuario.id,
+    eventos: [
+      {
+        numeroDente: denteAusenteNumero,
+        nivel: "dente",
+        estadoNovo: "ausente_extraido",
+      },
+    ],
+  });
+  logResumo({
+    denteMarcadoAusente: denteAusenteNumero,
+    estado: "ausente_extraido",
+  });
+
+  let faceEmDenteAusentePassou = false;
+  try {
+    await odontogramaModule.registrarEventosOdontograma.executar({
+      clinicaId: clinica.id,
+      solicitadoPorUsuarioId: usuarioAdmin.id,
+      prontuarioId: prontuario.id,
+      eventos: [
+        {
+          numeroDente: denteAusenteNumero,
+          nivel: "face",
+          face: "oclusal",
+          estadoNovo: "cariado",
+        },
+      ],
+    });
+    faceEmDenteAusentePassou = true;
+  } catch (erro) {
+    if (!(erro instanceof DenteAusenteSemFacesError)) {
+      throw erro;
+    }
+    logResumo({
+      excecaoRecebida: erro.nome,
+      mensagem: erro.message,
+      numeroDente: denteAusenteNumero,
+    });
+    console.log("REGRA DENTE AUSENTE OK");
+  }
+  if (faceEmDenteAusentePassou) {
+    console.error(
+      "FALHA: face foi aceita em dente já marcado ausente_extraido no histórico",
+    );
+    process.exit(1);
+  }
+
+  // ---------------------------------------------------------------------
+  // PASSO 19 — RegistrarPeriograma (exame_inicial com furca Hamp + recessão)
+  // ---------------------------------------------------------------------
+  logPasso(
+    19,
+    "RegistrarPeriograma — exame_inicial com molar 16 (Hamp II), recessão e preenchimento parcial",
+  );
+  const periogramaInicial = await periogramaModule.registrarPeriograma.executar(
+    {
+      clinicaId: clinica.id,
+      solicitadoPorUsuarioId: usuarioAdmin.id,
+      prontuarioId: prontuario.id,
+      tipo: "exame_inicial",
+      dentes: [
+        {
+          numeroDente: 16,
+          mobilidade: 1,
+          implante: false,
+          classificacaoFurca: { sistema: "hamp", grau: 2 },
+          nota: "Furca vestibular representativa",
+          pontos: [
+            {
+              lado: "vestibular",
+              posicao: "mesial",
+              margemGengival: -2,
+              profundidadeSondagem: 5,
+              placa: true,
+              sangramentoSondagem: false,
+            },
+            {
+              lado: "vestibular",
+              posicao: "central",
+              margemGengival: -1,
+              profundidadeSondagem: 4,
+            },
+            {
+              lado: "palatina_lingual",
+              posicao: "distal",
+              profundidadeSondagem: 3,
+            },
+          ],
+        },
+        {
+          numeroDente: 11,
+          mobilidade: 0,
+          pontos: [],
+        },
+      ],
+    },
+  );
+  logResumo({
+    periogramaId: periogramaInicial.id,
+    tipo: periogramaInicial.tipo,
+    profissionalId: periogramaInicial.profissionalId,
+    registradoEm: periogramaInicial.registradoEm,
+    quantidadeDentes: periogramaInicial.dentes.length,
+    dente16Furca: periogramaInicial.dentes[0]?.classificacaoFurca
+      ? `${periogramaInicial.dentes[0].classificacaoFurca.sistema}:${periogramaInicial.dentes[0].classificacaoFurca.grau}`
+      : null,
+    dente16Pontos: periogramaInicial.dentes[0]?.pontos.length,
+    margemGengivalMesial: periogramaInicial.dentes[0]?.pontos[0]?.margemGengival,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 20 — Furca em não-molar deve ser rejeitada
+  // ---------------------------------------------------------------------
+  logPasso(
+    20,
+    "Furca inválida — classificacaoFurca em dente 11 (não-molar) deve falhar",
+  );
+  let furcaEmNaoMolarPassou = false;
+  try {
+    await periogramaModule.registrarPeriograma.executar({
+      clinicaId: clinica.id,
+      solicitadoPorUsuarioId: usuarioAdmin.id,
+      prontuarioId: prontuario.id,
+      tipo: "exame_inicial",
+      dentes: [
+        {
+          numeroDente: 11,
+          classificacaoFurca: { sistema: "hamp", grau: 1 },
+        },
+      ],
+    });
+    furcaEmNaoMolarPassou = true;
+  } catch (erro) {
+    if (!(erro instanceof FurcaNaoAplicavelAoDenteError)) {
+      throw erro;
+    }
+    logResumo({
+      excecaoRecebida: erro.nome,
+      mensagem: erro.message,
+      numeroDente: 11,
+    });
+    console.log("RBAC/VALIDACAO FURCA OK");
+  }
+  if (furcaEmNaoMolarPassou) {
+    console.error("FALHA: furca aceita em dente não-molar (11)");
+    process.exit(1);
+  }
+
+  // ---------------------------------------------------------------------
+  // PASSO 21 — ListarPeriogramasDoProntuario (ordem descendente)
+  // ---------------------------------------------------------------------
+  logPasso(
+    21,
+    "ListarPeriogramasDoProntuario — confirma periograma do passo 19 e ordem por registradoEm desc",
+  );
+  // Segundo exame (reavaliacao) com instante posterior para validar
+  // ordenação descendente além da presença do exame inicial.
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  const periogramaReavaliacao =
+    await periogramaModule.registrarPeriograma.executar({
+      clinicaId: clinica.id,
+      solicitadoPorUsuarioId: usuarioAdmin.id,
+      prontuarioId: prontuario.id,
+      tipo: "reavaliacao",
+      dentes: [
+        {
+          numeroDente: 16,
+          mobilidade: 2,
+          classificacaoFurca: { sistema: "glickman", grau: 2 },
+        },
+      ],
+    });
+  const periogramasListados =
+    await periogramaModule.listarPeriogramasDoProntuario.executar({
+      clinicaId: clinica.id,
+      solicitadoPorUsuarioId: usuarioAdmin.id,
+      prontuarioId: prontuario.id,
+    });
+  if (periogramasListados.length < 2) {
+    throw new Error(
+      `Esperava ao menos 2 periogramas listados (encontrados: ${periogramasListados.length}).`,
+    );
+  }
+  if (periogramasListados[0]?.id !== periogramaReavaliacao.id) {
+    throw new Error(
+      `Ordenação descendente falhou: esperado id ${periogramaReavaliacao.id} primeiro, veio ${periogramasListados[0]?.id}.`,
+    );
+  }
+  if (
+    !periogramasListados.some((p) => p.id === periogramaInicial.id)
+  ) {
+    throw new Error(
+      `Listagem não retornou o periograma do passo 19 (${periogramaInicial.id}).`,
+    );
+  }
+  for (let i = 1; i < periogramasListados.length; i++) {
+    const anterior = periogramasListados[i - 1].registradoEm.getTime();
+    const atual = periogramasListados[i].registradoEm.getTime();
+    if (anterior < atual) {
+      throw new Error(
+        "Ordenação por registradoEm descendente violada na listagem de periogramas.",
+      );
+    }
+  }
+  logResumo({
+    quantidade: periogramasListados.length,
+    idsOrdem: periogramasListados.map((p) => p.id).join(", "),
+    tiposOrdem: periogramasListados.map((p) => p.tipo).join(", "),
+    primeiroId: periogramasListados[0].id,
+    incluiExameInicial: true,
+  });
+
+  // ---------------------------------------------------------------------
+  // PASSO 22 — RBAC negado: recepcao não registra odontograma nem periograma
+  // ---------------------------------------------------------------------
+  logPasso(
+    22,
+    "RBAC negado — recepcao não pode RegistrarPeriograma nem RegistrarEventosOdontograma",
+  );
+  let recepcaoConseguiuRegistrarPeriograma = false;
+  try {
+    await periogramaModule.registrarPeriograma.executar({
+      clinicaId: clinica.id,
+      solicitadoPorUsuarioId: profissionalRecepcao.usuarioId,
+      prontuarioId: prontuario.id,
+      tipo: "exame_inicial",
+      dentes: [{ numeroDente: 36, mobilidade: 0 }],
+    });
+    recepcaoConseguiuRegistrarPeriograma = true;
+  } catch (erro) {
+    if (!(erro instanceof PermissaoNegadaError)) {
+      throw erro;
+    }
+    logResumo({
+      acao: "RegistrarPeriograma",
+      excecaoRecebida: erro.nome,
+      papelSolicitante: profissionalRecepcao.papel,
+    });
+  }
+
+  let recepcaoConseguiuRegistrarOdontograma = false;
+  try {
+    await odontogramaModule.registrarEventosOdontograma.executar({
+      clinicaId: clinica.id,
+      solicitadoPorUsuarioId: profissionalRecepcao.usuarioId,
+      prontuarioId: prontuario.id,
+      eventos: [
+        {
+          numeroDente: 21,
+          nivel: "face",
+          face: "distal",
+          estadoNovo: "higido",
+        },
+      ],
+    });
+    recepcaoConseguiuRegistrarOdontograma = true;
+  } catch (erro) {
+    if (!(erro instanceof PermissaoNegadaError)) {
+      throw erro;
+    }
+    logResumo({
+      acao: "RegistrarEventosOdontograma",
+      excecaoRecebida: erro.nome,
+      papelSolicitante: profissionalRecepcao.papel,
+    });
+  }
+
+  if (
+    recepcaoConseguiuRegistrarPeriograma ||
+    recepcaoConseguiuRegistrarOdontograma
+  ) {
+    console.error(
+      "FALHA DE SEGURANÇA: recepcao conseguiu registrar periograma e/ou odontograma",
+    );
+    process.exit(1);
+  }
+  console.log("RBAC OK");
+
+  // ---------------------------------------------------------------------
+  // PASSO 23 — Dente duplicado rejeitado no domínio (não constraint crua)
+  // ---------------------------------------------------------------------
+  logPasso(
+    23,
+    "Dente duplicado — mesmo numeroDente duas vezes deve lançar DenteDuplicadoNoPeriogramaError",
+  );
+  let denteDuplicadoPassou = false;
+  try {
+    await periogramaModule.registrarPeriograma.executar({
+      clinicaId: clinica.id,
+      solicitadoPorUsuarioId: usuarioAdmin.id,
+      prontuarioId: prontuario.id,
+      tipo: "exame_inicial",
+      dentes: [
+        { numeroDente: 36, mobilidade: 1 },
+        { numeroDente: 36, mobilidade: 2 },
+      ],
+    });
+    denteDuplicadoPassou = true;
+  } catch (erro) {
+    if (!(erro instanceof DenteDuplicadoNoPeriogramaError)) {
+      throw erro;
+    }
+    logResumo({
+      excecaoRecebida: erro.nome,
+      mensagem: erro.message,
+      numeroDente: erro.numeroDente,
+      camada: "dominio",
+    });
+    console.log("DEDUP DOMINIO OK");
+  }
+  if (denteDuplicadoPassou) {
+    console.error(
+      "FALHA: periograma com numeroDente duplicado foi aceito (deveria falhar no domínio)",
+    );
+    process.exit(1);
+  }
+
   console.log(`\n${SEPARADOR}`);
   console.log("FLUXO COMPLETO EXECUTADO COM SUCESSO. Nenhum dado foi apagado.");
   console.log(SEPARADOR);
@@ -961,6 +1405,16 @@ async function main() {
         assinaturaStatus: assinatura.status,
         acessoAtivoMotivo: resultadoAcesso.motivo,
         rbacPlataformaNegadoOk: !profissionalConseguiuConcederAcesso,
+        eventosOdontogramaIds: eventosOdontograma.map((e) => e.id),
+        denteAusenteNumero,
+        regraDenteAusenteOk: !faceEmDenteAusentePassou,
+        periogramaInicialId: periogramaInicial.id,
+        periogramaReavaliacaoId: periogramaReavaliacao.id,
+        validacaoFurcaOk: !furcaEmNaoMolarPassou,
+        rbacOdontoPerioRecepcaoNegadoOk:
+          !recepcaoConseguiuRegistrarPeriograma &&
+          !recepcaoConseguiuRegistrarOdontograma,
+        dedupDominioOk: !denteDuplicadoPassou,
       },
       null,
       2,

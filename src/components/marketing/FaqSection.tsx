@@ -64,7 +64,7 @@ export function FaqSection() {
         <Accordion
           type="single"
           collapsible
-          className="mt-10 rounded-[var(--radius-lg)] border border-border bg-background px-4 shadow-[var(--shadow-sm)] sm:px-5"
+          className="mt-10 rounded-lg border border-border bg-background px-4 shadow-(--shadow-sm) sm:px-5"
         >
           {faqs.map((item, index) => (
             <AccordionItem key={item.pergunta} value={`faq-${index}`}>
