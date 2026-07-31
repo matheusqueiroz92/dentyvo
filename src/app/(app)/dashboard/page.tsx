@@ -5,18 +5,14 @@ import {
   AtalhosRapidos,
   ConfirmacoesPendentesSection,
   DashboardCardSkeleton,
-  NotificacoesCard,
   StatusAssinaturaSection,
 } from "@/components/dashboard";
-import { requireSessaoClinica } from "@/lib/dashboard/obter-sessao-clinica";
 
 export const metadata = {
   title: "Dashboard — Dentyvo",
 };
 
-export default async function DashboardPage() {
-  await requireSessaoClinica();
-
+export default function DashboardPage() {
   return (
     <main className="flex flex-col gap-8">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -49,7 +45,6 @@ export default async function DashboardPage() {
         </div>
 
         <div className="flex flex-col gap-4 lg:gap-6">
-          <NotificacoesCard />
           <Suspense
             fallback={
               <DashboardCardSkeleton title="Status da assinatura" rows={2} />

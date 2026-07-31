@@ -1,7 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import * as React from "react";
+import { useState, type ReactNode } from "react";
 
 function makeQueryClient() {
   return new QueryClient({
@@ -14,18 +14,9 @@ function makeQueryClient() {
   });
 }
 
-let browserQueryClient: QueryClient | undefined;
+export function QueryProvider({ children }: { children: ReactNode }) {
+  const [queryClient] = useState(makeQueryClient);
 
-function getQueryClient() {
-  if (typeof window === "undefined") {
-    return makeQueryClient();
-  }
-  browserQueryClient ??= makeQueryClient();
-  return browserQueryClient;
-}
-
-export function QueryProvider({ children }: { children: React.ReactNode }) {
-  const queryClient = getQueryClient();
   return (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
