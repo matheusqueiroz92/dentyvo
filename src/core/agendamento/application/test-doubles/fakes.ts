@@ -59,6 +59,26 @@ export class FakeAgendamentoRepository implements AgendamentoRepositoryPort {
     );
   }
 
+  async listarPorPeriodo(
+    clinicaId: string,
+    dataInicio: Date,
+    dataFim: Date,
+    profissionalId?: string,
+  ): Promise<Agendamento[]> {
+    return [...this.items.values()]
+      .filter(
+        (a) =>
+          a.clinicaId === clinicaId &&
+          a.dataHoraInicio >= dataInicio &&
+          a.dataHoraInicio < dataFim &&
+          (profissionalId === undefined ||
+            a.profissionalId === profissionalId),
+      )
+      .sort(
+        (a, b) => a.dataHoraInicio.getTime() - b.dataHoraInicio.getTime(),
+      );
+  }
+
   private assertSemSobreposicao(candidato: Agendamento): void {
     for (const existente of this.items.values()) {
       if (existente.id === candidato.id) continue;

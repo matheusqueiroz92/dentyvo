@@ -5,6 +5,7 @@ import { criarVerificadorAutorizacao } from "@/core/shared/autorizacao";
 export const ACOES_AGENDAMENTO = [
   "definir_disponibilidade",
   "listar_horarios_disponiveis",
+  "listar_agendamentos_do_periodo",
   "marcar_consulta",
   "remarcar_consulta",
   "cancelar_consulta",
@@ -19,6 +20,7 @@ export type AcaoAgendamento = (typeof ACOES_AGENDAMENTO)[number];
 const MATRIZ: Record<AcaoAgendamento, readonly Papel[]> = {
   definir_disponibilidade: ["admin", "dentista"],
   listar_horarios_disponiveis: ["admin", "dentista", "recepcao"],
+  listar_agendamentos_do_periodo: ["admin", "dentista", "recepcao"],
   marcar_consulta: ["admin", "dentista", "recepcao"],
   remarcar_consulta: ["admin", "dentista", "recepcao"],
   cancelar_consulta: ["admin", "dentista", "recepcao"],

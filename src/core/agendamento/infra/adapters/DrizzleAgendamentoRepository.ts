@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, lt } from "drizzle-orm";
+import { and, asc, eq, gte, gt, inArray, lt } from "drizzle-orm";
 
 import type { AgendamentoRepositoryPort } from "../../application/ports/AgendamentoRepositoryPort";
 import { Agendamento } from "../../domain/Agendamento";
@@ -102,6 +102,30 @@ export class DrizzleAgendamentoRepository implements AgendamentoRepositoryPort {
           gt(agendamentoTable.dataHoraFim, inicio),
         ),
       );
+    return rows.map(toDomain);
+  }
+
+  async listarPorPeriodo(
+    clinicaId: string,
+    dataInicio: Date,
+    dataFim: Date,
+    profissionalId?: string,
+  ): Promise<Agendamento[]> {
+    const condicoes = [
+      eq(agendamentoTable.clinicaId, clinicaId),
+      gte(agendamentoTable.dataHoraInicio, dataInicio),
+      lt(agendamentoTable.dataHoraInicio, dataFim),
+    ];
+    if (profissionalId !== undefined) {
+      condicoes.push(eq(agendamentoTable.profissionalId, profissionalId));
+    }
+
+    const rows = await this.db
+      .select()
+      .from(agendamentoTable)
+      .where(and(...condicoes))
+      .orderBy(asc(agendamentoTable.dataHoraInicio));
+
     return rows.map(toDomain);
   }
 }

@@ -37,4 +37,16 @@ export interface AgendamentoRepositoryPort {
     inicio: Date,
     fim: Date,
   ): Promise<Agendamento[]>;
+
+  /**
+   * Agendamentos da clínica cujo `dataHoraInicio` está no intervalo half-open
+   * `[dataInicio, dataFim)`. Inclui todos os status. Filtro opcional por
+   * profissional. Ordenação: `dataHoraInicio` ascendente (spec 002).
+   */
+  listarPorPeriodo(
+    clinicaId: string,
+    dataInicio: Date,
+    dataFim: Date,
+    profissionalId?: string,
+  ): Promise<Agendamento[]>;
 }

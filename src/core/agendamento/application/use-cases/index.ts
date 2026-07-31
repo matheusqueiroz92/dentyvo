@@ -20,6 +20,10 @@ export {
   type JanelaDisponibilidadeInput,
 } from "./DefinirDisponibilidadeProfissional";
 export {
+  ListarAgendamentosDoPeriodo,
+  type ListarAgendamentosDoPeriodoInput,
+} from "./ListarAgendamentosDoPeriodo";
+export {
   ListarHorariosDisponiveis,
   type ListarHorariosDisponiveisInput,
 } from "./ListarHorariosDisponiveis";
