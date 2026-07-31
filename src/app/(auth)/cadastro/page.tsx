@@ -1,5 +1,5 @@
 import { CardAuth } from "@/components/auth/CardAuth";
-import { CadastroForm } from "@/components/auth/CadastroForm";
+import { SignupForm } from "@/components/auth/SignupForm";
 import { PageAuthContainer } from "@/components/auth/PageAuthContainer";
 
 export const metadata = {
@@ -7,16 +7,16 @@ export const metadata = {
   description: "Cadastre sua clínica e comece o trial gratuito.",
 };
 
-export default function CadastroPage() {
+export default function SignupPage() {
   return (
     <PageAuthContainer>
       <CardAuth
-        title="Cadastre sua clínica"
+        title="Cadastre sua clínica gratuitamente"
         description={{
-          text: "Já tem conta?",
-          link: { href: "/login", label: "Entrar" },
+          text: "Já tem uma conta?",
+          link: { href: "/login", label: "Faça o login" },
         }}
-        content={<CadastroForm />}
+        content={<SignupForm />}
       />
     </PageAuthContainer>
   );

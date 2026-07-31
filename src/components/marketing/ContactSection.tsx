@@ -69,10 +69,10 @@ export function ContactSection() {
               <li>
                 <a
                   href={`mailto:${CONTATO_EMAIL}`}
-                  className="flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3 text-sm text-foreground shadow-[var(--shadow-sm)] hover:border-primary/30"
+                  className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-card px-4 py-3 text-sm text-foreground shadow-(--shadow-sm) hover:border-primary/30"
                 >
-                  <span className="brand-gradient flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-primary-foreground">
-                    <Mail className="size-[18px]" aria-hidden strokeWidth={1.75} />
+                  <span className="brand-gradient flex size-9 shrink-0 items-center justify-center rounded-md text-primary-foreground">
+                    <Mail className="size-4.5" aria-hidden strokeWidth={1.75} />
                   </span>
                   <span>
                     <span className="block text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
@@ -87,11 +87,11 @@ export function ContactSection() {
                   href={WHATSAPP_COMERCIAL.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex min-h-11 items-center gap-3 rounded-[var(--radius-md)] border border-border bg-card px-4 py-3 text-sm text-foreground shadow-[var(--shadow-sm)] hover:border-primary/30"
+                  className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-card px-4 py-3 text-sm text-foreground shadow-(--shadow-sm) hover:border-primary/30"
                 >
-                  <span className="brand-gradient flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-primary-foreground">
+                  <span className="brand-gradient flex size-9 shrink-0 items-center justify-center rounded-md text-primary-foreground">
                     <MessageCircle
-                      className="size-[18px]"
+                      className="size-4.5"
                       aria-hidden
                       strokeWidth={1.75}
                     />
@@ -120,11 +120,11 @@ export function ContactSection() {
             </div>
           </div>
 
-          <div className="rounded-[var(--radius-xl)] border border-border bg-card p-6 shadow-[var(--shadow-sm)] sm:p-8">
+          <div className="rounded-xl border border-border bg-card p-6 shadow-(--shadow-sm) sm:p-8">
             <h3 className="text-lg font-semibold tracking-tight text-foreground">
               Envie uma mensagem
             </h3>
-            <p className="mt-2 text-sm leading-[22px] text-muted-foreground">
+            <p className="mt-2 text-sm leading-5.5 text-muted-foreground">
               Contato geral ou comercial. Responderemos pelo e-mail informado.
             </p>
 
@@ -173,7 +173,7 @@ export function ContactSection() {
                   placeholder="Como podemos ajudar?"
                   className={cn(
                     fieldClassName,
-                    "h-auto min-h-[120px] resize-y py-2.5",
+                    "h-auto min-h-30 resize-y py-2.5",
                   )}
                 />
               </div>
@@ -181,7 +181,7 @@ export function ContactSection() {
               <Button type="submit" variant="primary" size="lg" className="min-h-11 w-full sm:w-auto">
                 Enviar mensagem
               </Button>
-              <p className="text-xs leading-[18px] text-muted-foreground">
+              <p className="text-xs leading-4.5 text-muted-foreground">
                 O envio ainda não está conectado ao servidor — em breve.
               </p>
             </form>

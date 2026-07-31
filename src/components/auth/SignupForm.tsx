@@ -40,7 +40,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export function CadastroForm() {
+export function SignupForm() {
   const router = useRouter();
   const [erroGeral, setErroGeral] = useState<string | null>(null);
 
@@ -111,7 +111,7 @@ export function CadastroForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3" noValidate>
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           Clínica
         </p>

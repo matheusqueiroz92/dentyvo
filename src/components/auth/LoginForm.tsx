@@ -133,7 +133,7 @@ export function LoginForm() {
                 <div className="flex items-center justify-between gap-2">
                   <FormLabel>Senha</FormLabel>
                   <Link
-                    href="/forgot-password"
+                    href="/esqueceu-senha"
                     className="text-xs font-medium text-primary underline-offset-4 hover:underline"
                   >
                     Esqueci a senha
@@ -161,7 +161,7 @@ export function LoginForm() {
             type="submit"
             variant="primary"
             size="lg"
-            className="w-full"
+            className="w-full cursor-pointer"
             disabled={form.formState.isSubmitting}
           >
             {form.formState.isSubmitting ? "Entrando…" : "Entrar"}
@@ -182,7 +182,7 @@ export function LoginForm() {
         type="button"
         variant="outline"
         size="lg"
-        className="w-full"
+        className="w-full cursor-pointer"
         disabled={googleLoading}
         onClick={entrarComGoogle}
       >

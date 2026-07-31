@@ -50,7 +50,7 @@ function AccordionTrigger({
         {children}
         <ChevronDownIcon
           aria-hidden
-          className="size-[18px] shrink-0 text-muted-foreground transition-transform duration-[var(--duration-base)] ease-[var(--ease-standard)]"
+          className="size-4.5 shrink-0 text-muted-foreground transition-transform duration-(--duration-base) ease-(--ease-standard)"
         />
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>
@@ -70,7 +70,7 @@ function AccordionContent({
     >
       <div
         className={cn(
-          "pb-4 text-sm leading-[22px] text-muted-foreground",
+          "pb-4 text-sm leading-5.5 text-muted-foreground",
           className,
         )}
       >

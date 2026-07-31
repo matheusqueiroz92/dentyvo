@@ -139,7 +139,7 @@ export function ResetPasswordForm() {
 function ButtonLinkFallback() {
   return (
     <Button asChild variant="outline" size="lg" className="w-full">
-      <Link href="/forgot-password">Solicitar novo link</Link>
+      <Link href="/esqueceu-senha">Solicitar novo link</Link>
     </Button>
   );
 }

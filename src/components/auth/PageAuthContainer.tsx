@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { resolverDestinoAuth } from "@/lib/auth-destino.server";
 import { auth } from "@/lib/auth";
+import { ArrowLeftIcon } from "lucide-react";
 
 type PageAuthContainerProps = {
   children: ReactNode;
@@ -34,7 +35,7 @@ export async function PageAuthContainer({ children }: PageAuthContainerProps) {
             href="/"
             className="inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            ← Voltar ao Dentyvo
+          <ArrowLeftIcon className="h-4 w-4 mr-2" /> Voltar
           </Link>
         </div>
 

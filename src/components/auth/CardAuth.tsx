@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import Image from "next/image";
 
 export type CardAuthDescription = {
   text: string;
@@ -29,11 +30,9 @@ export type CardAuthProps = {
  */
 export function CardAuth({ title, description, content }: CardAuthProps) {
   return (
-    <Card className="shadow-[var(--shadow-md)]">
+    <Card className="shadow-(--shadow-md)">
       <CardHeader className="items-center text-center">
-        <p className="font-sans text-2xl font-bold tracking-tight text-foreground">
-          Dentyvo
-        </p>
+        <Image src="/dentyvo-logo-nome.png" className="py-4" loading="eager" alt="Dentyvo" width={200} height={200} />
         <CardTitle className="mt-4 text-xl">{title}</CardTitle>
         <CardDescription className="text-center">
           {description.text}
@@ -54,19 +53,17 @@ export function CardAuth({ title, description, content }: CardAuthProps) {
       <CardContent>{content}</CardContent>
 
       <CardFooter className="justify-center gap-4 border-t border-border pt-4 text-center text-xs text-muted-foreground">
-        <Link
+        <p>Ao continuar, você concorda com os <Link
           href="/termos"
-          className="min-h-11 inline-flex items-center underline-offset-4 hover:underline"
+          className="inline-flex items-center text-primary underline-offset-4 hover:underline"
         >
           Termos de uso
-        </Link>
-        <span aria-hidden>·</span>
-        <Link
+        </Link> e a <Link
           href="/privacidade"
-          className="min-h-11 inline-flex items-center underline-offset-4 hover:underline"
+          className="inline-flex items-center text-primary underline-offset-4 hover:underline"
         >
-          Privacidade
-        </Link>
+          Política de Privacidade
+        </Link>.</p>
       </CardFooter>
     </Card>
   );

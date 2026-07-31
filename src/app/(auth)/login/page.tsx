@@ -13,7 +13,7 @@ export default function LoginPage() {
   return (
     <PageAuthContainer>
       <CardAuth
-        title="Entrar na Dentyvo"
+        title="Bem-vindo(a) de volta"
         description={{
           text: "Ainda não tem conta?",
           link: { href: "/cadastro", label: "Cadastre sua clínica" },
