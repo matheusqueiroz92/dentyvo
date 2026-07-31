@@ -69,8 +69,9 @@ npm run test:e2e
 
 Os specs ficam em `e2e/`. Dados de clínica usam timestamp + CPF válido por
 execução (mesmo padrão de `scripts/teste-integracao-manual.mjs`) para permitir
-reexecução sem colisão. Login real com Google **não** entra no e2e; a rejeição
-de usuário social órfão é coberta em `src/lib/auth-sessao-social.test.ts`.
+reexecução sem colisão. Login real com Google **não** entra no e2e; o fluxo
+unificado de sessão social/onboarding é coberto em
+`src/lib/auth-sessao-social.test.ts` e `src/lib/auth-destino.test.ts`.
 
 ## Estrutura de pastas
 

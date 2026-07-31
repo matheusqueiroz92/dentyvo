@@ -16,27 +16,30 @@ async function preencherCadastro(
   dados: ReturnType<typeof dadosClinicaUnicos>,
 ) {
   await page.goto("/cadastro");
+  await page.getByLabel("Seu nome").fill(dados.adminNome);
+  await page.getByLabel("E-mail").fill(dados.email);
+  await page.getByLabel("Senha", { exact: true }).fill(dados.senha);
+  await page.getByLabel("Confirmar senha").fill(dados.senha);
+  await page.getByRole("button", { name: "Selecionar" }).first().click();
+  await page.getByRole("button", { name: "Continuar", exact: true }).click();
+
+  await expect(page).toHaveURL(/\/cadastro\/clinica/, { timeout: 15_000 });
   await page.getByLabel("Nome da clínica").fill(dados.nomeClinica);
   await page.getByLabel("Endereço").fill(dados.endereco);
   // Tipo padrão do formulário é CNPJ — preenche o campo sem abrir o Select.
   await page.getByLabel("CNPJ").fill(dados.documento);
-  await page.getByLabel("Seu nome").fill(dados.adminNome);
-  await page.getByLabel("E-mail").fill(dados.email);
-  await page.getByLabel("Senha", { exact: true }).fill(dados.senha);
-  await page.getByRole("button", { name: "Começar trial grátis" }).click();
+  await page.getByRole("button", { name: "Criar clínica e entrar" }).click();
 }
 
 test.describe("Auth e2e", () => {
-  test("1. cadastro de clínica cria Assinatura trialing e vai para /login com sucesso", async ({
+  test("1. cadastro de clínica cria Assinatura trialing e vai para /dashboard", async ({
     page,
   }) => {
     const dados = dadosClinicaUnicos("cadastro");
     await preencherCadastro(page, dados);
 
-    await expect(page).toHaveURL(/\/login\?cadastro=ok/, { timeout: 30_000 });
-    await expect(page.getByRole("status")).toContainText(
-      "Clínica cadastrada com sucesso",
-    );
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
 
     const assinatura = await buscarAssinaturaPorDocumento(dados.documento);
     expect(assinatura).not.toBeNull();
@@ -48,7 +51,9 @@ test.describe("Auth e2e", () => {
   }) => {
     const dados = dadosClinicaUnicos("dup");
     await preencherCadastro(page, dados);
-    await expect(page).toHaveURL(/\/login\?cadastro=ok/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
+
+    await page.context().clearCookies();
 
     const segunda = {
       ...dadosClinicaUnicos("dup2"),
@@ -69,8 +74,10 @@ test.describe("Auth e2e", () => {
   }) => {
     const dados = dadosClinicaUnicos("login-ok");
     await preencherCadastro(page, dados);
-    await expect(page).toHaveURL(/\/login/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
 
+    await page.context().clearCookies();
+    await page.goto("/login");
     await page.getByLabel("E-mail").fill(dados.email);
     await page.getByLabel("Senha", { exact: true }).fill(dados.senha);
     await page.getByRole("button", { name: "Entrar" }).click();
@@ -98,8 +105,9 @@ test.describe("Auth e2e", () => {
   }) => {
     const dados = dadosClinicaUnicos("reset");
     await preencherCadastro(page, dados);
-    await expect(page).toHaveURL(/\/login/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
 
+    await page.context().clearCookies();
     await page.goto("/esqueceu-senha");
     await page.getByLabel("E-mail").fill(dados.email);
     await page.getByRole("button", { name: "Enviar link" }).click();
@@ -136,13 +144,21 @@ test.describe("Auth e2e", () => {
   }) => {
     const dados = dadosClinicaUnicos("sessao");
     await preencherCadastro(page, dados);
-    await expect(page).toHaveURL(/\/login/, { timeout: 30_000 });
-    await page.getByLabel("E-mail").fill(dados.email);
-    await page.getByLabel("Senha", { exact: true }).fill(dados.senha);
-    await page.getByRole("button", { name: "Entrar" }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
 
     await page.goto("/login");
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
+  });
+
+  test("7. login e cadastro mostram Continuar com Google", async ({ page }) => {
+    await page.goto("/login");
+    await expect(
+      page.getByRole("button", { name: "Continuar com Google" }),
+    ).toBeVisible();
+
+    await page.goto("/cadastro");
+    await expect(
+      page.getByRole("button", { name: "Continuar com Google" }),
+    ).toBeVisible();
   });
 });

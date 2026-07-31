@@ -7,6 +7,13 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
 
+vi.mock("@/lib/auth-client", () => ({
+  authClient: {
+    useSession: () => ({ data: null, isPending: false }),
+    signIn: { social: vi.fn() },
+  },
+}));
+
 import { SignupForm } from "@/components/auth/SignupForm";
 import { RASCUNHO_CADASTRO_KEY } from "@/lib/cadastro/rascunho";
 
@@ -76,5 +83,12 @@ describe("SignupForm (etapa 1)", () => {
   it("mostra o indicador de promoção de lançamento", () => {
     render(<SignupForm />);
     expect(screen.getByRole("status")).toHaveTextContent(/30 primeiras/);
+  });
+
+  it("exibe Continuar com Google no cadastro", () => {
+    render(<SignupForm />);
+    expect(
+      screen.getByRole("button", { name: "Continuar com Google" }),
+    ).toBeInTheDocument();
   });
 });

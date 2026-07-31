@@ -58,7 +58,7 @@ async function fileToBase64(file: File): Promise<string> {
 }
 
 type ConcluirCadastroFn = (input: {
-  admin: { nome: string; email: string; senha: string };
+  admin: { nome: string; email: string; senha?: string };
   clinica: {
     nome: string;
     endereco: string;
@@ -92,6 +92,8 @@ export function SignupClinicaForm({
   concluirCadastro,
 }: SignupClinicaFormProps) {
   const router = useRouter();
+  const { data: sessao } = authClient.useSession();
+  const viaSocial = Boolean(sessao?.user);
   // null inicial em SSR e 1º paint do cliente — evita hydration mismatch
   // com sessionStorage.
   const [rascunho, setRascunho] = useState<RascunhoCadastro | null>(null);
@@ -137,7 +139,7 @@ export function SignupClinicaForm({
     }
 
     const senha = senhaEmMemoria ?? values.senha?.trim() ?? "";
-    if (senha.length < 8) {
+    if (!viaSocial && senha.length < 8) {
       form.setError("senha", {
         message: "Informe a senha (mínimo 8 caracteres).",
       });
@@ -159,7 +161,7 @@ export function SignupClinicaForm({
       admin: {
         nome: rascunho.adminNome,
         email: rascunho.email,
-        senha,
+        ...(viaSocial ? {} : { senha }),
       },
       clinica: {
         nome: values.clinicaNome,
@@ -187,6 +189,11 @@ export function SignupClinicaForm({
 
     limparRascunhoCadastro();
 
+    if (viaSocial) {
+      window.location.assign("/dashboard");
+      return;
+    }
+
     const { error: loginError } = await authClient.signIn.email({
       email: rascunho.email,
       password: senha,
@@ -208,7 +215,7 @@ export function SignupClinicaForm({
     );
   }
 
-  const precisaRedigitarSenha = !senhaEmMemoria;
+  const precisaRedigitarSenha = !viaSocial && !senhaEmMemoria;
 
   return (
     <Form {...form}>

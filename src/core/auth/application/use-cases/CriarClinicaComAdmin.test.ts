@@ -132,4 +132,35 @@ describe("CriarClinicaComAdmin", () => {
       }),
     ).rejects.toBeInstanceOf(UsuarioJaVinculadoAClinicaError);
   });
+
+  it("reutiliza usuário auth existente sem Profissional (ex.: Google / onboarding)", async () => {
+    const { sut, auth, profissionalRepo, clinicaRepo } = criarSut();
+    const existente = await auth.criarUsuario({
+      nome: "Google User",
+      email: "google@clinica.com",
+      senha: "senha-placeholder",
+    });
+
+    const clinica = await sut.executar({
+      clinica: {
+        nome: "Clínica Google",
+        endereco: "Rua G, 1",
+        tipoDocumento: "cpf",
+        documento: CPF_VALIDO,
+      },
+      admin: {
+        nome: "Google User",
+        email: "google@clinica.com",
+        // Sem senha — conta já existe via OAuth
+      },
+    });
+
+    expect(await clinicaRepo.buscarPorId(clinica.id)).not.toBeNull();
+    const profissional = await profissionalRepo.buscarPorUsuarioId(
+      existente.id,
+    );
+    expect(profissional?.papel).toBe("admin");
+    expect(profissional?.clinicaId).toBe(clinica.id);
+    expect(auth.usuarios.size).toBe(1);
+  });
 });

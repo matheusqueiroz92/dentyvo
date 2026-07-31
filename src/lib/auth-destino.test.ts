@@ -1,6 +1,47 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { determinarDestinoAuth } from "@/lib/auth-destino";
+import {
+  determinarDestinoAuth,
+  resolverDestinoPosCallbackSocial,
+} from "@/lib/auth-destino";
+
+describe("resolverDestinoPosCallbackSocial", () => {
+  it("sem sessão volta ao login (falha OAuth genérica)", () => {
+    expect(
+      resolverDestinoPosCallbackSocial({
+        temSessao: false,
+        destinoApp: null,
+      }),
+    ).toBe("/login");
+  });
+
+  it("conta completa Profissional vai para /dashboard", () => {
+    expect(
+      resolverDestinoPosCallbackSocial({
+        temSessao: true,
+        destinoApp: "/dashboard",
+      }),
+    ).toBe("/dashboard");
+  });
+
+  it("conta completa plataforma vai para /admin", () => {
+    expect(
+      resolverDestinoPosCallbackSocial({
+        temSessao: true,
+        destinoApp: "/admin",
+      }),
+    ).toBe("/admin");
+  });
+
+  it("sessão sem clínica/plataforma inicia onboarding em /cadastro", () => {
+    expect(
+      resolverDestinoPosCallbackSocial({
+        temSessao: true,
+        destinoApp: null,
+      }),
+    ).toBe("/cadastro");
+  });
+});
 
 describe("determinarDestinoAuth", () => {
   it("UsuarioPlataforma tem prioridade e vai para /admin", async () => {

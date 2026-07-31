@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import { DadosInvalidosError } from "@/core/shared/errors";
+
 import { Clinica } from "../../domain/Clinica";
 import { DocumentoFiscal } from "../../domain/DocumentoFiscal";
 import type { TipoDocumentoFiscal } from "../../domain/DocumentoFiscal";
@@ -22,12 +24,14 @@ export type CriarClinicaComAdminInput = {
   admin: {
     nome: string;
     email: string;
-    senha: string;
+    /** Obrigatória só ao criar usuário novo; omitida se já existe (ex.: Google). */
+    senha?: string;
   };
 };
 
 /**
  * Cadastro público: Clinica + usuário BetterAuth + Profissional admin.
+ * Reutiliza usuário auth existente sem Profissional (onboarding social).
  */
 export class CriarClinicaComAdmin {
   constructor(
@@ -50,8 +54,29 @@ export class CriarClinicaComAdmin {
 
     const email = input.admin.email.trim().toLowerCase();
     const usuarioExistente = await this.auth.buscarUsuarioPorEmail(email);
+
+    let usuarioId: string;
     if (usuarioExistente) {
-      throw new UsuarioJaVinculadoAClinicaError(email);
+      const jaVinculado = await this.profissionalRepo.buscarPorUsuarioId(
+        usuarioExistente.id,
+      );
+      if (jaVinculado) {
+        throw new UsuarioJaVinculadoAClinicaError(email);
+      }
+      usuarioId = usuarioExistente.id;
+    } else {
+      const senha = input.admin.senha?.trim() ?? "";
+      if (senha.length < 8) {
+        throw new DadosInvalidosError(
+          "Senha obrigatória (mínimo 8 caracteres) para criar a conta.",
+        );
+      }
+      const usuario = await this.auth.criarUsuario({
+        nome: input.admin.nome,
+        email,
+        senha,
+      });
+      usuarioId = usuario.id;
     }
 
     const clinica = Clinica.criar({
@@ -61,16 +86,10 @@ export class CriarClinicaComAdmin {
       documento,
     });
 
-    const usuario = await this.auth.criarUsuario({
-      nome: input.admin.nome,
-      email,
-      senha: input.admin.senha,
-    });
-
     const profissional = Profissional.criar({
       id: randomUUID(),
       clinicaId: clinica.id,
-      usuarioId: usuario.id,
+      usuarioId,
       nome: input.admin.nome,
       papel: "admin",
     });

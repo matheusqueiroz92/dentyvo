@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
 const signInEmail = vi.fn();
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
+    useSession: () => ({ data: null, isPending: false }),
     signIn: {
       email: (...args: unknown[]) => signInEmail(...args),
       social: vi.fn(),
@@ -90,5 +91,12 @@ describe("LoginForm", () => {
       await screen.findByRole("alert"),
     ).toHaveTextContent("E-mail ou senha inválidos.");
     expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
+  it("exibe Continuar com Google no login", () => {
+    render(<LoginForm />);
+    expect(
+      screen.getByRole("button", { name: "Continuar com Google" }),
+    ).toBeInTheDocument();
   });
 });

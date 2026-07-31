@@ -9,7 +9,7 @@ import { z } from "zod";
 
 import { obterDestinoPosLogin } from "@/actions/obter-destino-pos-login";
 import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
-import { Button } from "@/components/ui/button";
+import { ContinuarComGoogleButton } from "@/components/auth/ContinuarComGoogleButton";
 import {
   Form,
   FormControl,
@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
-import { MENSAGEM_CONTA_SOCIAL_NAO_ENCONTRADA } from "@/lib/auth-destino";
 
 export const MENSAGEM_CADASTRO_OK =
   "Clínica cadastrada com sucesso. Faça login para continuar.";
@@ -32,18 +31,9 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-function mensagemErroSocial(searchParams: URLSearchParams): string | null {
-  const erro = searchParams.get("erro");
-  if (erro === "conta-nao-encontrada") {
-    return MENSAGEM_CONTA_SOCIAL_NAO_ENCONTRADA;
-  }
-  const error = searchParams.get("error");
-  if (
-    error === "signup_disabled" ||
-    error === "SIGNUP_DISABLED" ||
-    error?.toLowerCase().includes("signup")
-  ) {
-    return MENSAGEM_CONTA_SOCIAL_NAO_ENCONTRADA;
+function mensagemErroOAuth(searchParams: URLSearchParams): string | null {
+  if (searchParams.get("erro") === "oauth") {
+    return "Não foi possível continuar com Google. Tente novamente.";
   }
   return null;
 }
@@ -51,12 +41,11 @@ function mensagemErroSocial(searchParams: URLSearchParams): string | null {
 export function LoginForm() {
   const searchParams = useSearchParams();
   const [erroGeral, setErroGeral] = useState<string | null>(() =>
-    mensagemErroSocial(searchParams),
+    mensagemErroOAuth(searchParams),
   );
   const [sucessoCadastro] = useState(
     () => searchParams.get("cadastro") === "ok",
   );
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -88,24 +77,6 @@ export function LoginForm() {
     // Navegação full-page: soft push após set de cookie de sessão pode
     // deixar a URL em /login (mesmo padrão observado no cadastro).
     window.location.assign(destino.destino);
-  }
-
-  async function entrarComGoogle() {
-    setErroGeral(null);
-    setGoogleLoading(true);
-    const { error } = await authClient.signIn.social({
-      provider: "google",
-      callbackURL: "/auth/continuar",
-      errorCallbackURL: "/login?erro=conta-nao-encontrada",
-    });
-    if (error) {
-      setGoogleLoading(false);
-      setErroGeral(
-        error.message?.toLowerCase().includes("signup")
-          ? MENSAGEM_CONTA_SOCIAL_NAO_ENCONTRADA
-          : (error.message ?? MENSAGEM_CONTA_SOCIAL_NAO_ENCONTRADA),
-      );
-    }
   }
 
   return (
@@ -187,16 +158,7 @@ export function LoginForm() {
         </div>
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        size="lg"
-        className="w-full cursor-pointer"
-        disabled={googleLoading}
-        onClick={entrarComGoogle}
-      >
-        {googleLoading ? "Redirecionando…" : "Continuar com Google"}
-      </Button>
+      <ContinuarComGoogleButton onError={setErroGeral} />
     </div>
   );
 }

@@ -12,13 +12,13 @@ describe("deveAutorizarCriacaoSessaoSocial", () => {
     ).toBe(true);
   });
 
-  it("rejeita callback social sem Profissional/UsuarioPlataforma (órfão)", () => {
+  it("permite callback social sem vínculo (onboarding — cria/retoma cadastro)", () => {
     expect(
       deveAutorizarCriacaoSessaoSocial({
         path: "/callback/google",
         temVinculoAutorizado: false,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("permite callback social quando há vínculo autorizado", () => {

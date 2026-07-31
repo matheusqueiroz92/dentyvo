@@ -2,17 +2,19 @@
 
 import { headers } from "next/headers";
 
-import { MENSAGEM_CONTA_SOCIAL_NAO_ENCONTRADA, type DestinoAuth } from "@/lib/auth-destino";
+import type { DestinoAuth } from "@/lib/auth-destino";
 import { resolverDestinoAuth } from "@/lib/auth-destino.server";
 import { auth } from "@/lib/auth";
 
+export type DestinoPosLogin = DestinoAuth | "/cadastro";
+
 export type ObterDestinoPosLoginResult =
-  | { ok: true; destino: DestinoAuth }
+  | { ok: true; destino: DestinoPosLogin }
   | { ok: false; mensagem: string };
 
 /**
- * Após login (email/senha ou social), resolve /dashboard vs /admin.
- * Sem vínculo Profissional/UsuarioPlataforma → erro amigável.
+ * Após login (email/senha ou social), resolve destino:
+ * /dashboard | /admin | /cadastro (onboarding incompleto).
  */
 export async function obterDestinoPosLogin(): Promise<ObterDestinoPosLoginResult> {
   const sessao = await auth.api.getSession({ headers: await headers() });
@@ -29,11 +31,7 @@ export async function obterDestinoPosLogin(): Promise<ObterDestinoPosLoginResult
   });
 
   if (!destino) {
-    await auth.api.signOut({ headers: await headers() });
-    return {
-      ok: false,
-      mensagem: MENSAGEM_CONTA_SOCIAL_NAO_ENCONTRADA,
-    };
+    return { ok: true, destino: "/cadastro" };
   }
 
   return { ok: true, destino };

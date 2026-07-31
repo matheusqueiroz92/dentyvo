@@ -1,7 +1,12 @@
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+
 import { CardAuth } from "@/components/auth/CardAuth";
 import { SignupForm } from "@/components/auth/SignupForm";
 import { PageAuthContainer } from "@/components/auth/PageAuthContainer";
 import { resolverPlanoDaQuery } from "@/lib/cadastro/planos";
+import { resolverDestinoAuth } from "@/lib/auth-destino.server";
+import { auth } from "@/lib/auth";
 
 export const metadata = {
   title: "Cadastro — Dentyvo",
@@ -15,6 +20,16 @@ type SignupPageProps = {
 export default async function SignupPage({ searchParams }: SignupPageProps) {
   const params = await searchParams;
   const planoInicial = resolverPlanoDaQuery(params.plano);
+
+  const sessao = await auth.api.getSession({ headers: await headers() });
+  if (sessao?.user) {
+    const destinoApp = await resolverDestinoAuth({
+      usuarioId: sessao.user.id,
+      email: sessao.user.email,
+    });
+    // Conta completa → app; incompleta fica no onboarding (plano).
+    if (destinoApp) redirect(destinoApp);
+  }
 
   return (
     <PageAuthContainer width="wide">

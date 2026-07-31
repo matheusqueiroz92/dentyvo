@@ -21,7 +21,8 @@ const schema = z.object({
   admin: z.object({
     nome: z.string().min(1),
     email: z.string().email(),
-    senha: z.string().min(8),
+    /** Omitida quando a conta já existe (ex.: Google). */
+    senha: z.string().min(8).optional(),
   }),
   clinica: z.object({
     nome: z.string().min(1),

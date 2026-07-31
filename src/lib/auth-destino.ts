@@ -1,5 +1,8 @@
 export type DestinoAuth = "/dashboard" | "/admin";
 
+/** Destino após callback OAuth (app completo ou onboarding). */
+export type DestinoPosCallbackSocial = DestinoAuth | "/cadastro" | "/login";
+
 export type AuthDestinoLookups = {
   buscarUsuarioPlataformaPorId: (id: string) => Promise<unknown | null>;
   buscarUsuarioPlataformaPorEmail: (email: string) => Promise<unknown | null>;
@@ -8,9 +11,18 @@ export type AuthDestinoLookups = {
   ) => Promise<unknown | null>;
 };
 
-/** Mensagem amigável quando Google/social não encontra conta de clínica/plataforma. */
-export const MENSAGEM_CONTA_SOCIAL_NAO_ENCONTRADA =
-  "Nenhuma conta encontrada para este e-mail. Cadastre sua clínica primeiro.";
+/**
+ * Resolve destino único do login social (independente da página de origem).
+ * Conta completa → app; sem vínculo → onboarding em /cadastro.
+ */
+export function resolverDestinoPosCallbackSocial(input: {
+  temSessao: boolean;
+  destinoApp: DestinoAuth | null;
+}): DestinoPosCallbackSocial {
+  if (!input.temSessao) return "/login";
+  if (input.destinoApp) return input.destinoApp;
+  return "/cadastro";
+}
 
 /**
  * Destino pós-autenticação por tipo de identidade.

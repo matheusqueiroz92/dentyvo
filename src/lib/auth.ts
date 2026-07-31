@@ -4,8 +4,6 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { SESSAO_TTL_MS } from "@/core/auth/domain/constants";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { usuarioTemVinculoAutorizado } from "@/lib/auth-destino.server";
-import { deveAutorizarCriacaoSessaoSocial } from "@/lib/auth-sessao-social";
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -15,9 +13,12 @@ const googleHabilitado = Boolean(googleClientId && googleClientSecret);
  * BetterAuth — sessão de 7 dias (spec 001).
  * Multi-tenant/RBAC via Profissional + AuthPort, não via roles nativos aqui.
  *
- * Google OAuth: `disableSignUp` impede criação implícita de usuário.
- * `session.create.before` rejeita sessão se não houver Profissional nem
- * UsuarioPlataforma (evita conta órfã sem clínica/plataforma).
+ * Google OAuth unificado (login + cadastro):
+ * - cria usuário se o e-mail ainda não existir;
+ * - account linking junta Google à conta e-mail/senha do mesmo e-mail
+ *   (`trustedProviders` + `requireLocalEmailVerified: false` enquanto o
+ *   signup por senha não verifica e-mail — ver docs Better Auth).
+ * Destino pós-callback: `/auth/continuar` (app ou onboarding).
  */
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -39,8 +40,6 @@ export const auth = betterAuth({
           google: {
             clientId: googleClientId as string,
             clientSecret: googleClientSecret as string,
-            /** Não cria Clinica/Profissional nem user órfão via Google. */
-            disableSignUp: true,
           },
         }
       : {}),
@@ -49,33 +48,18 @@ export const auth = betterAuth({
     accountLinking: {
       enabled: true,
       trustedProviders: googleHabilitado ? ["google"] : [],
+      /**
+       * Default do Better Auth é `true` e bloqueia linking quando o user
+       * local tem `emailVerified: false` (nosso signup por senha). Sem isto,
+       * mesmo e-mail + Google não vira a mesma conta.
+       * @deprecated na lib — quando o gate virar incondicional, habilitar
+       * verificação de e-mail no signup por senha.
+       */
+      requireLocalEmailVerified: false,
     },
   },
   session: {
     expiresIn: SESSAO_TTL_MS / 1000,
     updateAge: 60 * 60 * 24,
-  },
-  databaseHooks: {
-    session: {
-      create: {
-        /**
-         * Só no fluxo social: rejeita sessão sem Profissional/UsuarioPlataforma.
-         * Não aplicar em `/sign-up/email` — o cadastro grava o Profissional
-         * depois de `criarUsuario` (que pode criar sessão).
-         */
-        before: async (session, ctx) => {
-          const path = typeof ctx?.path === "string" ? ctx.path : "";
-          const temVinculo = await usuarioTemVinculoAutorizado(session.userId);
-          const autorizado = deveAutorizarCriacaoSessaoSocial({
-            path,
-            temVinculoAutorizado: temVinculo,
-          });
-          if (!autorizado) {
-            return false;
-          }
-          return { data: session };
-        },
-      },
-    },
   },
 });
