@@ -17,6 +17,8 @@ const MATRIZ_ESPERADA: Record<AcaoAutorizada, readonly Papel[]> = {
   remover_membro: ["admin"],
   revogar_sessoes_membro: ["admin"],
   editar_clinica: ["admin"],
+  atualizar_logo_clinica: ["admin"],
+  atualizar_tema_clinica: ["admin"],
 };
 
 describe("matriz de autorização (pode / assertPode)", () => {

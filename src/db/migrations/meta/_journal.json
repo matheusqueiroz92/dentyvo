@@ -71,6 +71,13 @@
       "when": 1785360369604,
       "tag": "0009_dear_puppet_master",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785526947961,
+      "tag": "0010_cold_alex_wilder",
+      "breakpoints": true
     }
   ]
 }

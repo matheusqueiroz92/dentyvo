@@ -50,12 +50,27 @@ automaticamente.
 
 ## Objetivos futuros
 
+Registro de frentes **pós-lançamento inicial** (sem abrir Arquiteto nem
+implementação agora). Detalhes nas seções correspondentes abaixo.
+
 - **013 — Financeiro:** ver seção detalhada abaixo. Até a spec formal existir,
   o dashboard deve **omitir** cartões de faturamento resumido e contas
   vencidas referenciados em `docs/DESIGN_SYSTEM.md` (seção 8), sem simular
   ou mockar dado financeiro.
 - **014 — Estoque/Insumos:** ver seção detalhada abaixo. Sem urgência de
   schema agora — módulo desenhável do zero quando chegar a vez.
+- **Multi-clínica por usuário — v2:** ver seção detalhada abaixo. Um usuário
+  podendo pertencer a múltiplas clínicas, com seletor de unidade no topbar
+  (`docs/DESIGN_SYSTEM.md`, seção 9). **Depois do lançamento inicial.**
+- **Portal do paciente — v2:** ver seção detalhada abaixo. Acesso autenticado
+  do próprio paciente a dados clínicos. **Depois do lançamento inicial.**
+
+## Próxima adição de escopo (não é v2 distante)
+
+- **Agendamento via link público (extensão da 002):** ver seção detalhada
+  abaixo. Prioridade de escopo **próxima** — domínio já modela
+  `Agendamento.origem = link-publico`; falta a superfície pública e a
+  action. Baixo custo relativo ao que já existe em `core/agendamento`.
 
 ## Financeiro — planejamento futuro (spec 013)
 
@@ -130,6 +145,101 @@ retrabalho de dado retroativo — **não gerar falsa urgência**.
 Compra de insumo é categoria natural de `DespesaOperacional`. Considerar
 essa relação ao desenhar ambas as specs, para não duplicar o conceito de
 “custo”.
+
+## Multi-clínica por usuário — planejamento futuro (v2)
+
+Registro **conceitual** (sem spec formal ainda). **Depois do lançamento
+inicial.**
+
+Hoje a spec 001 fixa: *“Um usuário pertence a exatamente uma clínica no MVP
+(sem multi-clínica)”* — decisão explícita de escopo do auth multi-tenant.
+Esta frente **reabre essa decisão** e exige feature dedicada (número a
+definir quando a spec formal for aberta), não um ajuste cosmético de UI.
+
+### Escopo previsto
+
+- Um mesmo usuário (credencial) pode ser membro de **mais de uma** clínica
+  (`Profissional` por tenant, ou modelo equivalente).
+- Seletor de unidade/clínica no **topbar** — já previsto em
+  `docs/DESIGN_SYSTEM.md` (seção 9: “alternância de unidade, quando
+  multiunidade”).
+- Sessão passa a carregar a clínica **ativa** escolhida pelo usuário
+  (troca de contexto sem novo login).
+
+### Impactos conhecidos no código/domínio atual
+
+- **`AceitarConvite`:** hoje lança `UsuarioJaVinculadoAClinicaError` quando o
+  e-mail/usuário já está vinculado a uma clínica — essa invariante do MVP
+  precisa ser relaxada ou substituída (aceitar vínculo adicional vs. bloquear).
+- **`ContextoSessao`:** hoje assume um único `clinicaId` da sessão; multiunidade
+  exige clínica ativa (e, possivelmente, lista de clínicas acessíveis).
+- **Billing (010):** assinatura/cobrança é por clínica — validar se o modelo
+  atual permanece (provável: sim) e como o seletor interage com
+  `VerificarAcessoAtivo` / bloqueio por tenant.
+- Isolamento multi-tenant e RBAC por papel **permanecem por clínica**; o que
+  muda é a cardinalidade usuário↔clínica.
+
+Não implementar seletor “vazio” no topbar enquanto esta frente não tiver
+spec aprovada.
+
+## Portal do paciente — planejamento futuro (v2)
+
+Registro **conceitual** (sem spec formal ainda). **Depois do lançamento
+inicial.**
+
+Hoje `Paciente` em `core/paciente` é **dado clínico** (CRUD da clínica),
+sem conta de login. O portal exige um **novo ator de autenticação**: o
+próprio paciente com identidade própria (distinto de `Profissional` /
+`UsuarioPlataforma`).
+
+### Escopo previsto
+
+- Acesso autenticado do paciente a: prontuário, odontograma, periograma e
+  receitas (leitura e, se a spec formal definir, ações limitadas).
+- Fluxo de **consentimento LGPD** específico do portal (dado sensível de
+  saúde — além do consentimento operacional já previsto no MVP da clínica).
+- **RBAC própria** do ator paciente (não reutilizar matriz admin/dentista/
+  recepção).
+
+### Dependências / riscos
+
+- Novo módulo ou extensão de auth (sessão paciente ≠ sessão profissional).
+- Escopo de leitura/exportação e auditoria alinhados à LGPD.
+- Não confundir com o bot WhatsApp (007) nem com o link público de
+  agendamento (este último não autentica o paciente como ator clínico).
+
+## Agendamento via link público — próxima adição de escopo (002)
+
+Registro de **próxima** extensão de produto — **não** tratar como v2
+distante. A spec formal pode ser um adendo/atualização de
+`specs/features/002-agendamento.md` (ou feature numerada curta que a
+estenda), quando for a hora de planejar a entrega.
+
+### Por que o custo é baixo
+
+- O campo `Agendamento.origem` já admite `link-publico` desde a modelagem
+  original da 002 (domínio e critérios de aceite).
+- Overbooking, disponibilidade, duração e RBAC interno **já** estão no
+  núcleo de `core/agendamento`; o canal público deve **reutilizar**
+  `MarcarConsulta` (ou equivalente) com `origem: "link-publico"`, sem
+  duplicar regra de negócio.
+
+### O que falta
+
+- Tela/rota **pública** (sem autenticação de profissional) para o paciente
+  escolher horário e solicitar agendamento.
+- Server action (ou rota) correspondente, escopada por clínica/token de
+  link, chamando o caso de uso existente.
+- Decisões de produto na spec: validade do link, quais profissionais/
+  procedimentos expostos, confirmação automática vs. `pendente`, abuso/
+  rate-limit.
+
+### Relação com a 002 atual
+
+A 002 lista “Link público de autoagendamento” em **Fora de escopo** do
+MVP da feature (origem já modelada; fluxos em 007+). Este registro eleva
+o canal a **próxima adição de escopo** planejada — ao abrir a spec, atualizar
+explicitamente esse item de “fora de escopo” da 002.
 
 ## Restrições e conformidade
 

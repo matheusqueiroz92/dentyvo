@@ -7,3 +7,4 @@ export * from "./DocumentoFiscal";
 export * from "./errors";
 export * from "./Papel";
 export * from "./Profissional";
+export * from "./TemaClinica";

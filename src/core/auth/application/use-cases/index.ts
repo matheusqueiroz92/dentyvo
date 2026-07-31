@@ -7,6 +7,14 @@ export {
   type AlterarPapelMembroInput,
 } from "./AlterarPapelMembro";
 export {
+  AtualizarLogoClinica,
+  type AtualizarLogoClinicaInput,
+} from "./AtualizarLogoClinica";
+export {
+  AtualizarTemaClinica,
+  type AtualizarTemaClinicaInput,
+} from "./AtualizarTemaClinica";
+export {
   ConvidarUsuario,
   type ConvidarUsuarioInput,
 } from "./ConvidarUsuario";
@@ -27,3 +35,4 @@ export {
   RevogarSessoesDoMembro,
   type RevogarSessoesDoMembroInput,
 } from "./RevogarSessoesDoMembro";
+export { CasoDeUsoNaoImplementadoError } from "./nao-implementado";

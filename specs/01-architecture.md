@@ -23,6 +23,7 @@ M. Agendy.
 | Frontend | ver **Stack de frontend** abaixo |
 | Integração WhatsApp | Meta WhatsApp Cloud API (Embedded Signup) — webhook como rota serverless normal |
 | Jobs assíncronos/agendados | Upstash QStash (lembretes, renovação de token) + Vercel Cron Jobs (tarefas periódicas simples) |
+| Armazenamento de arquivos | **Vercel Blob Storage** — ver seção abaixo |
 | Testes | Vitest (unitário) + testes de integração para adapters |
 
 ## Stack de frontend
@@ -52,6 +53,33 @@ oficial (ex: Baileys). Isso elimina a necessidade de container tanto para a
 aplicação quanto para a integração de WhatsApp. Reavaliar Docker só se o projeto
 crescer para múltiplos serviços com necessidade de ambiente 100% reprodutível em
 equipe, ou para bancos efêmeros em CI.
+
+## Armazenamento de arquivos (Vercel Blob)
+
+**Decisão:** uploads binários usam **Vercel Blob Storage** (SDK `@vercel/blob`),
+alinhado à hospedagem na Vercel e sem serviço de object storage separado no MVP.
+
+### Uso imediato — logo da clínica
+
+- A entidade `Clinica` persiste apenas `logoUrl` (string | null) — a URL pública
+  retornada pelo Blob após o upload.
+- Fluxo na delivery: server action autenticada (admin) faz o upload no Blob →
+  recebe a URL → chama `AtualizarLogoClinica(clinicaId, logoUrl)`.
+- O domínio/use case **não** conhece o Blob; a port de persistência continua
+  sendo `ClinicaRepositoryPort` (só metadados/URL). Se no futuro o upload
+  precisar ser testável/isolado, extrair `ArmazenamentoArquivoPort` na
+  application — não obrigatório no primeiro green.
+
+### Reaproveitamento futuro — anexos de prontuário
+
+A mesma infraestrutura (Vercel Blob + padrão “upload na delivery → URL no
+domínio”) **poderá ser reaproveitada** para anexos clínicos quando forem
+especificados — por exemplo atestados escaneados, imagens anexas a evolução,
+etc. Até haver spec formal de anexos:
+
+- **não** criar tabela/entidade de anexo “por antecipação”;
+- ao especificar, preferir reutilizar Blob e o mesmo padrão de URL + escopo
+  por `clinicaId` / paciente, com RBAC e LGPD próprios do prontuário.
 
 ## Multi-tenancy
 

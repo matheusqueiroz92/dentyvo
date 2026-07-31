@@ -8,7 +8,10 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 ### Clinica (tenant)
 - id, nome, endereço, documento fiscal (`tipoDocumento`: `cpf`|`cnpj` + valor
   normalizado; exatamente um dos dois — autônomos podem usar CPF), plano de
-  assinatura (spec 010), status (`ativa`|`inativa`; cadastro inicia como `ativa`)
+  assinatura (spec 010), status (`ativa`|`inativa`; cadastro inicia como `ativa`),
+  `logoUrl` (string | null — URL pública do logo; upload via Vercel Blob, ver
+  `specs/01-architecture.md`), `tema` (`azul-padrao` | `verde` | `roxo` |
+  `grafite` | null — null = padrão da UI; paletas com contraste WCAG 2.2 AA)
 
 ### Profissional
 - id, clinicaId, nome, papel (`admin`|`dentista`|`recepcao`), cro (obrigatório

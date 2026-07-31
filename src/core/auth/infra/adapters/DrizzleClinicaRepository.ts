@@ -9,6 +9,10 @@ import {
   DocumentoFiscal,
   type TipoDocumentoFiscal,
 } from "../../domain/DocumentoFiscal";
+import {
+  isTemaClinica,
+  type TemaClinica,
+} from "../../domain/TemaClinica";
 import type { db as Db } from "@/db";
 import { clinica as clinicaTable } from "@/db/schema";
 
@@ -27,6 +31,8 @@ export class DrizzleClinicaRepository implements ClinicaRepositoryPort {
         tipoDocumento: clinica.documento.tipo,
         documento: clinica.documento.valor,
         status: clinica.status,
+        logoUrl: clinica.logoUrl,
+        tema: clinica.tema,
       })
       .onConflictDoUpdate({
         target: clinicaTable.id,
@@ -36,6 +42,8 @@ export class DrizzleClinicaRepository implements ClinicaRepositoryPort {
           tipoDocumento: clinica.documento.tipo,
           documento: clinica.documento.valor,
           status: clinica.status,
+          logoUrl: clinica.logoUrl,
+          tema: clinica.tema,
         },
       });
   }
@@ -80,6 +88,8 @@ function toDomain(row: {
   tipoDocumento: string;
   documento: string;
   status: string;
+  logoUrl: string | null;
+  tema: string | null;
 }): Clinica {
   return Clinica.reconstituir({
     id: row.id,
@@ -90,5 +100,12 @@ function toDomain(row: {
       row.documento,
     ),
     status: row.status as StatusClinica,
+    logoUrl: row.logoUrl,
+    tema: normalizarTemaPersistido(row.tema),
   });
+}
+
+function normalizarTemaPersistido(tema: string | null): TemaClinica | null {
+  if (tema == null) return null;
+  return isTemaClinica(tema) ? tema : null;
 }

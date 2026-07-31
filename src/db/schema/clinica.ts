@@ -7,4 +7,12 @@ export const clinica = pgTable("clinica", {
   tipoDocumento: text("tipo_documento").notNull(),
   documento: text("documento").notNull().unique(),
   status: text("status").notNull(),
+  /** URL pública do logo (Vercel Blob); null = sem logo. */
+  logoUrl: text("logo_url"),
+  /**
+   * Tema visual pré-definido.
+   * Default `azul-padrao` (padrão atual da UI) para clínicas existentes.
+   * Null também é tratado como padrão na UI.
+   */
+  tema: text("tema").default("azul-padrao"),
 });

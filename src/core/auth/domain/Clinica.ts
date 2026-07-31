@@ -1,5 +1,7 @@
-import type { DocumentoFiscal } from "./DocumentoFiscal";
 import { DadosInvalidosError } from "@/core/shared/errors";
+
+import type { DocumentoFiscal } from "./DocumentoFiscal";
+import { assertTemaClinica, type TemaClinica } from "./TemaClinica";
 
 export type StatusClinica = "ativa" | "inativa";
 
@@ -9,6 +11,10 @@ export type ClinicaProps = {
   endereco: string;
   documento: DocumentoFiscal;
   status: StatusClinica;
+  /** URL pública do logo (ex.: Vercel Blob). Null = sem logo. */
+  logoUrl: string | null;
+  /** Tema visual pré-definido. Null = padrão da UI (`azul-padrao`). */
+  tema: TemaClinica | null;
 };
 
 export class Clinica {
@@ -17,6 +23,8 @@ export class Clinica {
   readonly endereco: string;
   readonly documento: DocumentoFiscal;
   readonly status: StatusClinica;
+  readonly logoUrl: string | null;
+  readonly tema: TemaClinica | null;
 
   private constructor(props: ClinicaProps) {
     this.id = props.id;
@@ -24,6 +32,8 @@ export class Clinica {
     this.endereco = props.endereco;
     this.documento = props.documento;
     this.status = props.status;
+    this.logoUrl = props.logoUrl;
+    this.tema = props.tema;
   }
 
   /** Factory do cadastro público — status inicial sempre `ativa` (spec 001). */
@@ -48,6 +58,8 @@ export class Clinica {
       endereco,
       documento: input.documento,
       status: "ativa",
+      logoUrl: null,
+      tema: null,
     });
   }
 
@@ -69,11 +81,31 @@ export class Clinica {
     }
 
     return Clinica.reconstituir({
-      id: this.id,
+      ...this.toProps(),
       nome,
       endereco,
-      documento: this.documento,
-      status: this.status,
+    });
+  }
+
+  /**
+   * Atualiza URL do logo (ou remove com `null`).
+   * Upload do arquivo fica na delivery/infra (Vercel Blob) — ver
+   * `specs/01-architecture.md`.
+   */
+  atualizarLogo(logoUrl: string | null): Clinica {
+    return Clinica.reconstituir({
+      ...this.toProps(),
+      logoUrl: normalizarLogoUrl(logoUrl),
+    });
+  }
+
+  /** Atualiza tema visual (ou restaura padrão da UI com `null`). */
+  atualizarTema(tema: TemaClinica | string | null): Clinica {
+    const temaNormalizado =
+      tema == null ? null : assertTemaClinica(String(tema).trim());
+    return Clinica.reconstituir({
+      ...this.toProps(),
+      tema: temaNormalizado,
     });
   }
 
@@ -87,11 +119,31 @@ export class Clinica {
     }
 
     return Clinica.reconstituir({
+      ...this.toProps(),
+      status: "inativa",
+    });
+  }
+
+  private toProps(): ClinicaProps {
+    return {
       id: this.id,
       nome: this.nome,
       endereco: this.endereco,
       documento: this.documento,
-      status: "inativa",
-    });
+      status: this.status,
+      logoUrl: this.logoUrl,
+      tema: this.tema,
+    };
   }
+}
+
+function normalizarLogoUrl(logoUrl: string | null): string | null {
+  if (logoUrl == null) return null;
+  const trimmed = logoUrl.trim();
+  if (!trimmed) {
+    throw new DadosInvalidosError(
+      "URL do logo inválida: informe uma URL ou null para remover.",
+    );
+  }
+  return trimmed;
 }

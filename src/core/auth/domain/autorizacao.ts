@@ -10,6 +10,8 @@ export const ACOES_AUTORIZADAS = [
   "remover_membro",
   "revogar_sessoes_membro",
   "editar_clinica",
+  "atualizar_logo_clinica",
+  "atualizar_tema_clinica",
 ] as const;
 
 export type AcaoAutorizada = (typeof ACOES_AUTORIZADAS)[number];
@@ -21,6 +23,8 @@ const MATRIZ: Record<AcaoAutorizada, readonly Papel[]> = {
   remover_membro: ["admin"],
   revogar_sessoes_membro: ["admin"],
   editar_clinica: ["admin"],
+  atualizar_logo_clinica: ["admin"],
+  atualizar_tema_clinica: ["admin"],
 };
 
 /** Helper de domínio (spec 001): checagem de papel pura, sem port. */
