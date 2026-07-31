@@ -1,12 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { criarClinicaComAdminAction } from "@/actions/criar-clinica-com-admin";
 import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
+import { PromoLancamentoCallout } from "@/components/marketing/PromoLancamentoCallout";
+import { PricingCard } from "@/components/ui/PricingCard";
 import {
   Form,
   FormControl,
@@ -17,163 +19,82 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { authClient } from "@/lib/auth-client";
-import type { ServerActionError } from "@/lib/safe-action";
+  PLANOS_MARKETING,
+  isPlanoCadastroId,
+  type PlanoCadastroId,
+} from "@/lib/cadastro/planos";
+import { salvarRascunhoCadastro } from "@/lib/cadastro/rascunho";
 
-const schema = z.object({
-  clinicaNome: z.string().min(1, "Informe o nome da clínica."),
-  endereco: z.string().min(1, "Informe o endereço."),
-  tipoDocumento: z.enum(["cpf", "cnpj"]),
-  documento: z.string().min(1, "Informe o documento."),
-  adminNome: z.string().min(1, "Informe seu nome."),
-  email: z.string().email("Informe um e-mail válido."),
-  senha: z.string().min(8, "A senha deve ter pelo menos 8 caracteres."),
-});
+const schema = z
+  .object({
+    adminNome: z.string().min(1, "Informe seu nome."),
+    email: z.string().email("Informe um e-mail válido."),
+    senha: z.string().min(8, "A senha deve ter pelo menos 8 caracteres."),
+    confirmarSenha: z.string().min(1, "Confirme a senha."),
+    planoId: z.string().refine(isPlanoCadastroId, "Selecione um plano."),
+  })
+  .refine((data) => data.senha === data.confirmarSenha, {
+    message: "As senhas não coincidem.",
+    path: ["confirmarSenha"],
+  });
 
 type FormValues = z.infer<typeof schema>;
 
-export function SignupForm() {
+type SignupFormProps = {
+  /** Plano pré-selecionado via `?plano=` da landing. */
+  planoInicial?: PlanoCadastroId | null;
+};
+
+/**
+ * Etapa 1 do cadastro: dados pessoais + plano.
+ * Não cria usuário/clínica — só grava rascunho e avança para `/cadastro/clinica`.
+ */
+export function SignupForm({ planoInicial = null }: SignupFormProps) {
+  const router = useRouter();
   const [erroGeral, setErroGeral] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      clinicaNome: "",
-      endereco: "",
-      tipoDocumento: "cnpj",
-      documento: "",
       adminNome: "",
       email: "",
       senha: "",
+      confirmarSenha: "",
+      planoId: planoInicial ?? "",
     },
   });
 
-  const tipoDocumento = useWatch({
+  const planoSelecionado = useWatch({
     control: form.control,
-    name: "tipoDocumento",
+    name: "planoId",
   });
 
-  async function onSubmit(values: FormValues) {
+  function onSubmit(values: FormValues) {
     setErroGeral(null);
-    const result = await criarClinicaComAdminAction({
-      clinica: {
-        nome: values.clinicaNome,
-        endereco: values.endereco,
-        tipoDocumento: values.tipoDocumento,
-        documento: values.documento,
-      },
-      admin: {
-        nome: values.adminNome,
-        email: values.email.trim().toLowerCase(),
-        senha: values.senha,
-      },
+    if (!isPlanoCadastroId(values.planoId)) {
+      setErroGeral("Selecione um plano para continuar.");
+      return;
+    }
+
+    salvarRascunhoCadastro({
+      adminNome: values.adminNome.trim(),
+      email: values.email.trim().toLowerCase(),
+      senha: values.senha,
+      planoId: values.planoId,
     });
 
-    if (result.serverError) {
-      const err = result.serverError as ServerActionError;
-      setErroGeral(err.mensagem);
-      return;
-    }
-
-    if (result.validationErrors) {
-      setErroGeral("Revise os campos destacados e tente novamente.");
-      return;
-    }
-
-    // signUpEmail (via CriarClinicaComAdmin) pode gravar cookie de sessão.
-    // Encerramos a sessão e usamos navegação full-page para /login — soft
-    // navigation com sessão ativa faz o PageAuthContainer redirecionar e
-    // impede a mensagem de sucesso do cadastro.
-    await authClient.signOut();
-    window.location.assign("/login?cadastro=ok");
+    router.push("/cadastro/clinica");
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3" noValidate>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-5"
+        noValidate
+      >
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          Clínica
-        </p>
-
-        <FormField
-          control={form.control}
-          name="clinicaNome"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nome da clínica</FormLabel>
-              <FormControl>
-                <Input autoComplete="organization" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="endereco"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Endereço</FormLabel>
-              <FormControl>
-                <Input autoComplete="street-address" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="tipoDocumento"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Documento</FormLabel>
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                >
-                  <FormControl>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Tipo" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="cnpj">CNPJ</SelectItem>
-                    <SelectItem value="cpf">CPF</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="documento"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  {tipoDocumento === "cpf" ? "CPF" : "CNPJ"}
-                </FormLabel>
-                <FormControl>
-                  <Input inputMode="numeric" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <p className="pt-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-          Administrador
+          Seus dados
         </p>
 
         <FormField
@@ -209,19 +130,82 @@ export function SignupForm() {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="senha"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Senha</FormLabel>
-              <FormControl>
-                <Input type="password" autoComplete="new-password" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="senha"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Senha</FormLabel>
+                <FormControl>
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="confirmarSenha"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirmar senha</FormLabel>
+                <FormControl>
+                  <Input
+                    type="password"
+                    autoComplete="new-password"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="space-y-3 pt-2">
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            Escolha seu plano
+          </p>
+          <PromoLancamentoCallout />
+          <FormField
+            control={form.control}
+            name="planoId"
+            render={() => (
+              <FormItem>
+                <div className="grid gap-6 pt-2 lg:grid-cols-3 lg:items-stretch">
+                  {PLANOS_MARKETING.map((plano) => (
+                    <PricingCard
+                      key={plano.id}
+                      nome={plano.nome}
+                      descricao={plano.descricao}
+                      precoMinMensal={plano.precoMinMensal}
+                      precoMaxMensal={plano.precoMaxMensal}
+                      precoPromocionalMensal={plano.precoPromocionalMensal}
+                      recursos={[...plano.recursos]}
+                      ctaLabel="Selecionar"
+                      onSelect={() =>
+                        form.setValue("planoId", plano.id, {
+                          shouldValidate: true,
+                          shouldDirty: true,
+                        })
+                      }
+                      selected={planoSelecionado === plano.id}
+                      destaque={plano.destaque}
+                      badge={plano.badge}
+                    />
+                  ))}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         {erroGeral ? (
           <p role="alert" className="text-sm text-destructive">
@@ -231,8 +215,8 @@ export function SignupForm() {
 
         <AuthSubmitButton
           isLoading={form.formState.isSubmitting}
-          idleLabel="Começar trial grátis"
-          loadingLabel="Criando clínica…"
+          idleLabel="Continuar"
+          loadingLabel="Avançando…"
         />
       </form>
     </Form>

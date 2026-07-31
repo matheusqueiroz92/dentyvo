@@ -43,11 +43,18 @@ export const dentyvoTokens = {
 export type AppointmentStatus =
   (typeof dentyvoTokens.appointmentStatus)[keyof typeof dentyvoTokens.appointmentStatus];
 
+/** Normaliza NBSP do ICU para espaço comum — evita mismatch SSR/cliente. */
+function normalizarEspacosIntl(value: string): string {
+  return value.replace(/[\u00a0\u202f]/g, " ");
+}
+
 export const formatBRL = (value: number): string =>
-  new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value);
+  normalizarEspacosIntl(
+    new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value),
+  );
 
 export const formatDateBR = (
   value: Date | string | number,

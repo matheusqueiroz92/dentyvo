@@ -12,6 +12,7 @@ import { SidebarNavItem } from "./SidebarNavItem";
 
 type SidebarProps = {
   clinicaNome: string;
+  clinicaLogoUrl?: string | null;
   recolhida: boolean;
   onToggleRecolhida: () => void;
   onNavigate?: () => void;
@@ -22,6 +23,7 @@ type SidebarProps = {
 
 export function Sidebar({
   clinicaNome,
+  clinicaLogoUrl = null,
   recolhida,
   onToggleRecolhida,
   onNavigate,
@@ -47,8 +49,17 @@ export function Sidebar({
           !expandida && "justify-center px-2",
         )}
       >
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-          <Building2 className="size-5" aria-hidden />
+        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+          {clinicaLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- URL externa (Blob)
+            <img
+              src={clinicaLogoUrl}
+              alt=""
+              className="size-full object-cover"
+            />
+          ) : (
+            <Building2 className="size-5" aria-hidden />
+          )}
         </div>
         {expandida ? (
           <div className="min-w-0 flex-1">

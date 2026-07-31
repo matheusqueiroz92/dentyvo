@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import {
   Card,
@@ -22,7 +23,11 @@ export type PricingCardProps = {
   precoPromocionalMensal?: number;
   recursos: string[];
   ctaLabel: string;
-  ctaHref: string;
+  /** Link da landing. Ignorado quando `onSelect` está definido. */
+  ctaHref?: string;
+  /** Modo seleção (cadastro): CTA vira botão e destaca o card. */
+  onSelect?: () => void;
+  selected?: boolean;
   destaque?: boolean;
   badge?: string;
   footerNote?: ReactNode;
@@ -34,13 +39,17 @@ function formatFaixaMensal(min: number, max: number): string {
     currency: "BRL",
     maximumFractionDigits: 0,
   });
-  const minimo = formatter.format(min);
-  const maximo = formatter.format(max).replace(/^R\$\s?/, "");
+  // ICU pode emitir NBSP/narrow NBSP — normaliza para SSR == cliente.
+  const minimo = formatter.format(min).replace(/[\u00a0\u202f]/g, " ");
+  const maximo = formatter
+    .format(max)
+    .replace(/[\u00a0\u202f]/g, " ")
+    .replace(/^R\$\s?/, "");
   return `${minimo}–${maximo}`;
 }
 
 /**
- * Card de plano para superfícies de marketing (landing / preços).
+ * Card de plano para superfícies de marketing (landing / preços / cadastro).
  * Destaca plano popular, faixa de preço cheio e preço promocional opcional.
  */
 export function PricingCard({
@@ -52,21 +61,30 @@ export function PricingCard({
   recursos,
   ctaLabel,
   ctaHref,
+  onSelect,
+  selected = false,
   destaque = false,
   badge,
   footerNote,
 }: PricingCardProps) {
+  const selecionavel = typeof onSelect === "function";
+
   return (
     <Card
       className={cn(
         "relative flex h-full flex-col shadow-[var(--shadow-sm)]",
         destaque &&
+          !selected &&
           "border-primary shadow-[var(--shadow-md)] ring-1 ring-primary/20",
+        selected &&
+          "border-primary shadow-[var(--shadow-md)] ring-2 ring-primary/40",
       )}
+      data-selected={selected || undefined}
+      aria-pressed={selecionavel ? selected : undefined}
     >
       {(badge || destaque) && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <Badge variant={destaque ? "primary" : "default"}>
+          <Badge variant={destaque || selected ? "primary" : "default"}>
             {badge ?? "Destaque"}
           </Badge>
         </div>
@@ -127,14 +145,27 @@ export function PricingCard({
       </CardContent>
 
       <CardFooter className="mt-auto flex-col items-stretch gap-3">
-        <ButtonLink
-          href={ctaHref}
-          variant={destaque ? "primary" : "outline"}
-          size="lg"
-          className="w-full min-h-11"
-        >
-          {ctaLabel}
-        </ButtonLink>
+        {selecionavel ? (
+          <Button
+            type="button"
+            variant={selected || destaque ? "primary" : "outline"}
+            size="lg"
+            className="w-full min-h-11"
+            onClick={onSelect}
+            aria-pressed={selected}
+          >
+            {selected ? "Plano selecionado" : ctaLabel}
+          </Button>
+        ) : (
+          <ButtonLink
+            href={ctaHref ?? "/cadastro"}
+            variant={destaque ? "primary" : "outline"}
+            size="lg"
+            className="w-full min-h-11"
+          >
+            {ctaLabel}
+          </ButtonLink>
+        )}
         {footerNote ? (
           <p className="text-center text-xs leading-[18px] text-muted-foreground">
             {footerNote}

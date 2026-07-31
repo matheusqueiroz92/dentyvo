@@ -24,11 +24,15 @@ export function AppShell({ contexto, children }: AppShellProps) {
   const [mobileAberto, setMobileAberto] = useState(false);
 
   return (
-    <div className="flex min-h-full bg-background text-foreground">
+    <div
+      data-tema-clinica={contexto.clinicaTema}
+      className="flex min-h-full bg-background text-foreground"
+    >
       {/* Tablet+ : sidebar fixa recolhível; mobile (<640): drawer */}
       <div className="hidden sm:sticky sm:top-0 sm:flex sm:h-dvh sm:shrink-0">
         <Sidebar
           clinicaNome={contexto.clinicaNome}
+          clinicaLogoUrl={contexto.clinicaLogoUrl}
           recolhida={recolhida}
           onToggleRecolhida={toggleRecolhida}
         />
@@ -42,6 +46,7 @@ export function AppShell({ contexto, children }: AppShellProps) {
           </SheetDescription>
           <Sidebar
             clinicaNome={contexto.clinicaNome}
+            clinicaLogoUrl={contexto.clinicaLogoUrl}
             recolhida={false}
             onToggleRecolhida={() => undefined}
             onNavigate={() => setMobileAberto(false)}

@@ -2,103 +2,77 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const signOut = vi.fn().mockResolvedValue({});
-vi.mock("@/lib/auth-client", () => ({
-  authClient: {
-    signOut: (...args: unknown[]) => signOut(...args),
-  },
-}));
-
-const criarClinicaComAdminAction = vi.fn();
-vi.mock("@/actions/criar-clinica-com-admin", () => ({
-  criarClinicaComAdminAction: (...args: unknown[]) =>
-    criarClinicaComAdminAction(...args),
+const push = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
 }));
 
 import { SignupForm } from "@/components/auth/SignupForm";
+import { RASCUNHO_CADASTRO_KEY } from "@/lib/cadastro/rascunho";
 
-describe("SignupForm", () => {
+describe("SignupForm (etapa 1)", () => {
   beforeEach(() => {
-    signOut.mockClear();
-    criarClinicaComAdminAction.mockReset();
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: { assign: vi.fn() },
-    });
+    push.mockClear();
+    sessionStorage.clear();
   });
 
   it("mostra erros de validação ao submeter campos vazios", async () => {
     const user = userEvent.setup();
     render(<SignupForm />);
 
-    await user.click(
-      screen.getByRole("button", { name: "Começar trial grátis" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByText("Informe seu nome.")).toBeInTheDocument();
+    expect(screen.getByText("Informe um e-mail válido.")).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("exige confirmação de senha igual", async () => {
+    const user = userEvent.setup();
+    render(<SignupForm />);
+
+    await user.type(screen.getByLabelText("Seu nome"), "Admin");
+    await user.type(screen.getByLabelText("E-mail"), "admin@clinica.com");
+    await user.type(screen.getByLabelText("Senha"), "SenhaForte!123");
+    await user.type(screen.getByLabelText("Confirmar senha"), "outra");
+    await user.click(screen.getAllByRole("button", { name: "Selecionar" })[0]!);
+
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(
-      await screen.findByText("Informe o nome da clínica."),
+      await screen.findByText("As senhas não coincidem."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Informe o endereço.")).toBeInTheDocument();
-    expect(criarClinicaComAdminAction).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
   });
 
-  it("mostra spinner e desabilita o botão durante o submit", async () => {
+  it("pré-seleciona plano da query e salva rascunho ao continuar", async () => {
     const user = userEvent.setup();
-    let resolveAction!: (value: { data: { clinicaId: string } }) => void;
-    criarClinicaComAdminAction.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveAction = resolve;
-        }),
-    );
+    render(<SignupForm planoInicial="plano-medio" />);
 
-    render(<SignupForm />);
-    await user.type(screen.getByLabelText("Nome da clínica"), "Clínica Teste");
-    await user.type(screen.getByLabelText("Endereço"), "Rua A, 1");
-    await user.type(screen.getByLabelText("CNPJ"), "11222333000181");
+    expect(
+      screen.getByRole("button", { name: "Plano selecionado" }),
+    ).toBeInTheDocument();
+
     await user.type(screen.getByLabelText("Seu nome"), "Admin");
     await user.type(screen.getByLabelText("E-mail"), "admin@clinica.com");
     await user.type(screen.getByLabelText("Senha"), "SenhaForte!123");
+    await user.type(screen.getByLabelText("Confirmar senha"), "SenhaForte!123");
 
-    const submitPromise = user.click(
-      screen.getByRole("button", { name: "Começar trial grátis" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("auth-submit-spinner")).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Criando clínica/ }),
-      ).toBeDisabled();
+      expect(push).toHaveBeenCalledWith("/cadastro/clinica");
     });
 
-    resolveAction({ data: { clinicaId: "c1" } });
-    await submitPromise;
+    const raw = sessionStorage.getItem(RASCUNHO_CADASTRO_KEY);
+    expect(raw).toBeTruthy();
+    const rascunho = JSON.parse(raw!);
+    expect(rascunho.planoId).toBe("plano-medio");
+    expect(rascunho.email).toBe("admin@clinica.com");
   });
 
-  it("mostra mensagem amigável quando a action retorna erro", async () => {
-    const user = userEvent.setup();
-    criarClinicaComAdminAction.mockResolvedValue({
-      serverError: {
-        codigo: "DocumentoClinicaDuplicadoError",
-        mensagem: "Já existe uma clínica com este documento fiscal.",
-      },
-    });
-
+  it("mostra o indicador de promoção de lançamento", () => {
     render(<SignupForm />);
-    await user.type(screen.getByLabelText("Nome da clínica"), "Clínica Teste");
-    await user.type(screen.getByLabelText("Endereço"), "Rua A, 1");
-    await user.type(screen.getByLabelText("CNPJ"), "11222333000181");
-    await user.type(screen.getByLabelText("Seu nome"), "Admin");
-    await user.type(screen.getByLabelText("E-mail"), "admin@clinica.com");
-    await user.type(screen.getByLabelText("Senha"), "SenhaForte!123");
-    await user.click(
-      screen.getByRole("button", { name: "Começar trial grátis" }),
-    );
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Já existe uma clínica com este documento fiscal.",
-    );
-    expect(signOut).not.toHaveBeenCalled();
-    expect(window.location.assign).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent(/30 primeiras/);
   });
 });

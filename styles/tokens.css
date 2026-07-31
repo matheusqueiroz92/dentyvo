@@ -109,6 +109,52 @@
   --topbar-height: 4rem;
 }
 
+/**
+ * Temas visuais da clínica (shell autenticado).
+ * `azul-padrao` = tokens :root (sem override).
+ */
+[data-tema-clinica="verde"] {
+  --primary: 158 72% 31%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 158 72% 36%;
+  --accent: 151 45% 92%;
+  --accent-foreground: 158 68% 22%;
+  --info: 158 72% 31%;
+  --sidebar-primary: 158 72% 31%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 151 40% 94%;
+  --sidebar-accent-foreground: 158 68% 22%;
+  --sidebar-ring: 158 72% 36%;
+}
+
+[data-tema-clinica="roxo"] {
+  --primary: 267 52% 45%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 267 52% 50%;
+  --accent: 270 40% 95%;
+  --accent-foreground: 267 45% 30%;
+  --info: 267 52% 45%;
+  --sidebar-primary: 267 52% 45%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 270 35% 96%;
+  --sidebar-accent-foreground: 267 45% 30%;
+  --sidebar-ring: 267 52% 50%;
+}
+
+[data-tema-clinica="grafite"] {
+  --primary: 220 14% 28%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 220 14% 35%;
+  --accent: 220 12% 94%;
+  --accent-foreground: 220 14% 22%;
+  --info: 220 14% 32%;
+  --sidebar-primary: 220 14% 28%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 12% 95%;
+  --sidebar-accent-foreground: 220 14% 22%;
+  --sidebar-ring: 220 14% 35%;
+}
+
 .dark {
   color-scheme: dark;
 

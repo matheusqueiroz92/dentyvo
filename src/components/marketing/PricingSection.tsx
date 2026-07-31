@@ -1,54 +1,7 @@
 import { SectionReveal } from "@/components/marketing/SectionReveal";
-import { Badge } from "@/components/ui/badge";
+import { PromoLancamentoCallout } from "@/components/marketing/PromoLancamentoCallout";
 import { PricingCard } from "@/components/ui/PricingCard";
-import {
-  DURACAO_PROMOCAO_LANCAMENTO_MESES,
-  LIMITE_VAGAS_PROMOCIONAIS_LANCAMENTO,
-  PRECO_PROMOCIONAL_CENTAVOS,
-} from "@/core/assinatura/domain/constants";
-import { formatBRL } from "@/lib/design-tokens";
-
-const planos = [
-  {
-    nome: "Básico",
-    descricao: "Essencial para organizar agenda e prontuário.",
-    precoMinMensal: 79,
-    precoMaxMensal: 99,
-    precoPromocionalMensal: PRECO_PROMOCIONAL_CENTAVOS.basico / 100,
-    recursos: ["Agendamento", "Prontuário", "Anamnese", "Receituário"],
-  },
-  {
-    nome: "Médio",
-    descricao: "Tudo do Básico, com atendimento automático no WhatsApp.",
-    precoMinMensal: 149,
-    precoMaxMensal: 179,
-    precoPromocionalMensal: PRECO_PROMOCIONAL_CENTAVOS.medio / 100,
-    recursos: [
-      "Tudo do plano Básico",
-      "Bot de WhatsApp",
-      "Confirmações e respostas automáticas",
-      "Ideal para clínicas com volume no WhatsApp",
-    ],
-    destaque: true,
-    badge: "Mais popular",
-  },
-  {
-    nome: "Full",
-    descricao: "Para clínicas que precisam de escala e suporte prioritário.",
-    precoMinMensal: 249,
-    precoMaxMensal: 299,
-    recursos: [
-      "Tudo do plano Médio",
-      "Profissionais ilimitados",
-      "Suporte prioritário",
-      "Odontograma e periograma completos",
-    ],
-  },
-] as const;
-
-function formatPrecoPromocional(centavos: number): string {
-  return formatBRL(centavos / 100).replace(",00", "");
-}
+import { PLANOS_MARKETING } from "@/lib/cadastro/planos";
 
 export function PricingSection() {
   return (
@@ -75,48 +28,24 @@ export function PricingSection() {
           </p>
         </div>
 
-        <div
-          role="status"
-          className="mx-auto mt-8 flex max-w-3xl flex-col gap-2 rounded-[var(--radius-lg)] border border-[hsl(var(--warning)/0.35)] bg-[hsl(var(--warning-subtle))] px-4 py-4 text-left sm:flex-row sm:items-start sm:gap-3 sm:px-5"
-        >
-          <Badge
-            variant="warning"
-            className="w-fit shrink-0 normal-case tracking-normal"
-          >
-            Lançamento
-          </Badge>
-          <p className="text-sm leading-[22px] text-[hsl(var(--warning-subtle-foreground))]">
-            As {LIMITE_VAGAS_PROMOCIONAIS_LANCAMENTO} primeiras clínicas pagam{" "}
-            <span className="numeric font-semibold">
-              {formatPrecoPromocional(PRECO_PROMOCIONAL_CENTAVOS.basico)}/mês
-            </span>{" "}
-            no Básico e{" "}
-            <span className="numeric font-semibold">
-              {formatPrecoPromocional(PRECO_PROMOCIONAL_CENTAVOS.medio)}/mês
-            </span>{" "}
-            no Médio por {DURACAO_PROMOCAO_LANCAMENTO_MESES} meses. Depois, o
-            plano migra automaticamente para o preço cheio.
-          </p>
+        <div className="mx-auto mt-8 max-w-3xl">
+          <PromoLancamentoCallout />
         </div>
 
         <div className="mt-12 grid gap-6 lg:grid-cols-3 lg:items-stretch">
-          {planos.map((plano) => (
+          {PLANOS_MARKETING.map((plano) => (
             <PricingCard
-              key={plano.nome}
+              key={plano.id}
               nome={plano.nome}
               descricao={plano.descricao}
               precoMinMensal={plano.precoMinMensal}
               precoMaxMensal={plano.precoMaxMensal}
-              precoPromocionalMensal={
-                "precoPromocionalMensal" in plano
-                  ? plano.precoPromocionalMensal
-                  : undefined
-              }
+              precoPromocionalMensal={plano.precoPromocionalMensal}
               recursos={[...plano.recursos]}
               ctaLabel="Começar agora"
-              ctaHref="/cadastro"
-              destaque={"destaque" in plano ? plano.destaque : false}
-              badge={"badge" in plano ? plano.badge : undefined}
+              ctaHref={`/cadastro?plano=${plano.slug}`}
+              destaque={plano.destaque}
+              badge={plano.badge}
             />
           ))}
         </div>
