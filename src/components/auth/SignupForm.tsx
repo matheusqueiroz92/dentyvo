@@ -1,14 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { criarClinicaComAdminAction } from "@/actions/criar-clinica-com-admin";
-import { obterDestinoPosLogin } from "@/actions/obter-destino-pos-login";
-import { Button } from "@/components/ui/button";
+import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
 import {
   Form,
   FormControl,
@@ -41,7 +39,6 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export function SignupForm() {
-  const router = useRouter();
   const [erroGeral, setErroGeral] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
@@ -89,24 +86,12 @@ export function SignupForm() {
       return;
     }
 
-    // `criarUsuario` no servidor não grava cookie no browser — autentica aqui.
-    const { error: loginError } = await authClient.signIn.email({
-      email: values.email.trim().toLowerCase(),
-      password: values.senha,
-    });
-    if (loginError) {
-      router.push("/login");
-      return;
-    }
-
-    const destino = await obterDestinoPosLogin();
-    if (!destino.ok) {
-      router.push("/login");
-      return;
-    }
-
-    router.push(destino.destino);
-    router.refresh();
+    // signUpEmail (via CriarClinicaComAdmin) pode gravar cookie de sessão.
+    // Encerramos a sessão e usamos navegação full-page para /login — soft
+    // navigation com sessão ativa faz o PageAuthContainer redirecionar e
+    // impede a mensagem de sucesso do cadastro.
+    await authClient.signOut();
+    window.location.assign("/login?cadastro=ok");
   }
 
   return (
@@ -244,17 +229,11 @@ export function SignupForm() {
           </p>
         ) : null}
 
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          className="w-full"
-          disabled={form.formState.isSubmitting}
-        >
-          {form.formState.isSubmitting
-            ? "Criando clínica…"
-            : "Começar trial grátis"}
-        </Button>
+        <AuthSubmitButton
+          isLoading={form.formState.isSubmitting}
+          idleLabel="Começar trial grátis"
+          loadingLabel="Criando clínica…"
+        />
       </form>
     </Form>
   );

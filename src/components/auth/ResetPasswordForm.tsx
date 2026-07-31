@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -32,7 +33,6 @@ const schema = z
 type FormValues = z.infer<typeof schema>;
 
 export function ResetPasswordForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const tokenInvalido = searchParams.get("error") === "INVALID_TOKEN";
@@ -81,8 +81,7 @@ export function ResetPasswordForm() {
       return;
     }
 
-    router.push("/login");
-    router.refresh();
+    window.location.assign("/login");
   }
 
   return (
@@ -122,15 +121,11 @@ export function ResetPasswordForm() {
           </p>
         ) : null}
 
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          className="w-full"
-          disabled={form.formState.isSubmitting}
-        >
-          {form.formState.isSubmitting ? "Salvando…" : "Redefinir senha"}
-        </Button>
+        <AuthSubmitButton
+          isLoading={form.formState.isSubmitting}
+          idleLabel="Redefinir senha"
+          loadingLabel="Salvando…"
+        />
       </form>
     </Form>
   );

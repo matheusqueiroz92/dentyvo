@@ -36,7 +36,41 @@ linha de código de funcionalidade é escrita antes de existir uma spec aprovada
 - ShadCN/ui + Tailwind
 - Meta WhatsApp Cloud API (Embedded Signup) para o bot "secretária virtual"
 - AWS Lambda / serverless para jobs assíncronos (lembretes, processamento de webhook)
-- Testes: Vitest/Jest (unitário + integração) seguindo TDD
+- Testes: Vitest (unitário + componente) e Playwright (e2e) seguindo TDD
+
+## Testes
+
+### Camada 1 — unitário e componentes (`test:unit`)
+
+Vitest com dois projetos:
+
+- **node** — `src/**/*.test.ts` (domínio, use cases, adapters)
+- **jsdom** — `src/**/*.test.tsx` (formulários React + Testing Library)
+
+```bash
+npm run test:unit
+# ou, equivalente:
+npm run test
+```
+
+### Camada 2 — e2e (`test:e2e`)
+
+Playwright sobe `next dev` com `DATABASE_URL` apontando para `DATABASE_URL_E2E`
+(branch Neon de teste). Defina a variável em `.env.local` — **nunca** use o
+mesmo banco de desenvolvimento.
+
+```bash
+# Uma vez (browsers do Playwright)
+npx playwright install chromium
+
+# Rodar os fluxos críticos de autenticação
+npm run test:e2e
+```
+
+Os specs ficam em `e2e/`. Dados de clínica usam timestamp + CPF válido por
+execução (mesmo padrão de `scripts/teste-integracao-manual.mjs`) para permitir
+reexecução sem colisão. Login real com Google **não** entra no e2e; a rejeição
+de usuário social órfão é coberta em `src/lib/auth-sessao-social.test.ts`.
 
 ## Estrutura de pastas
 

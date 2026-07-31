@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { obterDestinoPosLogin } from "@/actions/obter-destino-pos-login";
+import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -20,6 +21,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { MENSAGEM_CONTA_SOCIAL_NAO_ENCONTRADA } from "@/lib/auth-destino";
+
+export const MENSAGEM_CADASTRO_OK =
+  "Clínica cadastrada com sucesso. Faça login para continuar.";
 
 const schema = z.object({
   email: z.string().email("Informe um e-mail válido."),
@@ -45,10 +49,12 @@ function mensagemErroSocial(searchParams: URLSearchParams): string | null {
 }
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [erroGeral, setErroGeral] = useState<string | null>(() =>
     mensagemErroSocial(searchParams),
+  );
+  const [sucessoCadastro] = useState(
+    () => searchParams.get("cadastro") === "ok",
   );
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -79,8 +85,9 @@ export function LoginForm() {
       return;
     }
 
-    router.push(destino.destino);
-    router.refresh();
+    // Navegação full-page: soft push após set de cookie de sessão pode
+    // deixar a URL em /login (mesmo padrão observado no cadastro).
+    window.location.assign(destino.destino);
   }
 
   async function entrarComGoogle() {
@@ -151,21 +158,23 @@ export function LoginForm() {
             )}
           />
 
+          {sucessoCadastro && !erroGeral ? (
+            <p role="status" className="text-sm text-success">
+              {MENSAGEM_CADASTRO_OK}
+            </p>
+          ) : null}
+
           {erroGeral ? (
             <p role="alert" className="text-sm text-destructive">
               {erroGeral}
             </p>
           ) : null}
 
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            className="w-full cursor-pointer"
-            disabled={form.formState.isSubmitting}
-          >
-            {form.formState.isSubmitting ? "Entrando…" : "Entrar"}
-          </Button>
+          <AuthSubmitButton
+            isLoading={form.formState.isSubmitting}
+            idleLabel="Entrar"
+            loadingLabel="Entrando…"
+          />
         </form>
       </Form>
 

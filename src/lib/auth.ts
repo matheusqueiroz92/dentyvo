@@ -5,6 +5,7 @@ import { SESSAO_TTL_MS } from "@/core/auth/domain/constants";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { usuarioTemVinculoAutorizado } from "@/lib/auth-destino.server";
+import { deveAutorizarCriacaoSessaoSocial } from "@/lib/auth-sessao-social";
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -64,13 +65,11 @@ export const auth = betterAuth({
          */
         before: async (session, ctx) => {
           const path = typeof ctx?.path === "string" ? ctx.path : "";
-          const isSocialCallback =
-            path.includes("/callback/") || path.includes("/sign-in/social");
-          if (!isSocialCallback) {
-            return { data: session };
-          }
-
-          const autorizado = await usuarioTemVinculoAutorizado(session.userId);
+          const temVinculo = await usuarioTemVinculoAutorizado(session.userId);
+          const autorizado = deveAutorizarCriacaoSessaoSocial({
+            path,
+            temVinculoAutorizado: temVinculo,
+          });
           if (!autorizado) {
             return false;
           }

@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button } from "@/components/ui/button";
+import { AuthSubmitButton } from "@/components/auth/AuthSubmitButton";
 import {
   Form,
   FormControl,
@@ -87,15 +87,11 @@ export function ForgotPasswordForm() {
           </p>
         ) : null}
 
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          className="w-full"
-          disabled={form.formState.isSubmitting}
-        >
-          {form.formState.isSubmitting ? "Enviando…" : "Enviar link"}
-        </Button>
+        <AuthSubmitButton
+          isLoading={form.formState.isSubmitting}
+          idleLabel="Enviar link"
+          loadingLabel="Enviando…"
+        />
       </form>
     </Form>
   );
