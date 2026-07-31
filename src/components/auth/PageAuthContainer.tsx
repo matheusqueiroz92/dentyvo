@@ -35,7 +35,7 @@ export async function PageAuthContainer({ children }: PageAuthContainerProps) {
             href="/"
             className="inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-          <ArrowLeftIcon className="h-4 w-4 mr-2" /> Voltar
+          <ArrowLeftIcon className="h-4 w-4 mr-2" />Voltar
           </Link>
         </div>
 

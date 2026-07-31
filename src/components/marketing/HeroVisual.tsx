@@ -42,7 +42,7 @@ function useIsClient(): boolean {
 
 function WhatsAppConversationScreen() {
   return (
-    <div className="flex h-full flex-col bg-[hsl(var(--muted))]">
+    <div className="flex h-full flex-col bg-muted">
       <div className="flex items-center gap-2.5 border-b border-border/80 bg-card px-3 py-2.5">
         <div className="brand-gradient flex size-8 shrink-0 items-center justify-center rounded-full text-primary-foreground">
           <Sparkles className="size-3.5" strokeWidth={1.75} aria-hidden />
@@ -64,18 +64,18 @@ function WhatsAppConversationScreen() {
       </div>
 
       <div className="flex flex-1 flex-col gap-2.5 overflow-hidden px-3 py-3">
-        <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-card px-3 py-2 text-[12px] leading-[18px] text-muted-foreground shadow-[var(--shadow-sm)]">
+        <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-card px-3 py-2 text-[12px] leading-4.5 text-muted-foreground shadow-(--shadow-sm)">
           Olá! Quero remarcar minha consulta de amanhã.
         </div>
-        <div className="ml-auto max-w-[88%] rounded-2xl rounded-tr-sm bg-[hsl(var(--info-subtle))] px-3 py-2 text-[12px] leading-[18px] text-[hsl(var(--info-subtle-foreground))] shadow-[var(--shadow-sm)]">
+        <div className="ml-auto max-w-[88%] rounded-2xl rounded-tr-sm bg-[hsl(var(--info-subtle))] px-3 py-2 text-[12px] leading-4.5 text-[hsl(var(--info-subtle-foreground))] shadow-(--shadow-sm)">
           Claro. Tenho horários às{" "}
           <span className="numeric font-medium">14:30</span> e{" "}
           <span className="numeric font-medium">16:00</span>. Qual prefere?
         </div>
-        <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-card px-3 py-2 text-[12px] leading-[18px] text-muted-foreground shadow-[var(--shadow-sm)]">
+        <div className="max-w-[88%] rounded-2xl rounded-tl-sm bg-card px-3 py-2 text-[12px] leading-4.5 text-muted-foreground shadow-(--shadow-sm)">
           16:00, por favor.
         </div>
-        <div className="ml-auto max-w-[88%] rounded-2xl rounded-tr-sm bg-[hsl(var(--success-subtle))] px-3 py-2 text-[12px] leading-[18px] text-[hsl(var(--success-subtle-foreground))] shadow-[var(--shadow-sm)]">
+        <div className="ml-auto max-w-[88%] rounded-2xl rounded-tr-sm bg-[hsl(var(--success-subtle))] px-3 py-2 text-[12px] leading-4.5 text-[hsl(var(--success-subtle-foreground))] shadow-(--shadow-sm)">
           Pronto — consulta remarcada e confirmada na agenda.
         </div>
       </div>
@@ -87,17 +87,17 @@ function PhoneFrame({ children }: { children: ReactNode }) {
   return (
     <div
       className={cn(
-        "relative mx-auto w-[min(100%,280px)] sm:w-[300px]",
+        "relative mx-auto w-[min(100%,280px)] sm:w-75",
         "rounded-[2rem] border border-[hsl(var(--brand-navy-950)/0.35)]",
-        "bg-[hsl(var(--brand-navy-950))] p-[10px]",
+        "bg-[hsl(var(--brand-navy-950))] p-2.5",
         "shadow-[0_28px_56px_-18px_hsl(var(--brand-navy-950)/0.28),0_12px_24px_-16px_hsl(var(--brand-navy-950)/0.18)]",
       )}
     >
       <div
         aria-hidden
-        className="absolute top-[10px] left-1/2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-[hsl(var(--brand-navy-950))]"
+        className="absolute top-2.5 left-1/2 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-[hsl(var(--brand-navy-950))]"
       />
-      <div className="relative aspect-[9/19] overflow-hidden rounded-[1.35rem] bg-card">
+      <div className="relative aspect-9/19 overflow-hidden rounded-[1.35rem] bg-card">
         {children}
       </div>
     </div>
@@ -167,7 +167,7 @@ export function HeroVisual({ className, activeIndex = 0 }: HeroVisualProps) {
   return (
     <div
       className={cn(
-        "relative flex min-h-[420px] items-center justify-center py-4 lg:min-h-[520px] lg:justify-end",
+        "relative flex min-h-105 items-center justify-center py-4 lg:min-h-130 lg:justify-end",
         className,
       )}
     >

@@ -18,9 +18,6 @@ export function HeroSection() {
       />
       <div className="relative mx-auto grid max-w-6xl gap-12 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:gap-10 lg:px-8 lg:py-24">
         <div>
-          <p className="brand-gradient-text text-sm font-semibold tracking-wide uppercase">
-            Dentyvo
-          </p>
           <h1
             id="hero-heading"
             className="mt-4 max-w-2xl text-3xl leading-tight font-bold tracking-tight text-foreground sm:text-4xl lg:text-[2.75rem] lg:leading-[1.15]"

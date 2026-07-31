@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ButtonLink } from "@/components/ui/button-link";
+import Image from "next/image";
 
 const navLinks = [
   { href: "#recursos", label: "Recursos" },
@@ -18,7 +19,7 @@ export function Header() {
           href="/"
           className="brand-gradient-text text-lg font-bold tracking-tight focus-visible:rounded-sm"
         >
-          Dentyvo
+          <Image src="/dentyvo-logo-nome.png" alt="Dentyvo" width={150} height={150} />
         </Link>
 
         <nav
