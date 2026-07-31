@@ -24,7 +24,7 @@ export function Header() {
             alt="Dentyvo"
             width={1626}
             height={448}
-            className="w-[150px]"
+            className="w-37.5"
             style={{ height: "auto" }}
             priority
           />

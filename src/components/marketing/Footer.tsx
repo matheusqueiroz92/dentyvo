@@ -8,20 +8,14 @@ export function Footer() {
 
   return (
     <footer className="border-t border-border bg-[hsl(var(--brand-navy-950))] text-primary-foreground">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr] lg:px-8">
-        <div className="space-y-3">
-          <p className="brand-gradient-text text-xl font-bold tracking-tight">
-            <Image src="/dentyvo-logo-slogan.png" alt="Dentyvo" width={1626} height={448} />
-          </p>
-          <p className="max-w-sm text-sm leading-5.5 text-primary-foreground/70">
-            O centro operacional da clínica odontológica: agenda, prontuário e
-            relacionamento em uma experiência integrada.
-          </p>
-        </div>
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.8fr_1fr_1fr_1fr] lg:px-8">
+        <Link href="/" className="space-y-3">
+            <Image src="/dentyvo-logo-slogan-branca.png" alt="Dentyvo" width={542} height={150} />
+        </Link>
 
         <div>
           <p className="text-[11px] font-semibold tracking-wide text-primary-foreground/50 uppercase">
-            Produto
+            Links rápidos
           </p>
           <ul className="mt-3 space-y-2 text-sm">
             <li>
@@ -41,12 +35,20 @@ export function Footer() {
               </a>
             </li>
             <li>
-              <Link
-                href="/cadastro"
+              <a
+                href="#faq"
                 className="text-primary-foreground/80 hover:text-primary-foreground"
               >
-                Cadastro de clínica
-              </Link>
+                FAQ
+              </a>
+            </li>
+            <li>
+              <a
+                href="#contato"
+                className="text-primary-foreground/80 hover:text-primary-foreground"
+              >
+                Contato
+              </a>
             </li>
           </ul>
         </div>
@@ -67,12 +69,52 @@ export function Footer() {
             <li>Brasil</li>
           </ul>
         </div>
+
+        <div>
+          <p className="text-[11px] font-semibold tracking-wide text-primary-foreground/50 uppercase">
+            Políticas
+          </p>
+          <ul className="mt-3 space-y-2 text-sm">
+            <li>
+              <a
+                href="#recursos"
+                className="text-primary-foreground/80 hover:text-primary-foreground"
+              >
+                Política de privacidade
+              </a>
+            </li>
+            <li>
+              <a
+                href="#termos-de-uso"
+                className="text-primary-foreground/80 hover:text-primary-foreground"
+              >
+                Termos de uso
+              </a>
+            </li>
+            <li>
+              <a
+                href="#politica-de-cookies"
+                className="text-primary-foreground/80 hover:text-primary-foreground"
+              >
+                Política de cookies
+              </a>
+            </li>
+            <li>
+              <Link
+                href="#politica-de-protecao-de-dados"
+                className="text-primary-foreground/80 hover:text-primary-foreground"
+              >
+                Política de proteção de dados
+              </Link>
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div className="border-t border-primary-foreground/10">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-5 text-xs text-primary-foreground/55 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <p>© {ano} Dentyvo. Todos os direitos reservados.</p>
-          <p>Feita para o tamanho real da sua clínica.</p>
+          <p>Desenvolvido por <Link href="https://www.azworkcenter.com.br" target="_blank" className="text-primary-foreground/80 hover:text-primary-foreground">AZ Work Center</Link>.</p>
         </div>
       </div>
     </footer>
