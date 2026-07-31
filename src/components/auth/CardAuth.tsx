@@ -32,7 +32,16 @@ export function CardAuth({ title, description, content }: CardAuthProps) {
   return (
     <Card className="shadow-(--shadow-md)">
       <CardHeader className="items-center text-center">
-        <Image src="/dentyvo-logo-nome.png" className="py-4" loading="eager" alt="Dentyvo" width={200} height={200} />
+        <Image
+          src="/dentyvo-logo-nome.png"
+          alt="Dentyvo"
+          width={1626}
+          height={448}
+          className="w-[200px] py-4"
+          style={{ height: "auto" }}
+          loading="eager"
+          priority
+        />
         <CardTitle className="mt-4 text-xl">{title}</CardTitle>
         <CardDescription className="text-center">
           {description.text}

@@ -19,7 +19,15 @@ export function Header() {
           href="/"
           className="brand-gradient-text text-lg font-bold tracking-tight focus-visible:rounded-sm"
         >
-          <Image src="/dentyvo-logo-nome.png" alt="Dentyvo" width={150} height={150} />
+          <Image
+            src="/dentyvo-logo-nome.png"
+            alt="Dentyvo"
+            width={1626}
+            height={448}
+            className="w-[150px]"
+            style={{ height: "auto" }}
+            priority
+          />
         </Link>
 
         <nav

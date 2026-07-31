@@ -4,10 +4,17 @@ import { defineConfig, devices } from "@playwright/test";
 loadEnv({ path: ".env.local" });
 loadEnv({ path: ".env" });
 
-const e2eDatabaseUrl = process.env.DATABASE_URL_E2E;
+const e2eDatabaseUrl = process.env.DATABASE_URL_E2E?.trim();
 if (!e2eDatabaseUrl) {
-  console.warn(
-    "[playwright] DATABASE_URL_E2E não definida — os testes e2e que consultam o banco falharão.",
+  throw new Error(
+    "DATABASE_URL_E2E não configurada. Defina em .env.local uma branch Neon de teste — nunca use o mesmo valor de DATABASE_URL (banco de desenvolvimento).",
+  );
+}
+
+const databaseUrlDev = process.env.DATABASE_URL?.trim();
+if (databaseUrlDev && e2eDatabaseUrl === databaseUrlDev) {
+  throw new Error(
+    "DATABASE_URL_E2E não pode ser igual a DATABASE_URL. Use uma branch Neon de teste separada do banco de desenvolvimento.",
   );
 }
 
@@ -40,8 +47,8 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       ...process.env,
-      // Força o app a usar o banco E2E — nunca o DATABASE_URL de desenvolvimento.
-      DATABASE_URL: e2eDatabaseUrl ?? "",
+      // Força o app a usar só o banco E2E (sem fallback para DATABASE_URL de dev).
+      DATABASE_URL: e2eDatabaseUrl,
       BETTER_AUTH_URL: baseURL,
     },
   },

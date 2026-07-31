@@ -8,10 +8,10 @@ import * as schema from "../../src/db/schema";
 config({ path: ".env.local" });
 config({ path: ".env" });
 
-const connectionString = process.env.DATABASE_URL_E2E;
+const connectionString = process.env.DATABASE_URL_E2E?.trim();
 if (!connectionString) {
   throw new Error(
-    "DATABASE_URL_E2E não definida. Use uma branch Neon de teste (nunca o banco de desenvolvimento).",
+    "DATABASE_URL_E2E não configurada. Use uma branch Neon de teste (nunca o banco de desenvolvimento).",
   );
 }
 
