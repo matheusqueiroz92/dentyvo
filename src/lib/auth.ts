@@ -4,6 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { SESSAO_TTL_MS } from "@/core/auth/domain/constants";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+import { aplicarPoliticaLinkingSocialAntesDeCriarConta } from "@/lib/auth-linking-risco.server";
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -13,12 +14,16 @@ const googleHabilitado = Boolean(googleClientId && googleClientSecret);
  * BetterAuth — sessão de 7 dias (spec 001).
  * Multi-tenant/RBAC via Profissional + AuthPort, não via roles nativos aqui.
  *
- * Google OAuth unificado (login + cadastro):
- * - cria usuário se o e-mail ainda não existir;
- * - account linking junta Google à conta e-mail/senha do mesmo e-mail
- *   (`trustedProviders` + `requireLocalEmailVerified: false` enquanto o
- *   signup por senha não verifica e-mail — ver docs Better Auth).
- * Destino pós-callback: `/auth/continuar` (app ou onboarding).
+ * Google OAuth unificado (login + cadastro).
+ *
+ * Account linking (Better Auth 1.6.x):
+ * - Não há flag nativo condicional por estado da conta — só
+ *   `requireLocalEmailVerified` global + `databaseHooks.account.create`.
+ * - `requireLocalEmailVerified: false` permite retomar onboarding incompleto
+ *   (sem clínica) com o mesmo e-mail.
+ * - Em conta COM clínica/plataforma e e-mail local não verificado, o hook
+ *   `account.create.before` neutraliza senha credential + revoga sessões
+ *   (evita account takeover). Ver `auth-linking-risco.ts`.
  */
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -49,13 +54,25 @@ export const auth = betterAuth({
       enabled: true,
       trustedProviders: googleHabilitado ? ["google"] : [],
       /**
-       * Default do Better Auth é `true` e bloqueia linking quando o user
-       * local tem `emailVerified: false` (nosso signup por senha). Sem isto,
-       * mesmo e-mail + Google não vira a mesma conta.
-       * @deprecated na lib — quando o gate virar incondicional, habilitar
+       * Permissivo globalmente para onboarding incompleto.
+       * Contas completas não verificadas são protegidas no hook abaixo.
+       * @deprecated na lib — quando o gate virar incondicional, exigir
        * verificação de e-mail no signup por senha.
        */
       requireLocalEmailVerified: false,
+    },
+  },
+  databaseHooks: {
+    account: {
+      create: {
+        before: async (account) => {
+          await aplicarPoliticaLinkingSocialAntesDeCriarConta({
+            userId: account.userId,
+            providerId: account.providerId,
+          });
+          return { data: account };
+        },
+      },
     },
   },
   session: {
