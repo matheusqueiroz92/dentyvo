@@ -34,6 +34,11 @@ export async function revogarSessoesDoUsuario(
 /**
  * Chamado em `databaseHooks.account.create.before` ao criar conta OAuth.
  * Conta completa + e-mail não verificado + senha → neutraliza takeover.
+ *
+ * TODO(auth-linking): após neutralizar, notificar a vítima (dono do e-mail
+ * que acabou de entrar via Google) via módulo 011 — aviso in-app/e-mail de
+ * que a conta foi protegida (sessões encerradas e senha invalidada; login
+ * por senha exige "esqueci a senha").
  */
 export async function aplicarPoliticaLinkingSocialAntesDeCriarConta(input: {
   userId: string;
