@@ -17,13 +17,15 @@ vi.mock("@/lib/auth-client", () => ({
 import { SignupClinicaForm } from "./SignupClinicaForm";
 import {
   RASCUNHO_CADASTRO_KEY,
+  limparRascunhoCadastro,
+  salvarRascunhoCadastro,
+  salvarSenhaCadastroEmMemoria,
   type RascunhoCadastro,
 } from "@/lib/cadastro/rascunho";
 
 const rascunho: RascunhoCadastro = {
   adminNome: "Admin",
   email: "admin@clinica.com",
-  senha: "SenhaForte!123",
   planoId: "plano-basico",
 };
 
@@ -31,6 +33,7 @@ describe("SignupClinicaForm (etapa 2)", () => {
   beforeEach(() => {
     replace.mockClear();
     signInEmail.mockClear();
+    limparRascunhoCadastro();
     sessionStorage.clear();
     Object.defineProperty(window, "location", {
       configurable: true,
@@ -39,7 +42,8 @@ describe("SignupClinicaForm (etapa 2)", () => {
   });
 
   it("mostra erros de validação com rascunho presente", async () => {
-    sessionStorage.setItem(RASCUNHO_CADASTRO_KEY, JSON.stringify(rascunho));
+    salvarRascunhoCadastro(rascunho);
+    salvarSenhaCadastroEmMemoria("SenhaForte!123");
     const concluirCadastro = vi.fn();
     const user = userEvent.setup();
     render(<SignupClinicaForm concluirCadastro={concluirCadastro} />);
@@ -56,8 +60,38 @@ describe("SignupClinicaForm (etapa 2)", () => {
     expect(concluirCadastro).not.toHaveBeenCalled();
   });
 
+  it("pede senha de novo se a memória sumiu (reload)", async () => {
+    salvarRascunhoCadastro(rascunho);
+    const concluirCadastro = vi.fn().mockResolvedValue({
+      data: { clinicaId: "c1", email: rascunho.email },
+    });
+    const user = userEvent.setup();
+    render(<SignupClinicaForm concluirCadastro={concluirCadastro} />);
+
+    expect(
+      await screen.findByText(/senha não fica salva no navegador/i),
+    ).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Nome da clínica"), "Clinica Teste");
+    await user.type(screen.getByLabelText("Endereço"), "Rua A, 1");
+    await user.type(screen.getByLabelText("CNPJ"), "11222333000181");
+    await user.type(screen.getByLabelText("Senha"), "SenhaForte!123");
+
+    await user.click(
+      screen.getByRole("button", { name: "Criar clínica e entrar" }),
+    );
+
+    await waitFor(() => {
+      expect(concluirCadastro).toHaveBeenCalled();
+    });
+    expect(concluirCadastro.mock.calls[0]?.[0].admin.senha).toBe(
+      "SenhaForte!123",
+    );
+  });
+
   it("conclui cadastro, autentica e vai ao dashboard", async () => {
-    sessionStorage.setItem(RASCUNHO_CADASTRO_KEY, JSON.stringify(rascunho));
+    salvarRascunhoCadastro(rascunho);
+    salvarSenhaCadastroEmMemoria("SenhaForte!123");
     const concluirCadastro = vi.fn().mockResolvedValue({
       data: { clinicaId: "c1", email: rascunho.email },
     });
@@ -83,6 +117,7 @@ describe("SignupClinicaForm (etapa 2)", () => {
     expect(payload.tema).toBe("verde");
     expect(payload.planoId).toBe("plano-basico");
     expect(payload.admin.email).toBe("admin@clinica.com");
+    expect(payload.admin.senha).toBe("SenhaForte!123");
 
     await waitFor(() => {
       expect(signInEmail).toHaveBeenCalled();

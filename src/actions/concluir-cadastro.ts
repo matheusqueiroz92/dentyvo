@@ -115,6 +115,9 @@ export const concluirCadastroAction = actionClient
       }
     }
 
+    // Mesmo princípio de IniciarTrial em `cadastrarClinicaComTrial`: falha de
+    // gateway/promoção NÃO reverte a clínica nem impede o retorno ao cliente
+    // (usuário entra no dashboard e pode assinar depois pelo painel).
     try {
       const assinaturaModule = createAssinaturaModuleFromEnv();
       await garantirPlanosCatalogo(assinaturaModule.planoRepo);
@@ -126,7 +129,7 @@ export const concluirCadastroAction = actionClient
       });
     } catch (erro) {
       console.error(
-        `[concluir-cadastro] CriarAssinatura falhou para clínica ${clinica.id}; trial mantido sem plano vinculado.`,
+        `[concluir-cadastro] CriarAssinatura falhou para clínica ${clinica.id}; clínica/trial mantidos sem plano vinculado. Retry pelo painel.`,
         erro,
       );
     }

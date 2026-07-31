@@ -23,7 +23,10 @@ import {
   isPlanoCadastroId,
   type PlanoCadastroId,
 } from "@/lib/cadastro/planos";
-import { salvarRascunhoCadastro } from "@/lib/cadastro/rascunho";
+import {
+  salvarRascunhoCadastro,
+  salvarSenhaCadastroEmMemoria,
+} from "@/lib/cadastro/rascunho";
 
 const schema = z
   .object({
@@ -76,10 +79,11 @@ export function SignupForm({ planoInicial = null }: SignupFormProps) {
       return;
     }
 
+    // Senha só em memória de módulo — nunca sessionStorage/localStorage.
+    salvarSenhaCadastroEmMemoria(values.senha);
     salvarRascunhoCadastro({
       adminNome: values.adminNome.trim(),
       email: values.email.trim().toLowerCase(),
-      senha: values.senha,
       planoId: values.planoId,
     });
 

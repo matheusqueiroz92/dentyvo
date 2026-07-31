@@ -28,8 +28,9 @@ import {
 import type { TemaClinica } from "@/core/auth/domain/TemaClinica";
 import { authClient } from "@/lib/auth-client";
 import {
-  limparRascunhoCadastro,
   lerRascunhoCadastro,
+  lerSenhaCadastroEmMemoria,
+  limparRascunhoCadastro,
   type RascunhoCadastro,
 } from "@/lib/cadastro/rascunho";
 import type { ServerActionError } from "@/lib/safe-action";
@@ -40,6 +41,8 @@ const schema = z.object({
   tipoDocumento: z.enum(["cpf", "cnpj"]),
   documento: z.string().min(1, "Informe o documento."),
   tema: z.enum(["azul-padrao", "verde", "roxo", "grafite"]),
+  /** Preenchido só se a senha em memória sumiu (ex.: reload). */
+  senha: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -92,6 +95,7 @@ export function SignupClinicaForm({
   // null inicial em SSR e 1º paint do cliente — evita hydration mismatch
   // com sessionStorage.
   const [rascunho, setRascunho] = useState<RascunhoCadastro | null>(null);
+  const [senhaEmMemoria, setSenhaEmMemoria] = useState<string | null>(null);
   const [pronto, setPronto] = useState(false);
   const [logo, setLogo] = useState<File | null>(null);
   const [erroGeral, setErroGeral] = useState<string | null>(null);
@@ -104,6 +108,7 @@ export function SignupClinicaForm({
       tipoDocumento: "cnpj",
       documento: "",
       tema: "azul-padrao",
+      senha: "",
     },
   });
 
@@ -118,8 +123,9 @@ export function SignupClinicaForm({
       router.replace("/cadastro");
       return;
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratação do rascunho client-only
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratação client-only
     setRascunho(r);
+    setSenhaEmMemoria(lerSenhaCadastroEmMemoria());
     setPronto(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só na montagem
   }, []);
@@ -127,6 +133,14 @@ export function SignupClinicaForm({
   async function onSubmit(values: FormValues) {
     if (!rascunho) {
       router.replace("/cadastro");
+      return;
+    }
+
+    const senha = senhaEmMemoria ?? values.senha?.trim() ?? "";
+    if (senha.length < 8) {
+      form.setError("senha", {
+        message: "Informe a senha (mínimo 8 caracteres).",
+      });
       return;
     }
 
@@ -145,7 +159,7 @@ export function SignupClinicaForm({
       admin: {
         nome: rascunho.adminNome,
         email: rascunho.email,
-        senha: rascunho.senha,
+        senha,
       },
       clinica: {
         nome: values.clinicaNome,
@@ -175,7 +189,7 @@ export function SignupClinicaForm({
 
     const { error: loginError } = await authClient.signIn.email({
       email: rascunho.email,
-      password: rascunho.senha,
+      password: senha,
     });
 
     if (loginError) {
@@ -194,6 +208,8 @@ export function SignupClinicaForm({
     );
   }
 
+  const precisaRedigitarSenha = !senhaEmMemoria;
+
   return (
     <Form {...form}>
       <form
@@ -210,6 +226,32 @@ export function SignupClinicaForm({
             {rascunho.planoId.replace("plano-", "")}
           </span>
         </div>
+
+        {precisaRedigitarSenha ? (
+          <div className="space-y-3 rounded-md border border-[hsl(var(--warning)/0.35)] bg-[hsl(var(--warning-subtle))] px-3 py-3">
+            <p className="text-sm leading-[22px] text-[hsl(var(--warning-subtle-foreground))]">
+              Por segurança a senha não fica salva no navegador. Informe-a
+              novamente para concluir o cadastro.
+            </p>
+            <FormField
+              control={form.control}
+              name="senha"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Senha</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      autoComplete="current-password"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        ) : null}
 
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           Clínica

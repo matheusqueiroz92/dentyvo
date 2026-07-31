@@ -66,9 +66,11 @@ describe("SignupForm (etapa 1)", () => {
 
     const raw = sessionStorage.getItem(RASCUNHO_CADASTRO_KEY);
     expect(raw).toBeTruthy();
+    expect(raw).not.toContain("SenhaForte");
     const rascunho = JSON.parse(raw!);
     expect(rascunho.planoId).toBe("plano-medio");
     expect(rascunho.email).toBe("admin@clinica.com");
+    expect(rascunho).not.toHaveProperty("senha");
   });
 
   it("mostra o indicador de promoção de lançamento", () => {
