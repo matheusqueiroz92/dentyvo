@@ -33,7 +33,13 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 ### Prontuario
 - id, clinicaId, pacienteId, criadoEm
 - Evolucoes[]: registros de atendimento (data, profissionalId, descrição,
-  procedimentoId)
+  procedimentoId?, agendamentoId?)
+  - `agendamentoId` (opcional, nullable): vínculo com o `Agendamento` que
+    originou o registro clínico, quando aplicável; null em evoluções fora
+    do fluxo de consulta agendada (ex.: retorno espontâneo). Preparação
+    para a spec 013 (rastrear visita → cobrança). Ver feature 003 —
+    **aprovado para o Arquiteto** na próxima alteração do módulo
+    `prontuario`.
 
 ### Anamnese
 - id, prontuarioId, respostas (estruturado: histórico médico, alergias,
@@ -133,6 +139,20 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 ### Cobranca
 - id, assinaturaId, gatewayCobrancaId, valor, metodo (`pix`|`boleto`|`cartao`),
   status (`pendente`|`paga`|`vencida`|`estornada`), vencimento, pagaEm
+- **Não confundir** com `CobrancaPaciente` (financeiro clínico — spec 013
+  futura). `Cobranca` aqui é cobrança da **assinatura SaaS** da clínica.
+
+### CobrancaPaciente *(futuro / spec 013 — não implementado ainda)*
+- Nome reservado para a entidade de cobrança por atendimento ao paciente
+  (contas a receber). Vocabulário fixado para evitar nome incompatível em
+  integrações antes da spec formal. Campos, RBAC e invariantes: ver
+  planejamento em `specs/00-overview.md` (seção Financeiro — 013).
+
+### DespesaOperacional *(futuro / spec 013 — não implementado ainda)*
+- Nome reservado para despesa operacional da clínica (contas a pagar:
+  aluguel, salário, material, equipamento, etc.). Vocabulário fixado para
+  evitar nome incompatível antes da spec formal. Ver
+  `specs/00-overview.md` (seção Financeiro — 013).
 
 ### Notificacao (spec 011)
 - id

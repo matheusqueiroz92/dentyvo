@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export function Footer() {
@@ -10,9 +11,9 @@ export function Footer() {
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr] lg:px-8">
         <div className="space-y-3">
           <p className="brand-gradient-text text-xl font-bold tracking-tight">
-            Dentyvo
+            <Image src="/dentyvo-logo-slogan.png" alt="Dentyvo" width={1626} height={448} />
           </p>
-          <p className="max-w-sm text-sm leading-[22px] text-primary-foreground/70">
+          <p className="max-w-sm text-sm leading-5.5 text-primary-foreground/70">
             O centro operacional da clínica odontológica: agenda, prontuário e
             relacionamento em uma experiência integrada.
           </p>

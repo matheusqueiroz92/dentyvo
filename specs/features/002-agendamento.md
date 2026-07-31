@@ -43,8 +43,12 @@ clínica sem conflitos de horário.
       buscarPorId, listar), escopado por `clinicaId`.
 - [ ] Ocupação de slot (`Marcar` / `Remarcar` / `Cancelar`) é atômica
       (transação) e segura sob concorrência (constraint de exclusão no banco).
-- [ ] `admin`, `dentista` e `recepcao` podem marcar/remarcar/cancelar/confirmar;
-      apenas `admin` e `dentista` definem disponibilidade.
+- [ ] `admin`, `dentista` e `recepcao` podem marcar/remarcar/cancelar/confirmar
+      e listar agendamentos do período; apenas `admin` e `dentista` definem
+      disponibilidade.
+- [ ] É possível listar agendamentos de um período (`dataInicio`/`dataFim`),
+      com filtro opcional por `profissionalId`, ordenados por
+      `dataHoraInicio` ascendente; escopo por `clinicaId`.
 - [ ] Toda leitura/escrita é escopada por `clinicaId` da sessão (padrão 001).
 
 ### Matriz de permissões (MVP desta feature)
@@ -53,6 +57,7 @@ clínica sem conflitos de horário.
 |---|---|---|---|
 | Definir disponibilidade do profissional | sim | sim | não |
 | Marcar / remarcar / cancelar / confirmar consulta | sim | sim | sim |
+| Listar agendamentos do período | sim | sim | sim |
 | CRUD Procedimento | sim | sim | sim |
 | CRUD Paciente | sim | sim | sim |
 | Listar horários disponíveis | sim | sim | sim |
@@ -103,6 +108,7 @@ clínica sem conflitos de horário.
 ### `core/agendamento`
 - `DefinirDisponibilidadeProfissional(profissionalId, janelas[]) → DisponibilidadeProfissional[]`
 - `ListarHorariosDisponiveis(profissionalId, data) → Horario[]`
+- `ListarAgendamentosDoPeriodo(clinicaId, dataInicio, dataFim, profissionalId?) → Agendamento[]`
 - `MarcarConsulta(pacienteId, profissionalId, procedimentoId, dataHoraInicio, origem, duracaoMinutos?) → Agendamento`
 - `RemarcarConsulta(agendamentoId, novaDataHoraInicio, duracaoMinutos?) → Agendamento`
 - `CancelarConsulta(agendamentoId, motivo?) → void`
@@ -139,6 +145,7 @@ Schema Drizzle esperado (orientação para implementação futura):
 |---|---|---|---|
 | Definir disponibilidade | Server Action (autenticada, admin/dentista) | profissionalId, janelas[] | janelas salvas |
 | Listar horários | Server Action (autenticada) | profissionalId, data | lista de slots |
+| Listar agendamentos do período | Server Action (autenticada, admin/dentista/recepcao) | dataInicio, dataFim, profissionalId? | `Agendamento[]` ordenados por `dataHoraInicio` |
 | Marcar consulta | Server Action (autenticada) | paciente, profissional, procedimento, início, origem, duração? | Agendamento (`pendente`) + intenção de lembrete |
 | Remarcar | Server Action (autenticada) | agendamentoId, novo início, duração? | Agendamento atualizado |
 | Cancelar | Server Action (autenticada) | agendamentoId, motivo? | ok |
@@ -169,7 +176,10 @@ Schema Drizzle esperado (orientação para implementação futura):
 - **Aplicação:** `RemarcarConsulta` libera o antigo e ocupa o novo de forma
   atômica; falha de lembrete stub não desfaz o agendamento (best-effort);
   RBAC: recepção não define disponibilidade; isolamento por `clinicaId`;
-  CRUD Paciente/Procedimento escopados ao tenant.
+  CRUD Paciente/Procedimento escopados ao tenant;
+  `ListarAgendamentosDoPeriodo` retorna só do `clinicaId` da sessão, filtra
+  por `profissionalId` quando informado, ordena por `dataHoraInicio`
+  ascendente; `admin`/`dentista`/`recepcao` podem listar.
 - **Integração:** constraint/exclusão no banco impede race de dois marcadores
   no mesmo slot; repositórios respeitam `clinicaId`.
 - **Contrato (crítico):** definir disponibilidade → listar slots → marcar →
@@ -196,15 +206,22 @@ Schema Drizzle esperado (orientação para implementação futura):
 5. **Paciente:** módulo próprio `core/paciente` (CRUD mínimo) nesta feature;
    003 consome via port. **Procedimento:** permanece em `core/agendamento`
    (CRUD mínimo).
-6. **RBAC:** marcar/remarcar/cancelar/confirmar = `admin` | `dentista` |
-   `recepcao`; definir disponibilidade = só `admin` | `dentista`.
+6. **RBAC:** marcar/remarcar/cancelar/confirmar e
+   `ListarAgendamentosDoPeriodo` = `admin` | `dentista` | `recepcao`;
+   definir disponibilidade = só `admin` | `dentista`.
 7. **Confirmação:** no escopo (`ConfirmarConsulta`, `pendente` → `confirmado`).
 8. **Lembrete:** stub que registra intenção (log/registro “lembrete a enviar”),
    antecedência default 24h; job/envio real depois da integração de notificação.
 9. **Casos de uso extras:** `DefinirDisponibilidadeProfissional`,
-   `ConfirmarConsulta`, CRUD Paciente e Procedimento.
+   `ConfirmarConsulta`, `ListarAgendamentosDoPeriodo`, CRUD Paciente e
+   Procedimento.
 10. **Auth:** reutilizar `ObterContextoSessao` sem modificar `src/core/auth`;
     disponibilidade como entidade nova em `core/agendamento`.
+11. **`ListarAgendamentosDoPeriodo`:** filtro por `dataHoraInicio` no intervalo
+    half-open `[dataInicio, dataFim)`; `profissionalId` opcional; retorna
+    todos os status do período; ordenação ascendente por `dataHoraInicio`;
+    `clinicaId` deve coincidir com o da sessão (padrão 001). **Aprovado** —
+    pronto para o Arquiteto.
 
 ## Débito técnico conhecido
 

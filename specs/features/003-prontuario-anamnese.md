@@ -29,7 +29,13 @@ digitalmente, para ter histórico completo e acessível sem depender de papel.
       etc.) **não** faz parte do MVP — fica para validação com profissional
       de odontologia antes do lançamento (Onda 3 do plano de execução).
 - [ ] Cada atendimento gera uma "evolução" (registro datado, vinculado ao
-      profissional e, se aplicável, a um `procedimentoId` opaco).
+      profissional e, se aplicável, a um `procedimentoId` opaco e/ou a um
+      `agendamentoId` opcional).
+- [ ] `Evolucao.agendamentoId` é opcional (nullable): vínculo com o
+      `Agendamento` que originou o registro clínico, quando aplicável.
+      Evoluções fora do fluxo de consulta agendada (ex.: retorno
+      espontâneo) permanecem com `agendamentoId` null. Preparação para o
+      módulo financeiro futuro (013) — rastrear visita → cobrança.
 - [ ] Evolução não pode ser apagada nem editada in-place; retificação cria
       novo registro ligado ao original (no máximo **uma** retificação por
       evolução original no MVP).
@@ -57,6 +63,15 @@ digitalmente, para ter histórico completo e acessível sem depender de papel.
   não se retifica uma retificação.
 - `procedimentoId` na evolução é id opaco opcional — no MVP não se valida
   existência contra o módulo de agendamento.
+- `agendamentoId` na evolução é id opaco opcional (nullable) — vínculo com
+  o `Agendamento` de origem quando o registro clínico vem de consulta
+  agendada; null quando não há agendamento (retorno espontâneo, etc.).
+  No MVP não se valida existência contra `core/agendamento` (mesmo padrão
+  do `procedimentoId`). O campo é definido em `RegistrarEvolucao`;
+  retificação não redefine o vínculo (rastreio financeiro usa a evolução
+  `tipo: registro`). Preparação para a spec 013 — **aprovado para o
+  Arquiteto incorporar na próxima vez que o módulo `prontuario` for
+  tocado** (sem ciclo completo de Implementador só por este campo).
 - Isolamento multi-tenant: toda leitura/escrita escopada por `clinicaId` da
   sessão; nunca confiar só em filtro de UI.
 - Log de auditoria (`detalhe`) **nunca** contém texto clínico (descrição de
@@ -135,7 +150,7 @@ de odontologia antes do lançamento** (Onda 3).
   (obrigatório); a evolução alvo deve ser `tipo: registro` e ainda não
   retificada.
 - Campos comuns: `profissionalId`, `descricao`, `registradoEm`,
-  `procedimentoId?`
+  `procedimentoId?`, `agendamentoId?` (nullable; ver regras de negócio)
 
 ### Auditoria — evento mínimo
 Tabela em arquivo próprio `src/db/schema/auditoria-log.ts` (não editar
@@ -168,7 +183,7 @@ listagens/buscas no MVP.
   (nova versão snapshot; não sobrescreve a anterior)
 - `ListarVersoesAnamnese(prontuarioId) → Anamnese[]`
 - `ObterVersaoVigenteAnamnese(prontuarioId) → Anamnese | null`
-- `RegistrarEvolucao(prontuarioId, descricao, procedimentoId?) → Evolucao`
+- `RegistrarEvolucao(prontuarioId, descricao, procedimentoId?, agendamentoId?) → Evolucao`
 - `RetificarEvolucao(evolucaoId, descricao, motivoRetificacao) → Evolucao`
 - `ObterEvolucoesDoProntuario(prontuarioId) → Evolucao[]`
 - `ConsultarProntuario(prontuarioId) → Prontuario`  
@@ -201,8 +216,11 @@ sempre com sessão 001. Sem regra de negócio na action.
 - Encadeamento de retificação sobre retificação (revisitar se surgir
   necessidade real).
 - Log de auditoria em listagens/buscas de pacientes.
-- Validação de existência de `procedimentoId` contra agendamento.
+- Validação de existência de `procedimentoId` ou `agendamentoId` contra
+  o módulo de agendamento.
 - Alterações em `src/core/auth`.
+- Módulo financeiro do paciente / cobrança por atendimento (spec 013) —
+  este campo só reserva o vínculo; não gera cobrança.
 
 ## Plano de testes
 - Domínio: evolução imutável; retificação válida; segunda retificação da
