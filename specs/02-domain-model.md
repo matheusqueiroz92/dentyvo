@@ -24,6 +24,11 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 
 ### Paciente
 - id, clinicaId, nome, cpf, telefone (WhatsApp), dataNascimento, contatoEmergencia
+- `consentimentoLgpd?` (nullable) — `{ aceitoEm, versaoTermo, finalidades[] }`
+  com finalidades `tratamento_clinico` | `comunicacao_lembretes` |
+  `comunicacao_marketing`; ver feature 002 (emenda aprovada; captura no
+  cadastro / `RegistrarConsentimentoPaciente`; ausência não bloqueia
+  atendimento clínico — LGPD art. 11, II, f)
 
 ### Agendamento
 - id, clinicaId, pacienteId, profissionalId, procedimentoId, dataHoraInicio,
