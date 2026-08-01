@@ -249,9 +249,24 @@ explicitamente esse item de “fora de escopo” da 002.
 - Prescrição de medicamentos controlados segue exigências do CFO/Anvisa
   (validar necessidade de assinatura digital com validade jurídica antes do
   lançamento dessa funcionalidade).
-- **Bloqueante antes do primeiro cliente real:** `EmailPort` (001) e
-  `EmailNotificacaoCanalAdapter` (011) ainda são implementações console-only
-  (log, sem envio real). Escolher provedor de e-mail transacional (ex: Resend,
-  Amazon SES, SendGridBrasil) e substituir os adapters antes de onboardar
-  qualquer clínica fora do ambiente de teste — sem isso, convites e avisos de
-  cobrança nunca chegam ao destinatário real.
+### Itens bloqueantes pré-lançamento (primeiro cliente real)
+
+Antes de onboardar qualquer clínica fora do ambiente de teste:
+
+1. **Provedor de e-mail real:** `EmailPort` (001) e
+   `EmailNotificacaoCanalAdapter` (011) ainda são implementações
+   console-only (log, sem envio real). Escolher provedor de e-mail
+   transacional (ex: Resend, Amazon SES, SendGridBrasil) e substituir os
+   adapters — sem isso, convites e avisos de cobrança nunca chegam ao
+   destinatário real.
+2. **Vercel Cron (e/ou QStash):** jobs periódicos necessários ao produto
+   (avisos de aumento de preço da promoção 012, lembretes/renovação
+   previstos na arquitetura) devem estar autenticados e operacionais em
+   produção — ver `specs/01-architecture.md` e specs 011/012.
+3. **Revisão jurídica LGPD/saúde:** os documentos em `/termos`,
+   `/privacidade` e `/cookies` são **modelos estruturais** com aviso
+   visível na UI. **TODO bloqueante:** validação por profissional
+   jurídico especializado em LGPD/saúde (incluindo papéis
+   controladora/operadora, bases legais, foro, DPO e textos de promoção)
+   **antes** do lançamento comercial. Remover o aviso
+   `AvisoDocumentoNaoRevisado` somente após essa confirmação.

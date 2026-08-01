@@ -76,35 +76,27 @@ export function Footer() {
           </p>
           <ul className="mt-3 space-y-2 text-sm">
             <li>
-              <a
-                href="#recursos"
+              <Link
+                href="/privacidade"
                 className="text-primary-foreground/80 hover:text-primary-foreground"
               >
                 Política de privacidade
-              </a>
-            </li>
-            <li>
-              <a
-                href="#termos-de-uso"
-                className="text-primary-foreground/80 hover:text-primary-foreground"
-              >
-                Termos de uso
-              </a>
-            </li>
-            <li>
-              <a
-                href="#politica-de-cookies"
-                className="text-primary-foreground/80 hover:text-primary-foreground"
-              >
-                Política de cookies
-              </a>
+              </Link>
             </li>
             <li>
               <Link
-                href="#politica-de-protecao-de-dados"
+                href="/termos"
                 className="text-primary-foreground/80 hover:text-primary-foreground"
               >
-                Política de proteção de dados
+                Termos de uso
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/cookies"
+                className="text-primary-foreground/80 hover:text-primary-foreground"
+              >
+                Política de cookies
               </Link>
             </li>
           </ul>

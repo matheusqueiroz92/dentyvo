@@ -7,6 +7,9 @@ import { authClient } from "@/lib/auth-client";
 
 type ContinuarComGoogleButtonProps = {
   onError?: (mensagem: string) => void;
+  /** Retorne false para impedir o redirect OAuth (ex.: aceite legal). */
+  onBeforeStart?: () => boolean;
+  disabled?: boolean;
 };
 
 /**
@@ -15,10 +18,13 @@ type ContinuarComGoogleButtonProps = {
  */
 export function ContinuarComGoogleButton({
   onError,
+  onBeforeStart,
+  disabled = false,
 }: ContinuarComGoogleButtonProps) {
   const [loading, setLoading] = useState(false);
 
   async function handleClick() {
+    if (onBeforeStart && !onBeforeStart()) return;
     setLoading(true);
     const { error } = await authClient.signIn.social({
       provider: "google",
@@ -39,7 +45,7 @@ export function ContinuarComGoogleButton({
       variant="outline"
       size="lg"
       className="w-full cursor-pointer"
-      disabled={loading}
+      disabled={disabled || loading}
       onClick={handleClick}
     >
       {loading ? "Redirecionando…" : "Continuar com Google"}

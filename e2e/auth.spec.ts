@@ -21,6 +21,9 @@ async function preencherCadastro(
   await page.getByLabel("Senha", { exact: true }).fill(dados.senha);
   await page.getByLabel("Confirmar senha").fill(dados.senha);
   await page.getByRole("button", { name: "Selecionar" }).first().click();
+  await page
+    .getByRole("checkbox", { name: /Li e aceito os Termos de uso/i })
+    .click();
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
 
   await expect(page).toHaveURL(/\/cadastro\/clinica/, { timeout: 15_000 });

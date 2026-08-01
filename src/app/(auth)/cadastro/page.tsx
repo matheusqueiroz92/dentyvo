@@ -40,6 +40,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
           link: { href: "/login", label: "Faça o login" },
         }}
         content={<SignupForm planoInicial={planoInicial} />}
+        showLegalFooter={false}
       />
     </PageAuthContainer>
   );

@@ -7,19 +7,33 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
 
+const signInSocial = vi.fn();
 vi.mock("@/lib/auth-client", () => ({
   authClient: {
     useSession: () => ({ data: null, isPending: false }),
-    signIn: { social: vi.fn() },
+    signIn: { social: (...args: unknown[]) => signInSocial(...args) },
   },
 }));
 
-import { SignupForm } from "@/components/auth/SignupForm";
+import {
+  MENSAGEM_ACEITE_OBRIGATORIO,
+  SignupForm,
+} from "@/components/auth/SignupForm";
 import { RASCUNHO_CADASTRO_KEY } from "@/lib/cadastro/rascunho";
+
+async function preencherDadosBasicos(
+  user: ReturnType<typeof userEvent.setup>,
+) {
+  await user.type(screen.getByLabelText("Seu nome"), "Admin");
+  await user.type(screen.getByLabelText("E-mail"), "admin@clinica.com");
+  await user.type(screen.getByLabelText("Senha"), "SenhaForte!123");
+  await user.type(screen.getByLabelText("Confirmar senha"), "SenhaForte!123");
+}
 
 describe("SignupForm (etapa 1)", () => {
   beforeEach(() => {
     push.mockClear();
+    signInSocial.mockClear();
     sessionStorage.clear();
   });
 
@@ -43,6 +57,11 @@ describe("SignupForm (etapa 1)", () => {
     await user.type(screen.getByLabelText("Senha"), "SenhaForte!123");
     await user.type(screen.getByLabelText("Confirmar senha"), "outra");
     await user.click(screen.getAllByRole("button", { name: "Selecionar" })[0]!);
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Li e aceito os Termos de uso/i,
+      }),
+    );
 
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
@@ -50,6 +69,33 @@ describe("SignupForm (etapa 1)", () => {
       await screen.findByText("As senhas não coincidem."),
     ).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it("exige aceite explícito dos Termos e da Política de Privacidade", async () => {
+    const user = userEvent.setup();
+    render(<SignupForm planoInicial="plano-medio" />);
+
+    await preencherDadosBasicos(user);
+    await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(
+      await screen.findByText(MENSAGEM_ACEITE_OBRIGATORIO),
+    ).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("bloqueia Continuar com Google sem aceite legal", async () => {
+    const user = userEvent.setup();
+    render(<SignupForm />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Continuar com Google" }),
+    );
+
+    expect(
+      await screen.findByRole("alert"),
+    ).toHaveTextContent(MENSAGEM_ACEITE_OBRIGATORIO);
+    expect(signInSocial).not.toHaveBeenCalled();
   });
 
   it("pré-seleciona plano da query e salva rascunho ao continuar", async () => {
@@ -60,10 +106,12 @@ describe("SignupForm (etapa 1)", () => {
       screen.getByRole("button", { name: "Plano selecionado" }),
     ).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Seu nome"), "Admin");
-    await user.type(screen.getByLabelText("E-mail"), "admin@clinica.com");
-    await user.type(screen.getByLabelText("Senha"), "SenhaForte!123");
-    await user.type(screen.getByLabelText("Confirmar senha"), "SenhaForte!123");
+    await preencherDadosBasicos(user);
+    await user.click(
+      screen.getByRole("checkbox", {
+        name: /Li e aceito os Termos de uso/i,
+      }),
+    );
 
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 

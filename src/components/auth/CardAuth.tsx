@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 
 import {
@@ -11,7 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import Image from "next/image";
 
 export type CardAuthDescription = {
   text: string;
@@ -22,13 +22,22 @@ export type CardAuthProps = {
   title: string;
   description: CardAuthDescription;
   content: ReactNode;
+  /**
+   * Rodapé passivo com links legais. Desligar no cadastro quando o
+   * formulário exige checkbox explícito de aceite (confirmação ativa).
+   */
+  showLegalFooter?: boolean;
 };
 
 /**
  * Card padrão das páginas de auth (DESIGN_SYSTEM §18).
- * Wordmark tipográfica até o logo final ser aprovado.
  */
-export function CardAuth({ title, description, content }: CardAuthProps) {
+export function CardAuth({
+  title,
+  description,
+  content,
+  showLegalFooter = true,
+}: CardAuthProps) {
   return (
     <Card className="shadow-(--shadow-md)">
       <CardHeader className="items-center text-center">
@@ -61,19 +70,27 @@ export function CardAuth({ title, description, content }: CardAuthProps) {
 
       <CardContent>{content}</CardContent>
 
-      <CardFooter className="justify-center gap-4 border-t border-border pt-4 text-center text-xs text-muted-foreground">
-        <p>Ao continuar, você concorda com os <Link
-          href="/termos"
-          className="inline-flex items-center text-primary underline-offset-4 hover:underline"
-        >
-          Termos de uso
-        </Link> e a <Link
-          href="/privacidade"
-          className="inline-flex items-center text-primary underline-offset-4 hover:underline"
-        >
-          Política de Privacidade
-        </Link>.</p>
-      </CardFooter>
+      {showLegalFooter ? (
+        <CardFooter className="justify-center gap-4 border-t border-border pt-4 text-center text-xs text-muted-foreground">
+          <p>
+            Ao continuar, você concorda com os{" "}
+            <Link
+              href="/termos"
+              className="inline-flex items-center text-primary underline-offset-4 hover:underline"
+            >
+              Termos de uso
+            </Link>{" "}
+            e a{" "}
+            <Link
+              href="/privacidade"
+              className="inline-flex items-center text-primary underline-offset-4 hover:underline"
+            >
+              Política de Privacidade
+            </Link>
+            .
+          </p>
+        </CardFooter>
+      ) : null}
     </Card>
   );
 }
