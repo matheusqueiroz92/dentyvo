@@ -1,7 +1,5 @@
-import {
-  LegalDocumentLayout,
-  LegalSection,
-} from "@/components/legal/LegalDocumentLayout";
+import { LegalSection } from "@/components/legal/LegalDocumentLayout";
+import { PageLegalContainer } from "@/components/legal/PageLegalContainer";
 import {
   DURACAO_PROMOCAO_LANCAMENTO_MESES,
   DURACAO_TRIAL_DIAS,
@@ -16,7 +14,7 @@ export const metadata = {
 
 export default function TermosPage() {
   return (
-    <LegalDocumentLayout title="Termos de uso">
+    <PageLegalContainer title="Termos de uso">
       <LegalSection id="identificacao" title="1. Identificação">
         <p>
           Estes Termos de Uso regulam o acesso e a utilização da plataforma{" "}
@@ -208,6 +206,6 @@ export default function TermosPage() {
           na revisão jurídica).
         </p>
       </LegalSection>
-    </LegalDocumentLayout>
+    </PageLegalContainer>
   );
 }

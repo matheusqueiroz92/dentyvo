@@ -1,7 +1,5 @@
-import {
-  LegalDocumentLayout,
-  LegalSection,
-} from "@/components/legal/LegalDocumentLayout";
+import { LegalSection } from "@/components/legal/LegalDocumentLayout";
+import { PageLegalContainer } from "@/components/legal/PageLegalContainer";
 
 export const metadata = {
   title: "Política de cookies — Dentyvo",
@@ -11,7 +9,7 @@ export const metadata = {
 
 export default function CookiesPage() {
   return (
-    <LegalDocumentLayout title="Política de cookies">
+    <PageLegalContainer title="Política de cookies">
       <LegalSection id="o-que-sao" title="1. O que são cookies">
         <p>
           Cookies são pequenos arquivos armazenados no seu navegador
@@ -71,6 +69,6 @@ export default function CookiesPage() {
           .
         </p>
       </LegalSection>
-    </LegalDocumentLayout>
+    </PageLegalContainer>
   );
 }

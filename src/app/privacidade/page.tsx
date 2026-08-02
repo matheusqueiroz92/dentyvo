@@ -1,7 +1,5 @@
-import {
-  LegalDocumentLayout,
-  LegalSection,
-} from "@/components/legal/LegalDocumentLayout";
+import { LegalSection } from "@/components/legal/LegalDocumentLayout";
+import { PageLegalContainer } from "@/components/legal/PageLegalContainer";
 
 export const metadata = {
   title: "Política de privacidade — Dentyvo",
@@ -11,7 +9,7 @@ export const metadata = {
 
 export default function PrivacidadePage() {
   return (
-    <LegalDocumentLayout title="Política de privacidade">
+    <PageLegalContainer title="Política de privacidade">
       <LegalSection id="intro" title="1. Introdução">
         <p>
           Esta Política descreve como a <strong>Dentyvo</strong> trata dados
@@ -200,6 +198,6 @@ export default function PrivacidadePage() {
           /privacidade.
         </p>
       </LegalSection>
-    </LegalDocumentLayout>
+    </PageLegalContainer>
   );
 }
