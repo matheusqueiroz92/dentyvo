@@ -1,11 +1,46 @@
 /**
- * Seed mínimo para validação visual da agenda.
+ * Cria clínica + admin com senha conhecida, agenda demo (2 consultas) e
+ * imprime credenciais de login no console.
+ *
  * Uso: node --import tsx scripts/seed-agenda-demo.mjs
  */
 import { config } from "dotenv";
 config({ path: ".env.local", override: true });
 
-const { sql } = await import("drizzle-orm");
+const SENHA_DEMO = "SenhaDemo!Agenda123";
+
+function gerarCnpjValido() {
+  const n = Array.from({ length: 8 }, () => Math.floor(Math.random() * 10));
+  const base = [...n, 0, 0, 0, 1];
+  const digito = (digitos, pesos) => {
+    const soma = digitos.reduce((acc, d, i) => acc + d * pesos[i], 0);
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+  const d1 = digito(base, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = digito([...base, d1], [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return [...base, d1, d2].join("");
+}
+
+function gerarCpfValido() {
+  const n = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));
+  const digito = (base, fator) => {
+    let soma = 0;
+    for (let i = 0; i < base.length; i++) soma += base[i] * (fator - i);
+    const resto = (soma * 10) % 11;
+    return resto === 10 ? 0 : resto;
+  };
+  const d1 = digito(n, 10);
+  const d2 = digito([...n, d1], 11);
+  return [...n, d1, d2].join("");
+}
+
+const { CriarClinicaComAdmin } = await import(
+  "../src/core/auth/application/use-cases/CriarClinicaComAdmin.ts"
+);
+const { createAuthModule } = await import(
+  "../src/core/auth/infra/create-auth-module.ts"
+);
 const { CriarProcedimento } = await import(
   "../src/core/agendamento/application/use-cases/CriarProcedimento.ts"
 );
@@ -30,27 +65,46 @@ const { CriarPaciente } = await import(
 const { createPacienteModule } = await import(
   "../src/core/paciente/infra/create-paciente-module.ts"
 );
-const { db } = await import("../src/db/index.ts");
 
-const mod = createAgendamentoModule();
-const pacMod = createPacienteModule();
+const agora = Date.now();
+const email = `agenda.demo.${agora}@dentyvo-demo.test`;
+const senha = SENHA_DEMO;
 
-const result = await db.execute(
-  sql`select id, clinica_id, usuario_id, nome, papel from profissional limit 1`,
+const auth = createAuthModule();
+const clinica = await new CriarClinicaComAdmin(
+  auth.clinicaRepo,
+  auth.profissionalRepo,
+  auth.authPort,
+).executar({
+  clinica: {
+    nome: `Clínica Demo Agenda ${agora}`,
+    endereco: "Rua Demo Agenda, 100 - São Paulo/SP",
+    tipoDocumento: "cnpj",
+    documento: gerarCnpjValido(),
+  },
+  admin: {
+    nome: "Admin Demo Agenda",
+    email,
+    senha,
+  },
+});
+
+const profissional = await auth.profissionalRepo.buscarPorUsuarioId(
+  (
+    await auth.authPort.buscarUsuarioPorEmail(email)
+  ).id,
 );
-const rows = /** @type {Array<Record<string, string>>} */ (
-  result.rows ?? result
-);
-const prof = rows[0];
-if (!prof) {
-  console.error("Nenhum profissional no banco.");
+if (!profissional) {
+  console.error("Profissional admin não encontrado após criar clínica.");
   process.exit(1);
 }
 
-const clinicaId = prof.clinica_id;
-const usuarioId = prof.usuario_id;
-const profissionalId = prof.id;
-console.log("Seed para", { clinicaId, profissionalId, papel: prof.papel });
+const clinicaId = clinica.id;
+const usuarioId = profissional.usuarioId;
+const profissionalId = profissional.id;
+
+const mod = createAgendamentoModule();
+const pacMod = createPacienteModule();
 
 const paciente = await new CriarPaciente(
   pacMod.pacienteRepo,
@@ -59,7 +113,7 @@ const paciente = await new CriarPaciente(
   clinicaId,
   solicitadoPorUsuarioId: usuarioId,
   nome: "Paciente Demo Agenda",
-  cpf: "52998224725",
+  cpf: gerarCpfValido(),
   telefone: "11999990000",
   dataNascimento: new Date("1990-01-15T12:00:00.000Z"),
 });
@@ -120,5 +174,19 @@ const a2 = await marcar.executar({
   origem: "painel",
 });
 
-console.log("OK", { paciente: paciente.id, a1: a1.id, a2: a2.id });
+console.log("");
+console.log("========== LOGIN DEMO AGENDA ==========");
+console.log(`E-mail: ${email}`);
+console.log(`Senha:  ${senha}`);
+console.log("=======================================");
+console.log("");
+console.log("OK", {
+  clinicaId,
+  profissionalId,
+  paciente: paciente.id,
+  a1: a1.id,
+  a1Inicio: a1.dataHoraInicio.toISOString(),
+  a2: a2.id,
+  a2Inicio: a2.dataHoraInicio.toISOString(),
+});
 process.exit(0);

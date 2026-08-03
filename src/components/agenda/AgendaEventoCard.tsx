@@ -45,6 +45,8 @@ export function AgendaEventoCard({
       {...attributes}
       onClick={(e) => {
         e.stopPropagation();
+        // Evita abrir detalhes após um drag (PointerSensor com distance).
+        if (isDragging) return;
         onClick();
       }}
       className={cn(
@@ -55,6 +57,7 @@ export function AgendaEventoCard({
         pendente && "opacity-60",
         arrastavel ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
       )}
+      data-agendamento-id={agendamento.id}
       aria-label={`Consulta de ${agendamento.pacienteNome} às ${formatarHora(agendamento.dataHoraInicioIso)}`}
     >
       <p className="font-medium tabular-nums text-foreground">

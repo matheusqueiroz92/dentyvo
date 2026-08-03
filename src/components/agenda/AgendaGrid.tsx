@@ -9,11 +9,11 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useMemo } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
 import { useReagendarAgendamento } from "@/hooks/useReagendarAgendamento";
+import { agendaKeyboardCoordinateGetter } from "@/lib/agenda/keyboard-coordinates";
 import {
   alinharAoSlot,
   chaveSlot,
@@ -85,7 +85,7 @@ export function AgendaGrid({
       activationConstraint: { distance: 6 },
     }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: agendaKeyboardCoordinateGetter,
     }),
   );
 
@@ -141,7 +141,15 @@ export function AgendaGrid({
 
     const agendamentoId = String(active.id);
     const { inicioIso } = parseChaveSlot(String(over.id));
-    void executarRemarcacao(agendamentoId, inicioIso);
+    void executarRemarcacao(agendamentoId, inicioIso).finally(() => {
+      // Restaura foco no card remarcado (teclado/dnd-kit tende a soltar no body).
+      requestAnimationFrame(() => {
+        const el = document.querySelector<HTMLElement>(
+          `[data-agendamento-id="${agendamentoId}"]`,
+        );
+        el?.focus();
+      });
+    });
   }
 
   if (profissionais.length === 0) {
