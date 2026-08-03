@@ -46,7 +46,7 @@ export function PageLegalContainer({
                 alt="Dentyvo"
                 width={1626}
                 height={448}
-                className="w-[160px] sm:w-[200px]"
+                className="w-40 sm:w-50"
                 style={{ height: "auto" }}
                 priority
               />
@@ -63,7 +63,7 @@ export function PageLegalContainer({
             <AvisoDocumentoNaoRevisado />
           </div>
 
-          <div className="prose-legal space-y-6 text-sm leading-[22px] text-foreground">
+          <div className="prose-legal space-y-6 text-sm leading-5.5 text-foreground">
             {children}
           </div>
         </div>
@@ -82,7 +82,7 @@ export function PageLegalContainer({
                 alt=""
                 width={542}
                 height={150}
-                className="w-[160px]"
+                className="w-40"
                 style={{ height: "auto" }}
               />
             </Link>
@@ -95,7 +95,7 @@ export function PageLegalContainer({
                 <li>
                   <Link
                     href="/termos"
-                    className="inline-flex min-h-11 items-center text-primary-foreground/80 transition-colors hover:text-primary-foreground"
+                    className="inline-flex items-center text-primary-foreground/80 transition-colors hover:text-primary-foreground"
                   >
                     Termos de uso
                   </Link>
@@ -103,7 +103,7 @@ export function PageLegalContainer({
                 <li>
                   <Link
                     href="/privacidade"
-                    className="inline-flex min-h-11 items-center text-primary-foreground/80 transition-colors hover:text-primary-foreground"
+                    className="inline-flex items-center text-primary-foreground/80 transition-colors hover:text-primary-foreground"
                   >
                     Política de privacidade
                   </Link>
@@ -111,7 +111,7 @@ export function PageLegalContainer({
                 <li>
                   <Link
                     href="/cookies"
-                    className="inline-flex min-h-11 items-center text-primary-foreground/80 transition-colors hover:text-primary-foreground"
+                    className="inline-flex items-center text-primary-foreground/80 transition-colors hover:text-primary-foreground"
                   >
                     Política de cookies
                   </Link>

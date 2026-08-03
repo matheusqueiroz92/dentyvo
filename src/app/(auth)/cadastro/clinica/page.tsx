@@ -36,7 +36,7 @@ export default function SignupClinicaPage() {
           </Link>
         </div>
 
-        <Card className="shadow-[var(--shadow-md)]">
+        <Card className="shadow-(--shadow-md)">
           <CardHeader>
             <p className="text-[11px] font-semibold tracking-wide text-primary uppercase">
               Etapa 2 de 2
