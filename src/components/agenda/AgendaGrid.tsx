@@ -19,7 +19,6 @@ import {
   chaveSlot,
   diasNoPeriodo,
   formatarDataCurta,
-  formatarHora,
   instanteSlot,
   parseChaveSlot,
   periodoParaModo,
@@ -260,7 +259,7 @@ export function AgendaGrid({
       {agendamentos.filter(ocupaSlot).length === 0 ? (
         <p className="sr-only">
           Nenhuma consulta no período. Horários:{" "}
-          {slots.slice(0, 3).map(formatarHora).join(", ")}…
+          {slots.slice(0, 3).join(", ")}…
         </p>
       ) : null}
     </DndContext>

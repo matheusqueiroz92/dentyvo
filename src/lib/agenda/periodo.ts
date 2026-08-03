@@ -58,13 +58,22 @@ export function adicionarDias(data: Date, dias: number): Date {
   return new Date(data.getTime() + dias * 24 * 60 * 60 * 1000);
 }
 
+/**
+ * Formata instante ISO para HH:mm no timezone operacional.
+ * Valores inválidos não derrubam a UI: retorna "—" e registra aviso.
+ */
 export function formatarHora(iso: string): string {
+  const data = new Date(iso);
+  if (Number.isNaN(data.getTime())) {
+    console.warn("[formatarHora] valor ISO inválido:", iso);
+    return "—";
+  }
   return new Intl.DateTimeFormat("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: TIMEZONE_PADRAO,
     hour12: false,
-  }).format(new Date(iso));
+  }).format(data);
 }
 
 export function formatarDataCurta(data: Date): string {
