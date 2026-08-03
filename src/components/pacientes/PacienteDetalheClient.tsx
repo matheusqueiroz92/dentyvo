@@ -1,0 +1,144 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { formatarCpfCompleto } from "@/lib/pacientes/cpf";
+import {
+  formatarDataNascimento,
+  formatarTelefoneBr,
+} from "@/lib/pacientes/formatacao";
+import type { PacienteDTO } from "@/lib/pacientes/types";
+
+import { PacienteDetalheHeader } from "./PacienteDetalheHeader";
+
+type PacienteDetalheClientProps = {
+  paciente: PacienteDTO;
+};
+
+/**
+ * GAP: `AtualizarPaciente` ainda não existe no backend.
+ * A ação "Editar" permanece desabilitada até o caso de uso existir
+ * (`EditarPacienteModal` já está preparado em `src/components/pacientes/`).
+ */
+export function PacienteDetalheClient({ paciente }: PacienteDetalheClientProps) {
+  return (
+    <main className="flex flex-col gap-6">
+      <PacienteDetalheHeader paciente={paciente} />
+
+      <Tabs defaultValue="dados">
+        <TabsList variant="line">
+          <TabsTrigger value="dados" className="min-h-11 px-3 sm:min-h-8">
+            Dados gerais
+          </TabsTrigger>
+          <TabsTrigger value="historico" className="min-h-11 px-3 sm:min-h-8">
+            Histórico
+          </TabsTrigger>
+          <TabsTrigger value="prontuario" className="min-h-11 px-3 sm:min-h-8">
+            Prontuário
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dados" className="mt-4 space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-base font-semibold text-foreground">
+              Dados do paciente
+            </h2>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              disabled
+              title="Indisponível: falta o caso de uso AtualizarPaciente"
+              aria-disabled="true"
+            >
+              Editar
+            </Button>
+          </div>
+          <p className="text-[13px] text-muted-foreground">
+            A edição ficará disponível após a implementação de AtualizarPaciente
+            no backend.
+          </p>
+
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <Campo label="Nome" valor={paciente.nome} />
+            <Campo
+              label="CPF"
+              valor={formatarCpfCompleto(paciente.cpf)}
+              tabular
+            />
+            <Campo
+              label="Telefone"
+              valor={formatarTelefoneBr(paciente.telefone)}
+              tabular
+            />
+            <Campo
+              label="Data de nascimento"
+              valor={formatarDataNascimento(paciente.dataNascimentoIso)}
+              tabular
+            />
+            <Campo
+              label="Contato de emergência"
+              valor={paciente.contatoEmergencia ?? "—"}
+            />
+          </dl>
+        </TabsContent>
+
+        <TabsContent value="historico" className="mt-4">
+          <PlaceholderAba
+            titulo="Histórico"
+            descricao="A listagem de consultas por paciente estará disponível quando o backend expuser agendamentos filtrados por paciente. Em construção."
+          />
+        </TabsContent>
+
+        <TabsContent value="prontuario" className="mt-4">
+          <PlaceholderAba
+            titulo="Prontuário"
+            descricao="O prontuário completo do paciente será entregue em feature futura. Em construção."
+          />
+        </TabsContent>
+      </Tabs>
+    </main>
+  );
+}
+
+function Campo({
+  label,
+  valor,
+  tabular,
+}: {
+  label: string;
+  valor: string;
+  tabular?: boolean;
+}) {
+  return (
+    <div className="space-y-1">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd
+        className={
+          tabular
+            ? "text-sm tabular-nums text-foreground"
+            : "text-sm text-foreground"
+        }
+      >
+        {valor}
+      </dd>
+    </div>
+  );
+}
+
+function PlaceholderAba({
+  titulo,
+  descricao,
+}: {
+  titulo: string;
+  descricao: string;
+}) {
+  return (
+    <div className="rounded-lg border border-dashed border-border px-4 py-10 text-center">
+      <p className="text-sm font-medium text-foreground">{titulo}</p>
+      <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
+        {descricao}
+      </p>
+    </div>
+  );
+}

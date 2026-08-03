@@ -1,11 +1,14 @@
 "use client";
 
 import { CalendarPlus, UserPlus } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
+/**
+ * Atalhos do dashboard. "Novo paciente" abre o mesmo `NovoPacienteModal`
+ * da listagem via query `?novo=1` (sem caminho duplicado de cadastro).
+ */
 export function AtalhosRapidos() {
   const router = useRouter();
 
@@ -27,11 +30,14 @@ export function AtalhosRapidos() {
           <CalendarPlus aria-hidden />
           Nova consulta
         </Button>
-        <Button asChild variant="outline" className="min-h-11">
-          <Link href="/pacientes">
-            <UserPlus aria-hidden />
-            Novo paciente
-          </Link>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11"
+          onClick={() => router.push("/pacientes?novo=1")}
+        >
+          <UserPlus aria-hidden />
+          Novo paciente
         </Button>
       </div>
     </section>

@@ -47,7 +47,6 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/pacientes",
         label: "Pacientes",
         icon: UsersRound,
-        emConstrucao: true,
       },
     ],
   },
