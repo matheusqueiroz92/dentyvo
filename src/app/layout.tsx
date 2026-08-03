@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
 import { QueryProvider } from "@/components/providers/query-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 import "./globals.css";
@@ -26,7 +27,10 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={cn(inter.variable, "h-full font-sans")}>
       <body className="min-h-full font-sans antialiased">
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          {children}
+          <Toaster richColors closeButton position="top-right" />
+        </QueryProvider>
       </body>
     </html>
   );

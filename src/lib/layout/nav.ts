@@ -42,7 +42,6 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/agenda",
         label: "Agenda",
         icon: CalendarDays,
-        emConstrucao: true,
       },
       {
         href: "/pacientes",
