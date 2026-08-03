@@ -11,12 +11,15 @@ import type { PacienteFormValues } from "@/lib/pacientes/schema";
 type PacienteFormFieldsProps = {
   form: UseFormReturn<PacienteFormValues>;
   disabled?: boolean;
+  /** CPF imutável após cadastro — exibe o valor mas bloqueia edição. */
+  cpfSomenteLeitura?: boolean;
   idPrefix?: string;
 };
 
 export function PacienteFormFields({
   form,
   disabled = false,
+  cpfSomenteLeitura = false,
   idPrefix = "paciente",
 }: PacienteFormFieldsProps) {
   const {
@@ -48,16 +51,23 @@ export function PacienteFormFields({
             id={`${idPrefix}-cpf`}
             inputMode="numeric"
             autoComplete="off"
-            disabled={disabled}
+            disabled={disabled || cpfSomenteLeitura}
+            readOnly={cpfSomenteLeitura}
             aria-invalid={!!errors.cpf}
             {...register("cpf", {
               onChange: (e) => {
+                if (cpfSomenteLeitura) return;
                 setValue("cpf", mascararCpfInput(e.target.value), {
                   shouldValidate: form.formState.isSubmitted,
                 });
               },
             })}
           />
+          {cpfSomenteLeitura ? (
+            <p className="text-xs text-muted-foreground">
+              O CPF não pode ser alterado após o cadastro.
+            </p>
+          ) : null}
           {errors.cpf ? (
             <p className="text-xs text-destructive">{errors.cpf.message}</p>
           ) : null}

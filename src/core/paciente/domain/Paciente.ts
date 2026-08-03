@@ -72,6 +72,44 @@ export class Paciente {
     return new Paciente(props);
   }
 
+  /**
+   * Atualiza dados cadastrais editáveis (spec 002 — decisão 13).
+   * Preserva `id`, `clinicaId` e `cpf` — o input não admite CPF.
+   */
+  atualizarDados(input: {
+    nome: string;
+    telefone: string;
+    dataNascimento: Date;
+    contatoEmergencia?: string | null;
+  }): Paciente {
+    const nome = input.nome.trim();
+    if (!nome) {
+      throw new DadosInvalidosError("Nome do paciente é obrigatório.");
+    }
+
+    const telefone = normalizarTelefone(input.telefone);
+    if (!telefone) {
+      throw new DadosInvalidosError("Telefone do paciente é obrigatório.");
+    }
+
+    if (
+      !(input.dataNascimento instanceof Date) ||
+      Number.isNaN(input.dataNascimento.getTime())
+    ) {
+      throw new DadosInvalidosError("Data de nascimento inválida.");
+    }
+
+    return new Paciente({
+      id: this.id,
+      clinicaId: this.clinicaId,
+      cpf: this.cpf,
+      nome,
+      telefone,
+      dataNascimento: input.dataNascimento,
+      contatoEmergencia: normalizarOpcional(input.contatoEmergencia),
+    });
+  }
+
   assertPertenceAClinica(clinicaId: string): void {
     if (this.clinicaId !== clinicaId) {
       throw new TenantMismatchError(clinicaId, this.clinicaId);

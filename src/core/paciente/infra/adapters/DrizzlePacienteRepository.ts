@@ -28,7 +28,7 @@ export class DrizzlePacienteRepository implements PacienteRepositoryPort {
         set: {
           clinicaId: paciente.clinicaId,
           nome: paciente.nome,
-          cpf: paciente.cpf.valor,
+          // CPF omitido no update — imutável após criação (spec 002, decisão 13)
           telefone: paciente.telefone,
           dataNascimento: paciente.dataNascimento,
           contatoEmergencia: paciente.contatoEmergencia,

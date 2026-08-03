@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { AtualizarPaciente } from "@/core/paciente/application/use-cases/AtualizarPaciente";
 import { BuscarPacientePorId } from "@/core/paciente/application/use-cases/BuscarPacientePorId";
 import { CriarPaciente } from "@/core/paciente/application/use-cases/CriarPaciente";
 import { ListarPacientes } from "@/core/paciente/application/use-cases/ListarPacientes";
@@ -82,6 +83,37 @@ export const criarPacienteAction = actionClient
       telefone: apenasDigitos(parsedInput.telefone),
       dataNascimento: parseDataNascimentoLocal(parsedInput.dataNascimento),
       contatoEmergencia: parsedInput.contatoEmergencia?.trim() || null,
+    });
+    return pacienteParaDto(paciente);
+  });
+
+/** Atualização cadastral — sem CPF no schema (imutável, spec 002 decisão 13). */
+export const atualizarPacienteAction = actionClient
+  .inputSchema(
+    z.object({
+      pacienteId: z.string().uuid(),
+      nome: z.string().trim().min(1).max(200),
+      telefone: z.string().min(1),
+      dataNascimento: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      contatoEmergencia: z.string().max(200).optional(),
+    }),
+  )
+  .action(async ({ parsedInput }): Promise<PacienteDTO> => {
+    const sessao = await exigirSessao();
+    const mod = createPacienteModule();
+    const paciente = await new AtualizarPaciente(
+      mod.pacienteRepo,
+      mod.profissionalRepo,
+    ).executar({
+      clinicaId: sessao.clinicaId,
+      solicitadoPorUsuarioId: sessao.usuarioId,
+      pacienteId: parsedInput.pacienteId,
+      dados: {
+        nome: parsedInput.nome,
+        telefone: apenasDigitos(parsedInput.telefone),
+        dataNascimento: parseDataNascimentoLocal(parsedInput.dataNascimento),
+        contatoEmergencia: parsedInput.contatoEmergencia?.trim() || null,
+      },
     });
     return pacienteParaDto(paciente);
   });

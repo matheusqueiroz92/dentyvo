@@ -6,6 +6,7 @@ export const ACOES_PACIENTE = [
   "criar_paciente",
   "buscar_paciente",
   "listar_pacientes",
+  "atualizar_paciente",
 ] as const;
 
 export type AcaoPaciente = (typeof ACOES_PACIENTE)[number];
@@ -14,6 +15,7 @@ const MATRIZ: Record<AcaoPaciente, readonly Papel[]> = {
   criar_paciente: ["admin", "dentista", "recepcao"],
   buscar_paciente: ["admin", "dentista", "recepcao"],
   listar_pacientes: ["admin", "dentista", "recepcao"],
+  atualizar_paciente: ["admin", "dentista", "recepcao"],
 };
 
 export const { pode, assertPode } = criarVerificadorAutorizacao(MATRIZ);

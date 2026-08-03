@@ -3,7 +3,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
+import { atualizarPacienteAction } from "@/actions/paciente";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,21 +25,18 @@ import {
 
 import { PacienteFormFields } from "./PacienteFormFields";
 
-/**
- * GAP: não existe `AtualizarPaciente` no backend ainda.
- * Este modal reutiliza o formulário, mas a persistência de edição fica
- * desabilitada até o caso de uso existir — não simula save local.
- */
 type EditarPacienteModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   paciente: PacienteDTO | null;
+  onAtualizado: (paciente: PacienteDTO) => void;
 };
 
 export function EditarPacienteModal({
   open,
   onOpenChange,
   paciente,
+  onAtualizado,
 }: EditarPacienteModalProps) {
   const form = useForm<PacienteFormValues>({
     resolver: zodResolver(pacienteFormSchema),
@@ -62,27 +61,48 @@ export function EditarPacienteModal({
     }
   }, [open, paciente, form]);
 
+  async function onSubmit(values: PacienteFormValues) {
+    if (!paciente) return;
+
+    const result = await atualizarPacienteAction({
+      pacienteId: paciente.id,
+      nome: values.nome,
+      telefone: values.telefone,
+      dataNascimento: values.dataNascimento,
+      contatoEmergencia: values.contatoEmergencia?.trim() || undefined,
+    });
+
+    if (result.serverError || !result.data) {
+      toast.error(
+        result.serverError?.mensagem ??
+          "Não foi possível atualizar o paciente.",
+      );
+      return;
+    }
+
+    toast.success("Paciente atualizado.");
+    onAtualizado(result.data);
+    onOpenChange(false);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[640px]">
         <DialogHeader>
           <DialogTitle>Editar paciente</DialogTitle>
           <DialogDescription>
-            A edição ainda não está disponível: falta o caso de uso
-            AtualizarPaciente no backend.
+            Atualize os dados cadastrais. O CPF não pode ser alterado.
           </DialogDescription>
         </DialogHeader>
 
         <form
           className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-          }}
+          onSubmit={form.handleSubmit(onSubmit)}
           noValidate
         >
           <PacienteFormFields
             form={form}
-            disabled
+            cpfSomenteLeitura
             idPrefix="editar-paciente"
           />
 
@@ -92,10 +112,14 @@ export function EditarPacienteModal({
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Fechar
+              Cancelar
             </Button>
-            <Button type="submit" variant="primary" disabled>
-              Salvar (indisponível)
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={form.formState.isSubmitting || !paciente}
+            >
+              {form.formState.isSubmitting ? "Salvando…" : "Salvar"}
             </Button>
           </DialogFooter>
         </form>

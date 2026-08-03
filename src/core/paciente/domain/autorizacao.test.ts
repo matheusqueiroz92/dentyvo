@@ -14,6 +14,7 @@ const MATRIZ_ESPERADA: Record<AcaoPaciente, readonly Papel[]> = {
   criar_paciente: ["admin", "dentista", "recepcao"],
   buscar_paciente: ["admin", "dentista", "recepcao"],
   listar_pacientes: ["admin", "dentista", "recepcao"],
+  atualizar_paciente: ["admin", "dentista", "recepcao"],
 };
 
 describe("matriz de autorização do módulo paciente", () => {
@@ -33,11 +34,12 @@ describe("matriz de autorização do módulo paciente", () => {
     },
   );
 
-  it("admin, dentista e recepção podem criar/buscar/listar pacientes", () => {
+  it("admin, dentista e recepção podem criar/buscar/listar/atualizar pacientes", () => {
     for (const papel of ["admin", "dentista", "recepcao"] as const) {
       expect(pode(papel, "criar_paciente")).toBe(true);
       expect(pode(papel, "buscar_paciente")).toBe(true);
       expect(pode(papel, "listar_pacientes")).toBe(true);
+      expect(pode(papel, "atualizar_paciente")).toBe(true);
     }
   });
 });

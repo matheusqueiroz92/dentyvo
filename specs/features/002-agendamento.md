@@ -38,7 +38,11 @@ clínica sem conflitos de horário.
       de “lembrete a enviar”, antecedência default **24h**) — sem job de envio
       real nesta feature.
 - [ ] Existe CRUD mínimo de `Paciente` em `core/paciente` (criar, buscarPorId,
-      listar), escopado por `clinicaId`.
+      listar, atualizar), escopado por `clinicaId`.
+- [ ] `AtualizarPaciente(pacienteId, dados) → Paciente` altera nome, telefone,
+      data de nascimento e contato de emergência; o **CPF não é editável**
+      após a criação (ver Decisões aprovadas — decisão 13). RBAC idêntico a
+      `CriarPaciente` (`admin` | `dentista` | `recepcao`).
 - [ ] `Paciente` possui `consentimentoLgpd` nullable
       (`{ aceitoEm, versaoTermo, finalidades[] }`), permitindo cadastro
       inicial sem consentimento formalizado (ex.: urgência) e registro
@@ -104,6 +108,12 @@ clínica sem conflitos de horário.
   antecedência default de **24h**; envio real fica para integração futura.
 - Isolamento multi-tenant: todo dado de `Agendamento`, `Paciente`,
   `Procedimento` e disponibilidade é particionado por `clinicaId`.
+- **CPF do paciente é imutável após o cadastro:** `AtualizarPaciente` não
+  aceita alteração de CPF. Correção de CPF informado errado exige fluxo
+  fora deste caso de uso (suporte/admin — fora de escopo desta emenda).
+  Campos editáveis: `nome`, `telefone`, `dataNascimento`,
+  `contatoEmergencia`. Consentimento LGPD continua só via
+  `RegistrarConsentimentoPaciente` (não passa por `AtualizarPaciente`).
 - **Consentimento LGPD do paciente (controladora = clínica):**
   - `consentimentoLgpd` é **nullable**: cadastro sem consentimento é
     permitido; formalização pode ocorrer depois
@@ -154,6 +164,12 @@ clínica sem conflitos de horário.
 - `CriarPaciente(...)` / `BuscarPacientePorId(...)` / `ListarPacientes(...)`
   — `CriarPaciente` pode aceitar `consentimentoLgpd` opcional no mesmo
   ato do cadastro; se omitido, permanece `null`.
+- `AtualizarPaciente(pacienteId, dados) → Paciente`
+  — `dados`: `{ nome, telefone, dataNascimento, contatoEmergencia? }`;
+  **não inclui CPF** (imutável após criação — decisão 13);
+  RBAC igual a `CriarPaciente` (`admin` | `dentista` | `recepcao`);
+  escopo por `clinicaId` da sessão; paciente inexistente / de outro tenant
+  → erro de domínio já usado em busca (`PacienteNaoEncontrado` / tenant).
 - `RegistrarConsentimentoPaciente(pacienteId, finalidades[], versaoTermo) → Paciente`
   — grava/atualiza `consentimentoLgpd` (`aceitoEm` = instante do registro);
   RBAC igual a `CriarPaciente` (`admin` | `dentista` | `recepcao`);
@@ -192,7 +208,8 @@ Schema Drizzle esperado (orientação para implementação futura):
 | Cancelar | Server Action (autenticada) | agendamentoId, motivo? | ok |
 | Confirmar | Server Action (autenticada) | agendamentoId | Agendamento (`confirmado`) |
 | CRUD Procedimento | Server Action (autenticada) | campos do procedimento | entidade / lista |
-| CRUD Paciente | Server Action (autenticada) | campos do paciente (+ consentimento opcional) | entidade / lista |
+| CRUD Paciente | Server Action (autenticada) | campos do paciente (+ consentimento opcional na criação) | entidade / lista |
+| Atualizar paciente | Server Action (autenticada, admin/dentista/recepcao) | pacienteId, nome, telefone, dataNascimento, contatoEmergencia? (sem CPF) | Paciente atualizado |
 | Registrar consentimento LGPD | Server Action (autenticada, admin/dentista/recepcao) | pacienteId, finalidades[], versaoTermo | Paciente atualizado |
 
 ## Fora de escopo
@@ -213,6 +230,8 @@ Schema Drizzle esperado (orientação para implementação futura):
 - Modificações em `src/core/auth`.
 - Portal do paciente / consentimento self-service do titular (ver
   `specs/00-overview.md` — portal futuro).
+- Correção de CPF após cadastro (fluxo suporte/admin) e exclusão de
+  paciente — fora desta emenda de `AtualizarPaciente`.
 
 ## Plano de testes
 - **Domínio:** sobreposição half-open — contíguos OK; interseção de 1 min
@@ -226,6 +245,10 @@ Schema Drizzle esperado (orientação para implementação futura):
   RBAC: recepção não define disponibilidade; isolamento por `clinicaId`;
   CRUD Paciente/Procedimento escopados ao tenant;
   `CriarPaciente` sem consentimento deixa `consentimentoLgpd = null`;
+  `AtualizarPaciente` altera nome/telefone/dataNascimento/contatoEmergencia
+  e preserva o CPF original; tentativa de mudar CPF é rejeitada (ou CPF
+  simplesmente não faz parte do input); RBAC = `CriarPaciente`;
+  paciente de outra clínica / inexistente falha;
   `RegistrarConsentimentoPaciente` persiste `aceitoEm`/`versaoTermo`/
   `finalidades` e respeita o mesmo RBAC de `CriarPaciente`;
   `ListarAgendamentosDoPeriodo` retorna só do `clinicaId` da sessão, filtra
@@ -261,18 +284,21 @@ Schema Drizzle esperado (orientação para implementação futura):
    (débito, análogo à 001).
 5. **Paciente:** módulo próprio `core/paciente` (CRUD mínimo) nesta feature;
    003 consome via port; inclui `consentimentoLgpd` nullable e
-   `RegistrarConsentimentoPaciente` (emenda LGPD — decisão 12).
+   `RegistrarConsentimentoPaciente` (emenda LGPD — decisão 12);
+   inclui `AtualizarPaciente` com CPF imutável (emenda — decisão 13).
    **Procedimento:** permanece em `core/agendamento` (CRUD mínimo).
 6. **RBAC:** marcar/remarcar/cancelar/confirmar e
    `ListarAgendamentosDoPeriodo` = `admin` | `dentista` | `recepcao`;
    definir disponibilidade = só `admin` | `dentista`;
-   registrar consentimento LGPD = mesmo RBAC de CRUD Paciente.
+   registrar consentimento LGPD e `AtualizarPaciente` = mesmo RBAC de
+   CRUD Paciente (`CriarPaciente`).
 7. **Confirmação:** no escopo (`ConfirmarConsulta`, `pendente` → `confirmado`).
 8. **Lembrete:** stub que registra intenção (log/registro “lembrete a enviar”),
    antecedência default 24h; job/envio real depois da integração de notificação.
 9. **Casos de uso extras:** `DefinirDisponibilidadeProfissional`,
-   `ConfirmarConsulta`, `ListarAgendamentosDoPeriodo`, CRUD Paciente e
-   Procedimento, `RegistrarConsentimentoPaciente`.
+   `ConfirmarConsulta`, `ListarAgendamentosDoPeriodo`, CRUD Paciente
+   (incl. `AtualizarPaciente`) e Procedimento,
+   `RegistrarConsentimentoPaciente`.
 10. **Auth:** reutilizar `ObterContextoSessao` sem modificar `src/core/auth`;
     disponibilidade como entidade nova em `core/agendamento`.
 11. **`ListarAgendamentosDoPeriodo`:** filtro por `dataHoraInicio` no intervalo
@@ -293,6 +319,22 @@ Schema Drizzle esperado (orientação para implementação futura):
     - **Aprovado para documentação;** Arquiteto/Implementador deste
       campo quando o cadastro de paciente for revisitado (não avançar
       automaticamente nesta rodada).
+13. **`AtualizarPaciente` (emenda — módulo `core/paciente`):**
+    - Caso de uso `AtualizarPaciente(pacienteId, dados) → Paciente`.
+    - **CPF travado após criação** (campo de identidade/deduplicação):
+      edição livre abriria risco de “corrigir” para o CPF de outro
+      paciente da clínica e misturar prontuário/histórico de duas
+      pessoas. Correção de CPF errado = fluxo separado (suporte/admin),
+      fora desta emenda.
+    - Campos editáveis em `dados`: `nome`, `telefone`, `dataNascimento`,
+      `contatoEmergencia?`. Validação de formato/obrigatoriedade segue as
+      mesmas regras de `CriarPaciente` / entidade `Paciente` para esses
+      campos.
+    - `consentimentoLgpd` **não** é alterado por este caso de uso
+      (permanece em `RegistrarConsentimentoPaciente`).
+    - RBAC = `CriarPaciente` (`admin` | `dentista` | `recepcao`);
+      escopo `clinicaId` da sessão.
+    - **Aprovado** — pronto para o Arquiteto de Domínio.
 
 ## Débito técnico conhecido
 

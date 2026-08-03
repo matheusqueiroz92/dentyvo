@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatarCpfCompleto } from "@/lib/pacientes/cpf";
@@ -9,18 +11,19 @@ import {
 } from "@/lib/pacientes/formatacao";
 import type { PacienteDTO } from "@/lib/pacientes/types";
 
+import { EditarPacienteModal } from "./EditarPacienteModal";
 import { PacienteDetalheHeader } from "./PacienteDetalheHeader";
 
 type PacienteDetalheClientProps = {
   paciente: PacienteDTO;
 };
 
-/**
- * GAP: `AtualizarPaciente` ainda não existe no backend.
- * A ação "Editar" permanece desabilitada até o caso de uso existir
- * (`EditarPacienteModal` já está preparado em `src/components/pacientes/`).
- */
-export function PacienteDetalheClient({ paciente }: PacienteDetalheClientProps) {
+export function PacienteDetalheClient({
+  paciente: pacienteInicial,
+}: PacienteDetalheClientProps) {
+  const [paciente, setPaciente] = useState(pacienteInicial);
+  const [editarOpen, setEditarOpen] = useState(false);
+
   return (
     <main className="flex flex-col gap-6">
       <PacienteDetalheHeader paciente={paciente} />
@@ -47,17 +50,11 @@ export function PacienteDetalheClient({ paciente }: PacienteDetalheClientProps) 
               type="button"
               variant="outline"
               className="min-h-11"
-              disabled
-              title="Indisponível: falta o caso de uso AtualizarPaciente"
-              aria-disabled="true"
+              onClick={() => setEditarOpen(true)}
             >
               Editar
             </Button>
           </div>
-          <p className="text-[13px] text-muted-foreground">
-            A edição ficará disponível após a implementação de AtualizarPaciente
-            no backend.
-          </p>
 
           <dl className="grid gap-4 sm:grid-cols-2">
             <Campo label="Nome" valor={paciente.nome} />
@@ -97,6 +94,13 @@ export function PacienteDetalheClient({ paciente }: PacienteDetalheClientProps) 
           />
         </TabsContent>
       </Tabs>
+
+      <EditarPacienteModal
+        open={editarOpen}
+        onOpenChange={setEditarOpen}
+        paciente={paciente}
+        onAtualizado={setPaciente}
+      />
     </main>
   );
 }
