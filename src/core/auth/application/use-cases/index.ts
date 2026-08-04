@@ -15,6 +15,14 @@ export {
   type AtualizarTemaClinicaInput,
 } from "./AtualizarTemaClinica";
 export {
+  AtualizarSlugClinica,
+  type AtualizarSlugClinicaInput,
+} from "./AtualizarSlugClinica";
+export {
+  AtualizarSlugProfissional,
+  type AtualizarSlugProfissionalInput,
+} from "./AtualizarSlugProfissional";
+export {
   ConvidarUsuario,
   type ConvidarUsuarioInput,
 } from "./ConvidarUsuario";

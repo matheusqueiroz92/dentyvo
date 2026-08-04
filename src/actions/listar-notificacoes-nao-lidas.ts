@@ -40,6 +40,7 @@ function rotuloTipo(tipo: string): string {
     trial_acabando: "Trial acabando",
     cobranca_vencida: "Cobrança vencida",
     convite_usuario: "Convite",
+    novo_agendamento_publico_pendente: "Novo agendamento pelo link",
   };
   return mapa[tipo] ?? "Notificação";
 }

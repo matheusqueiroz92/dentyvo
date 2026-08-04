@@ -1,14 +1,7 @@
-import { EmConstrucao } from "@/components/layout";
+import { ConfiguracoesClient } from "@/components/configuracoes/ConfiguracoesClient";
+import { carregarContextoApp } from "@/lib/layout/carregar-contexto-app";
 
-export const metadata = {
-  title: "Configurações — Dentyvo",
-};
-
-export default function ConfiguracoesPage() {
-  return (
-    <EmConstrucao
-      titulo="Configurações"
-      descricao="As configurações da clínica estarão disponíveis em breve. Em construção."
-    />
-  );
+export default async function ConfiguracoesPage() {
+  const contexto = await carregarContextoApp();
+  return <ConfiguracoesClient papel={contexto.usuario.papel} />;
 }

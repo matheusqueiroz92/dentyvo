@@ -69,7 +69,6 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/configuracoes",
         label: "Configurações",
         icon: Settings,
-        emConstrucao: true,
       },
     ],
   },

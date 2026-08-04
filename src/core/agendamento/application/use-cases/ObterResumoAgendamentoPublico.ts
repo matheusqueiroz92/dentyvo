@@ -28,6 +28,8 @@ export type ResumoAgendamentoPublico = {
     nome: string;
     slug: string;
     logoUrl: string | null;
+    /** Tema visual da clínica (`null` = padrão da UI). */
+    tema: string | null;
   };
   /** Se o contexto já trouxe profissionalSlug, lista com um item; senão elegíveis. */
   profissionais: ProfissionalResumoPublico[];
@@ -72,6 +74,7 @@ export class ObterResumoAgendamentoPublico {
         nome: clinica.nome,
         slug: clinica.slug,
         logoUrl: clinica.logoUrl,
+        tema: clinica.tema,
       },
       profissionais,
       menu,

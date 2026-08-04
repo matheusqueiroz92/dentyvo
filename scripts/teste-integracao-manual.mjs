@@ -30,6 +30,13 @@
  *  21. ListarPeriogramasDoProntuario — ordenação registradoEm descendente
  *  22. RBAC negado — recepcao não registra odontograma nem periograma
  *  23. Dente duplicado — DenteDuplicadoNoPeriogramaError no domínio
+ *  24. Slugs gerados automaticamente (clínica + profissional do passo 1)
+ *  25. ConfigurarMenuPublicoDeProcedimentos (clínica dedicada ao link público)
+ *  26. Fluxo formato A — link geral, paciente novo via link-publico
+ *  27. Fluxo formato B — link por profissional, paciente existente (sem sobrescrita)
+ *  28. Gate clínica inativa — ResolverContexto rejeita após DesativarClinica
+ *  29. Colisão de slug — duas clínicas com nomes idênticos (observa comportamento)
+ *  30. Rate limit na action — pulado se infra desproporcional; ref. cobertura unitária
  *
  * (Passo extra 4.1 — CriarProcedimento: não pedido explicitamente, mas é
  * pré-requisito obrigatório de `MarcarConsulta`, que exige `procedimentoId`.)
@@ -1376,6 +1383,553 @@ async function main() {
     process.exit(1);
   }
 
+  // ---------------------------------------------------------------------
+  // PASSO 24 — Slugs gerados automaticamente (clínica + profissional do passo 1)
+  //
+  // Nota: após o passo 9.4 o admin virou dentista, mas o slug permanece.
+  // O bloco de menu/agendamento público (25+) usa clínica dedicada porque
+  // `configurar_menu_publico_procedimentos` exige papel admin.
+  // ---------------------------------------------------------------------
+  logPasso(
+    24,
+    "Slugs gerados automaticamente — confirma Clinica e Profissional do passo 1",
+  );
+  const clinicaComSlug = await authModule.clinicaRepo.buscarPorId(clinica.id);
+  if (!clinicaComSlug?.slug) {
+    throw new Error(
+      "Clínica do passo 1 sem slug após criação (esperado: derivado do nome).",
+    );
+  }
+  const profissionalComSlug =
+    await authModule.profissionalRepo.buscarPorId(
+      clinica.id,
+      profissionalAdmin.id,
+    );
+  if (!profissionalComSlug?.slug) {
+    throw new Error(
+      "Profissional admin do passo 1 sem slug após criação (esperado: derivado do nome).",
+    );
+  }
+  logResumo({
+    clinicaId: clinicaComSlug.id,
+    clinicaNome: clinicaComSlug.nome,
+    clinicaSlug: clinicaComSlug.slug,
+    profissionalId: profissionalComSlug.id,
+    profissionalNome: profissionalComSlug.nome,
+    profissionalSlug: profissionalComSlug.slug,
+  });
+  console.log("SLUGS PASSO 1 OK");
+
+  // ---------------------------------------------------------------------
+  // PASSO 25 — Clínica dedicada + ConfigurarMenuPublicoDeProcedimentos
+  // ---------------------------------------------------------------------
+  logPasso(
+    25,
+    "ConfigurarMenuPublicoDeProcedimentos — clínica dedicada (admin intacto)",
+  );
+  const emailAdminLink = `admin.link.${agora}@dentyvo-teste.local`;
+  const emailRecepcaoLink = `recepcao.link.${agora}@dentyvo-teste.local`;
+  const cpfClinicaLink = gerarCpfValido();
+  const clinicaLink = await cadastrarClinicaComTrial(
+    {
+      criarClinicaComAdmin,
+      iniciarTrial: assinaturaModule.iniciarTrial,
+    },
+    {
+      clinica: {
+        nome: `Clínica Link Público ${agora}`,
+        endereco: "Rua do Link Público, 100 - São Paulo/SP",
+        tipoDocumento: "cpf",
+        documento: cpfClinicaLink,
+      },
+      admin: {
+        nome: "Admin Link Publico",
+        email: emailAdminLink,
+        senha: "SenhaForte!123",
+      },
+    },
+  );
+  const usuarioAdminLink =
+    await authModule.authPort.buscarUsuarioPorEmail(emailAdminLink);
+  if (!usuarioAdminLink) {
+    throw new Error("Admin da clínica link público não encontrado.");
+  }
+  const profissionalAdminLink =
+    await authModule.profissionalRepo.buscarPorUsuarioId(usuarioAdminLink.id);
+  if (!profissionalAdminLink) {
+    throw new Error("Profissional admin da clínica link público não encontrado.");
+  }
+  // Segundo membro: garante lista de profissionais no formato A (não "trava" em um slug).
+  const conviteLink = await convidarUsuario.executar({
+    clinicaId: clinicaLink.id,
+    email: emailRecepcaoLink,
+    papel: "recepcao",
+    convidadoPorUsuarioId: usuarioAdminLink.id,
+  });
+  await aceitarConvite.executar({
+    token: conviteLink.token,
+    nome: "Recepcao Link Publico",
+    senha: "SenhaForte!123",
+  });
+
+  const diaSemanaLink = diaDaSemanaEmSaoPaulo(new Date());
+  await definirDisponibilidadeProfissional.executar({
+    clinicaId: clinicaLink.id,
+    solicitadoPorUsuarioId: usuarioAdminLink.id,
+    profissionalId: profissionalAdminLink.id,
+    janelas: [{ diaDaSemana: diaSemanaLink, horaInicio: "08:00", horaFim: "18:00" }],
+  });
+
+  const procedimentoConsultaLink = await criarProcedimento.executar({
+    clinicaId: clinicaLink.id,
+    solicitadoPorUsuarioId: usuarioAdminLink.id,
+    nome: "Consulta de avaliação",
+    duracaoPadraoMinutos: 30,
+    valor: 150,
+  });
+  const procedimentoLimpezaLink = await criarProcedimento.executar({
+    clinicaId: clinicaLink.id,
+    solicitadoPorUsuarioId: usuarioAdminLink.id,
+    nome: "Limpeza",
+    duracaoPadraoMinutos: 45,
+    valor: 200,
+  });
+
+  const itensMenuPublico = [
+    {
+      rotuloPublico: "Consulta/Avaliação",
+      procedimentoId: procedimentoConsultaLink.id,
+    },
+    {
+      rotuloPublico: "Limpeza",
+      procedimentoId: procedimentoLimpezaLink.id,
+    },
+  ];
+  await agendamentoModule.configurarMenuPublicoDeProcedimentos.executar({
+    clinicaId: clinicaLink.id,
+    solicitadoPorUsuarioId: usuarioAdminLink.id,
+    itens: itensMenuPublico,
+  });
+  const menuPersistido = await agendamentoModule.menuRepo.buscarPorClinicaId(
+    clinicaLink.id,
+  );
+  if (!menuPersistido.estaConfigurado || menuPersistido.itens.length !== 2) {
+    throw new Error(
+      `Menu público não persistiu como esperado (itens=${menuPersistido.itens.length}).`,
+    );
+  }
+  logResumo({
+    clinicaLinkId: clinicaLink.id,
+    clinicaLinkSlug: clinicaLink.slug,
+    profissionalAdminLinkSlug: profissionalAdminLink.slug,
+    menuItens: itensMenuPublico.map((i) => i.rotuloPublico).join(", "),
+    procedimentoConsultaId: procedimentoConsultaLink.id,
+    procedimentoLimpezaId: procedimentoLimpezaLink.id,
+  });
+  console.log("MENU PUBLICO OK");
+
+  // ---------------------------------------------------------------------
+  // PASSO 26 — Fluxo formato A (link geral, paciente NOVO)
+  // ---------------------------------------------------------------------
+  logPasso(
+    26,
+    "Fluxo formato A — link geral da clínica, paciente NOVO via MarcarConsultaViaLinkPublico",
+  );
+  const {
+    ClinicaInelegivelParaLinkPublicoError,
+  } = await import("@/core/agendamento/domain/errors");
+
+  const contextoGeral =
+    await agendamentoModule.resolverContextoAgendamentoPublico.executar({
+      slugClinica: clinicaLink.slug,
+    });
+  if (contextoGeral.profissionalPreResolvido) {
+    throw new Error(
+      "Formato A: contexto não deveria ter profissionalSlug travado.",
+    );
+  }
+  const resumoGeral =
+    await agendamentoModule.obterResumoAgendamentoPublico.executar({
+      contexto: contextoGeral,
+    });
+  if (resumoGeral.profissionais.length < 2) {
+    throw new Error(
+      `Formato A: esperava lista com >=2 profissionais (veio ${resumoGeral.profissionais.length}).`,
+    );
+  }
+  const resumoJson = JSON.stringify(resumoGeral);
+  const vazamentos = [
+    cpfPaciente,
+    paciente.cpf?.valor,
+    paciente.id,
+    agendamento.id,
+    "cpf",
+  ].filter((trecho) => {
+    if (trecho == null) return false;
+    // "cpf" como chave JSON seria vazamento estrutural; nomes de campos ok só
+    // se NÃO existirem no payload público.
+    if (trecho === "cpf") {
+      return /"cpf"\s*:/.test(resumoJson);
+    }
+    return resumoJson.includes(String(trecho));
+  });
+  if (vazamentos.length > 0) {
+    throw new Error(
+      `Resumo público vazou dado sensível/privado: ${vazamentos.join(", ")}`,
+    );
+  }
+  if (
+    !resumoGeral.clinica?.nome ||
+    !Array.isArray(resumoGeral.menu) ||
+    resumoGeral.menu.length < 2
+  ) {
+    throw new Error("Resumo público incompleto (clínica/menu).");
+  }
+  logResumo({
+    profissionalPreResolvido: contextoGeral.profissionalPreResolvido,
+    quantidadeProfissionais: resumoGeral.profissionais.length,
+    clinicaNomePublico: resumoGeral.clinica.nome,
+    menuRotulos: resumoGeral.menu.map((m) => m.rotuloPublico).join(", "),
+    semVazamentoPii: true,
+  });
+
+  const dataBaseLink = new Date(agora + 7 * 24 * 60 * 60 * 1000);
+  const partesLink = partesDataEmSaoPaulo(dataBaseLink);
+  const dataListaLink = new Date(
+    `${partesLink.ano}-${partesLink.mes}-${partesLink.dia}T12:00:00-03:00`,
+  );
+  const horariosLivres =
+    await agendamentoModule.listarHorariosDisponiveisNoLinkPublico.executar({
+      contexto: contextoGeral,
+      profissionalId: profissionalAdminLink.id,
+      data: dataListaLink,
+    });
+  if (horariosLivres.length === 0) {
+    throw new Error("Formato A: nenhum horário livre listado no link público.");
+  }
+  const horarioA = horariosLivres[0].inicio;
+  const cpfPacienteLinkNovo = gerarCpfValido();
+  const dataNascimentoLink = new Date("1995-05-15T12:00:00.000Z");
+  const agendamentoLinkA =
+    await agendamentoModule.marcarConsultaViaLinkPublico.executar({
+      contexto: contextoGeral,
+      nome: "Paciente Link Novo",
+      telefone: "77911112222",
+      cpf: cpfPacienteLinkNovo,
+      dataNascimento: dataNascimentoLink,
+      procedimentoId: procedimentoConsultaLink.id,
+      profissionalId: profissionalAdminLink.id,
+      dataHoraInicio: horarioA,
+      aceiteComunicacaoLembretes: true,
+    });
+  if (
+    agendamentoLinkA.origem !== "link-publico" ||
+    agendamentoLinkA.status !== "pendente"
+  ) {
+    throw new Error(
+      `Agendamento A inesperado: origem=${agendamentoLinkA.origem} status=${agendamentoLinkA.status}`,
+    );
+  }
+  const pacienteLinkCriado = await pacienteModule.pacienteRepo.buscarPorId(
+    clinicaLink.id,
+    agendamentoLinkA.pacienteId,
+  );
+  if (!pacienteLinkCriado) {
+    throw new Error("Paciente novo do link público não foi persistido.");
+  }
+  // Coluna `date` no banco — compara só o calendário (YYYY-MM-DD), não o horário.
+  const dataNascPersistida = pacienteLinkCriado.dataNascimento
+    .toISOString()
+    .slice(0, 10);
+  const dataNascEnviada = dataNascimentoLink.toISOString().slice(0, 10);
+  if (dataNascPersistida !== dataNascEnviada) {
+    throw new Error(
+      `dataNascimento do paciente novo não bate: persistida=${dataNascPersistida} enviada=${dataNascEnviada}`,
+    );
+  }
+  logResumo({
+    agendamentoLinkAId: agendamentoLinkA.id,
+    origem: agendamentoLinkA.origem,
+    status: agendamentoLinkA.status,
+    pacienteLinkId: pacienteLinkCriado.id,
+    dataNascimentoPersistida: pacienteLinkCriado.dataNascimento,
+    horarioEscolhido: horarioA,
+  });
+  console.log("FORMATO A OK");
+
+  // ---------------------------------------------------------------------
+  // PASSO 27 — Fluxo formato B (link por profissional, paciente EXISTENTE)
+  // ---------------------------------------------------------------------
+  logPasso(
+    27,
+    "Fluxo formato B — link direto por profissional, paciente EXISTENTE sem sobrescrita",
+  );
+  const contextoProf =
+    await agendamentoModule.resolverContextoAgendamentoPublico.executar({
+      slugClinica: clinicaLink.slug,
+      slugProfissional: profissionalAdminLink.slug,
+    });
+  if (!contextoProf.profissionalPreResolvido) {
+    throw new Error(
+      "Formato B: contexto deveria vir com profissionalSlug travado.",
+    );
+  }
+  const resumoProf =
+    await agendamentoModule.obterResumoAgendamentoPublico.executar({
+      contexto: contextoProf,
+    });
+  if (resumoProf.profissionais.length !== 1) {
+    throw new Error(
+      `Formato B: esperava 1 profissional no resumo (veio ${resumoProf.profissionais.length}).`,
+    );
+  }
+  if (resumoProf.profissionais[0].id !== profissionalAdminLink.id) {
+    throw new Error("Formato B: profissional do resumo não é o do slug.");
+  }
+
+  const horariosB =
+    await agendamentoModule.listarHorariosDisponiveisNoLinkPublico.executar({
+      contexto: contextoProf,
+      profissionalId: profissionalAdminLink.id,
+      data: dataListaLink,
+    });
+  const horarioB = horariosB.find(
+    (h) => h.inicio.getTime() !== horarioA.getTime(),
+  );
+  if (!horarioB) {
+    throw new Error("Formato B: sem horário livre distinto do passo 26.");
+  }
+
+  const nomeOriginal = pacienteLinkCriado.nome;
+  const telefoneOriginal = pacienteLinkCriado.telefone;
+  const nascOriginalDia = pacienteLinkCriado.dataNascimento
+    .toISOString()
+    .slice(0, 10);
+
+  const agendamentoLinkB =
+    await agendamentoModule.marcarConsultaViaLinkPublico.executar({
+      contexto: contextoProf,
+      nome: "Nome Digitado Diferente",
+      telefone: "77900009999",
+      cpf: cpfPacienteLinkNovo,
+      dataNascimento: new Date("2001-01-01T12:00:00.000Z"),
+      procedimentoId: procedimentoConsultaLink.id,
+      profissionalId: profissionalAdminLink.id,
+      dataHoraInicio: horarioB.inicio,
+      aceiteComunicacaoLembretes: true,
+    });
+  if (agendamentoLinkB.pacienteId !== pacienteLinkCriado.id) {
+    throw new Error(
+      `Formato B: pacienteId divergiu (esperado ${pacienteLinkCriado.id}, veio ${agendamentoLinkB.pacienteId}).`,
+    );
+  }
+  const pacienteAposB = await pacienteModule.pacienteRepo.buscarPorId(
+    clinicaLink.id,
+    pacienteLinkCriado.id,
+  );
+  if (
+    pacienteAposB.nome !== nomeOriginal ||
+    pacienteAposB.telefone !== telefoneOriginal ||
+    pacienteAposB.dataNascimento.toISOString().slice(0, 10) !== nascOriginalDia
+  ) {
+    throw new Error(
+      "Formato B: dados do paciente existente foram sobrescritos pelo formulário público.",
+    );
+  }
+  logResumo({
+    profissionalPreResolvido: contextoProf.profissionalPreResolvido,
+    profissionalSlug: contextoProf.profissionalSlug,
+    agendamentoLinkBId: agendamentoLinkB.id,
+    pacienteIdVinculado: agendamentoLinkB.pacienteId,
+    nomePreservado: pacienteAposB.nome,
+    telefonePreservado: pacienteAposB.telefone,
+    dataNascimentoPreservada: pacienteAposB.dataNascimento,
+  });
+  console.log("FORMATO B OK");
+
+  // ---------------------------------------------------------------------
+  // PASSO 28 — Gate clínica inativa (DesativarClinica + ResolverContexto)
+  // ---------------------------------------------------------------------
+  logPasso(
+    28,
+    "Gate clínica inativa — DesativarClinica (009) e rejeição no ResolverContexto",
+  );
+  const { randomUUID } = await import("node:crypto");
+  const { UsuarioPlataforma } = await import(
+    "@/core/admin-plataforma/domain/UsuarioPlataforma"
+  );
+  const { createAdminPlataformaModule } = await import(
+    "@/core/admin-plataforma/infra/create-admin-plataforma-module"
+  );
+  const { DesativarClinica } = await import(
+    "@/core/admin-plataforma/application/use-cases/DesativarClinica"
+  );
+
+  const adminPlataformaModule = createAdminPlataformaModule();
+  const superAdmin = UsuarioPlataforma.criar({
+    id: randomUUID(),
+    nome: "Super Admin Teste Integracao",
+    email: `superadmin.teste.${agora}@dentyvo-teste.local`,
+    papel: "super-admin",
+  });
+  await adminPlataformaModule.usuarioPlataformaRepo.salvar(superAdmin);
+
+  const desativarClinica = new DesativarClinica(
+    adminPlataformaModule.clinicaRepo,
+    adminPlataformaModule.profissionalRepo,
+    adminPlataformaModule.usuarioPlataformaRepo,
+    adminPlataformaModule.auth,
+    adminPlataformaModule.auditoria,
+  );
+
+  const emailAdminInativa = `admin.inativa.${agora}@dentyvo-teste.local`;
+  const clinicaInativa = await criarClinicaComAdmin.executar({
+    clinica: {
+      nome: `Clínica Inativa Gate ${agora}`,
+      endereco: "Rua Gate Inativa, 1 - São Paulo/SP",
+      tipoDocumento: "cpf",
+      documento: gerarCpfValido(),
+    },
+    admin: {
+      nome: "Admin Inativa",
+      email: emailAdminInativa,
+      senha: "SenhaForte!123",
+    },
+  });
+  await desativarClinica.executar({
+    solicitadoPorUsuarioPlataformaId: superAdmin.id,
+    clinicaId: clinicaInativa.id,
+    motivo: "teste de integração — gate link público clínica inativa",
+  });
+  const statusAposDesativar = (
+    await authModule.clinicaRepo.buscarPorId(clinicaInativa.id)
+  )?.status;
+  if (statusAposDesativar !== "inativa") {
+    throw new Error(
+      `DesativarClinica não marcou inativa (status=${statusAposDesativar}).`,
+    );
+  }
+
+  let gateInativaPassou = false;
+  try {
+    await agendamentoModule.resolverContextoAgendamentoPublico.executar({
+      slugClinica: clinicaInativa.slug,
+    });
+    gateInativaPassou = true;
+  } catch (erro) {
+    if (!(erro instanceof ClinicaInelegivelParaLinkPublicoError)) {
+      throw erro;
+    }
+    logResumo({
+      excecaoRecebida: erro.nome,
+      mensagem: erro.message,
+      clinicaInativaId: clinicaInativa.id,
+      slug: clinicaInativa.slug,
+    });
+    console.log("GATE CLINICA INATIVA OK");
+  }
+  if (gateInativaPassou) {
+    console.error(
+      "FALHA: ResolverContexto aceitou clínica inativa (deveria rejeitar).",
+    );
+    process.exit(1);
+  }
+
+  // ---------------------------------------------------------------------
+  // PASSO 29 — Colisão de slug (observa comportamento real)
+  // ---------------------------------------------------------------------
+  logPasso(
+    29,
+    "Colisão de slug — duas clínicas com nomes idênticos em sequência",
+  );
+  const nomeColisao = `Clínica Colisão Slug ${agora}`;
+  const clinicaColisao1 = await criarClinicaComAdmin.executar({
+    clinica: {
+      nome: nomeColisao,
+      endereco: "Rua Colisão 1, 1 - São Paulo/SP",
+      tipoDocumento: "cpf",
+      documento: gerarCpfValido(),
+    },
+    admin: {
+      nome: "Admin Colisao 1",
+      email: `admin.colisao1.${agora}@dentyvo-teste.local`,
+      senha: "SenhaForte!123",
+    },
+  });
+  let clinicaColisao2 = null;
+  let colisaoRejeitada = false;
+  let colisaoErroNome = null;
+  try {
+    clinicaColisao2 = await criarClinicaComAdmin.executar({
+      clinica: {
+        nome: nomeColisao,
+        endereco: "Rua Colisão 2, 2 - São Paulo/SP",
+        tipoDocumento: "cpf",
+        documento: gerarCpfValido(),
+      },
+      admin: {
+        nome: "Admin Colisao 2",
+        email: `admin.colisao2.${agora}@dentyvo-teste.local`,
+        senha: "SenhaForte!123",
+      },
+    });
+  } catch (erro) {
+    colisaoRejeitada = true;
+    colisaoErroNome = erro?.nome ?? erro?.constructor?.name ?? "Error";
+    logResumo({
+      comportamento: "segunda criação REJEITADA",
+      excecaoRecebida: colisaoErroNome,
+      mensagem: erro.message,
+      slugPrimeira: clinicaColisao1.slug,
+    });
+  }
+  if (!colisaoRejeitada && clinicaColisao2) {
+    const desambiguado =
+      clinicaColisao1.slug !== clinicaColisao2.slug &&
+      clinicaColisao2.slug.startsWith(clinicaColisao1.slug);
+    logResumo({
+      comportamento: "segunda criação ACEITA com desambiguação automática",
+      slugPrimeira: clinicaColisao1.slug,
+      slugSegunda: clinicaColisao2.slug,
+      slugsDiferentes: clinicaColisao1.slug !== clinicaColisao2.slug,
+      segundaTemSufixoSobreBase: desambiguado,
+    });
+    console.log(
+      desambiguado
+        ? "COLISAO SLUG: desambiguada automaticamente (sufixo)"
+        : "COLISAO SLUG: segunda criação ok, mas sufixo/base não seguem padrão esperado — revisar",
+    );
+  } else if (colisaoRejeitada) {
+    console.log("COLISAO SLUG: segunda criação rejeitada por conflito");
+  }
+
+  // ---------------------------------------------------------------------
+  // PASSO 30 — Rate limit na action pública
+  // ---------------------------------------------------------------------
+  logPasso(
+    30,
+    "Rate limit na action pública — referência à cobertura automatizada",
+  );
+  console.log(
+    "  PULADO: exercitar marcarConsultaPublicaAction até o limite exigiria",
+  );
+  console.log(
+    "  mock de IP/headers + composition root da action (infra desproporcional",
+  );
+  console.log(
+    "  a este script). Cobertura equivalente já existe em",
+  );
+  console.log(
+    "  src/actions/protecao-agendamento-publico.test.ts (assertRateLimitPublico)",
+  );
+  console.log(
+    "  e src/actions/agendamento-publico.test.ts (RateLimitExcedidoError na action).",
+  );
+  logResumo({
+    rateLimitActionManual: "pulado",
+    coberturaAutomatizada: "assertRateLimitPublico + marcarConsultaPublicaAction",
+  });
+
   console.log(`\n${SEPARADOR}`);
   console.log("FLUXO COMPLETO EXECUTADO COM SUCESSO. Nenhum dado foi apagado.");
   console.log(SEPARADOR);
@@ -1415,6 +1969,20 @@ async function main() {
           !recepcaoConseguiuRegistrarPeriograma &&
           !recepcaoConseguiuRegistrarOdontograma,
         dedupDominioOk: !denteDuplicadoPassou,
+        clinicaSlug: clinicaComSlug.slug,
+        profissionalAdminSlug: profissionalComSlug.slug,
+        clinicaLinkId: clinicaLink.id,
+        clinicaLinkSlug: clinicaLink.slug,
+        agendamentoLinkAId: agendamentoLinkA.id,
+        agendamentoLinkBId: agendamentoLinkB.id,
+        pacienteLinkId: pacienteLinkCriado.id,
+        gateClinicaInativaOk: !gateInativaPassou,
+        clinicaInativaId: clinicaInativa.id,
+        slugColisao1: clinicaColisao1.slug,
+        slugColisao2: clinicaColisao2?.slug ?? null,
+        colisaoSlugComportamento: colisaoRejeitada
+          ? "rejeitada"
+          : "desambiguada",
       },
       null,
       2,

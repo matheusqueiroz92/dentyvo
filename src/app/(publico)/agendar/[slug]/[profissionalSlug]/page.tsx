@@ -1,4 +1,4 @@
-import { AgendarPublicoClient } from "../agendar-publico-client";
+import { AgendarPublicoFlow } from "@/components/agendamento-publico/AgendarPublicoFlow";
 
 type Props = {
   params: Promise<{ slug: string; profissionalSlug: string }>;
@@ -7,7 +7,7 @@ type Props = {
 export default async function AgendarProfissionalPage({ params }: Props) {
   const { slug, profissionalSlug } = await params;
   return (
-    <AgendarPublicoClient
+    <AgendarPublicoFlow
       slugClinica={slug}
       slugProfissional={profissionalSlug}
     />

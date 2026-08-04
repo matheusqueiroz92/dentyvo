@@ -34,6 +34,7 @@ describe("ObterResumoAgendamentoPublico", () => {
       nome: ctx.clinica.nome,
       slug: SLUG_CLINICA,
       logoUrl: null,
+      tema: null,
     });
     expect(resumo.profissionais.some((p) => p.slug === SLUG_PROFISSIONAL)).toBe(
       true,

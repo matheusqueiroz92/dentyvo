@@ -4,6 +4,7 @@ export const TIPOS_NOTIFICACAO = [
   "trial_acabando",
   "cobranca_vencida",
   "convite_usuario",
+  "novo_agendamento_publico_pendente",
 ] as const;
 
 export type TipoNotificacao = (typeof TIPOS_NOTIFICACAO)[number];
