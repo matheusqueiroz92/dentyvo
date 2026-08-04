@@ -6,6 +6,12 @@ import { z } from "zod";
 import { createAgendamentoModule } from "@/core/agendamento/infra/create-agendamento-module";
 import { actionClient } from "@/lib/safe-action";
 
+import {
+  assertCaptchaPublico,
+  assertRateLimitPublico,
+  chaveRateLimitPublico,
+} from "./protecao-agendamento-publico";
+
 function ipDoCliente(h: Headers): string {
   return (
     h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -17,13 +23,10 @@ function ipDoCliente(h: Headers): string {
 async function assertRateLimit(slug: string): Promise<void> {
   const mod = createAgendamentoModule();
   const h = await headers();
-  const chave = `${ipDoCliente(h)}:${slug}`;
-  const ok = await mod.rateLimit.permitir(chave);
-  if (!ok) {
-    throw Object.assign(new Error("Muitas tentativas. Tente novamente em instantes."), {
-      nome: "RateLimitExcedidoError",
-    });
-  }
+  await assertRateLimitPublico(
+    mod.rateLimit,
+    chaveRateLimitPublico(ipDoCliente(h), slug),
+  );
 }
 
 export const resolverContextoPublicoAction = actionClient
@@ -94,15 +97,11 @@ export const marcarConsultaPublicaAction = actionClient
     await assertRateLimit(parsedInput.slugClinica);
     const mod = createAgendamentoModule();
     const h = await headers();
-    const captchaOk = await mod.captcha.verificar(
+    await assertCaptchaPublico(
+      mod.captcha,
       parsedInput.captchaToken,
       ipDoCliente(h),
     );
-    if (!captchaOk) {
-      throw Object.assign(new Error("Validação CAPTCHA falhou. Tente novamente."), {
-        nome: "CaptchaInvalidoError",
-      });
-    }
 
     const contexto = await mod.resolverContextoAgendamentoPublico.executar({
       slugClinica: parsedInput.slugClinica,

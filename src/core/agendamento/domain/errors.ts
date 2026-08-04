@@ -135,3 +135,21 @@ export class AcessoClinicaInativoParaLinkPublicoError extends Error {
     this.name = this.nome;
   }
 }
+
+export class CaptchaInvalidoError extends Error {
+  readonly nome = "CaptchaInvalidoError" as const;
+
+  constructor() {
+    super("Validação CAPTCHA falhou. Tente novamente.");
+    this.name = this.nome;
+  }
+}
+
+export class RateLimitExcedidoError extends Error {
+  readonly nome = "RateLimitExcedidoError" as const;
+
+  constructor(readonly chave: string) {
+    super("Muitas tentativas. Tente novamente em instantes.");
+    this.name = this.nome;
+  }
+}

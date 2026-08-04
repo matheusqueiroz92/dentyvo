@@ -123,6 +123,61 @@ describe("MarcarConsultaViaLinkPublico", () => {
     expect(criado?.cpf.valor).toBe(CPF_PACIENTE_NOVO);
   });
 
+  it("persiste dataNascimento ao criar paciente novo via link público", async () => {
+    const ctx = await seedContextoLinkPublico({ comMenuConfigurado: true });
+
+    const agendamento = await sut(ctx).executar({
+      contexto: contexto(ctx),
+      nome: "Com Data Nascimento",
+      telefone: "77912345678",
+      cpf: CPF_PACIENTE_NOVO,
+      dataNascimento: DATA_NASCIMENTO,
+      procedimentoId: ctx.procedimentoConsulta.id,
+      profissionalId: ctx.dentista.id,
+      dataHoraInicio: segundaAs(10),
+      aceiteComunicacaoLembretes: true,
+    });
+
+    const criado = await ctx.pacienteRepo.buscarPorId(
+      ctx.clinicaId,
+      agendamento.pacienteId,
+    );
+    expect(criado?.dataNascimento.toISOString()).toBe(
+      DATA_NASCIMENTO.toISOString(),
+    );
+  });
+
+  it("NÃO altera dataNascimento de paciente existente quando o form envia outra data", async () => {
+    const ctx = await seedContextoLinkPublico({ comMenuConfigurado: true });
+    const dataOficial = new Date("1990-01-01T12:00:00.000Z");
+    const existente = await seedPacienteExistente(ctx, {
+      cpf: CPF_PACIENTE_PUBLICO,
+    });
+    expect(existente.dataNascimento.toISOString()).toBe(
+      dataOficial.toISOString(),
+    );
+
+    await sut(ctx).executar({
+      contexto: contexto(ctx),
+      nome: "Nome Digitado",
+      telefone: "77900000000",
+      cpf: CPF_PACIENTE_PUBLICO,
+      dataNascimento: new Date("2000-12-31T12:00:00.000Z"),
+      procedimentoId: ctx.procedimentoConsulta.id,
+      profissionalId: ctx.dentista.id,
+      dataHoraInicio: segundaAs(11),
+      aceiteComunicacaoLembretes: true,
+    });
+
+    const persistido = await ctx.pacienteRepo.buscarPorId(
+      ctx.clinicaId,
+      existente.id,
+    );
+    expect(persistido?.dataNascimento.toISOString()).toBe(
+      dataOficial.toISOString(),
+    );
+  });
+
   it("exige aceite de comunicacao_lembretes (marketing nunca implícito)", async () => {
     const ctx = await seedContextoLinkPublico({ comMenuConfigurado: true });
     await expect(

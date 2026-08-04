@@ -3,15 +3,22 @@ import type { CaptchaPort } from "../../application/ports/CaptchaPort";
 const SITEVERIFY_URL =
   "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
+const MENSAGEM_SECRET_AUSENTE =
+  "TURNSTILE_SECRET_KEY não configurada";
+
 /**
  * Cloudflare Turnstile — siteverify no servidor.
- * Em desenvolvimento, se `TURNSTILE_SECRET_KEY` estiver ausente e
- * `TURNSTILE_BYPASS=1`, aceita qualquer token (não usar em produção).
+ *
+ * Bypass (aceitar qualquer token não vazio) ocorre **apenas** quando
+ * `NODE_ENV === "development"` e a secret está ausente. Em qualquer outro
+ * ambiente (test, staging, preview Vercel, production), ausência da secret
+ * falha alto — nunca aceita token silenciosamente.
  */
 export class TurnstileCaptchaAdapter implements CaptchaPort {
   constructor(
     private readonly secretKey: string | undefined = process.env
       .TURNSTILE_SECRET_KEY,
+    private readonly nodeEnv: string | undefined = process.env.NODE_ENV,
   ) {}
 
   async verificar(token: string, remoteIp?: string): Promise<boolean> {
@@ -19,9 +26,11 @@ export class TurnstileCaptchaAdapter implements CaptchaPort {
       return false;
     }
 
-    // Sem secret em não-produção: bypass para dev/local (nunca em production).
-    if (!this.secretKey) {
-      return process.env.NODE_ENV !== "production";
+    if (!this.secretKey?.trim()) {
+      if (this.nodeEnv === "development") {
+        return true;
+      }
+      throw new Error(MENSAGEM_SECRET_AUSENTE);
     }
 
     const body = new URLSearchParams();
