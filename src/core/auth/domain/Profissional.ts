@@ -2,6 +2,7 @@ import {
   DadosInvalidosError,
   TenantMismatchError,
 } from "@/core/shared/errors";
+import { Slug } from "@/core/shared/Slug";
 
 import { CroObrigatorioError } from "./errors";
 import type { Papel } from "./Papel";
@@ -14,6 +15,8 @@ export type ProfissionalProps = {
   papel: Papel;
   cro: string | null;
   especialidade: string | null;
+  /** Identificador público único por clínica (URL `/agendar/[slug-clinica]/[slug]`). */
+  slug: string;
 };
 
 export class Profissional {
@@ -24,6 +27,7 @@ export class Profissional {
   readonly papel: Papel;
   readonly cro: string | null;
   readonly especialidade: string | null;
+  readonly slug: string;
 
   private constructor(props: ProfissionalProps) {
     this.id = props.id;
@@ -33,6 +37,7 @@ export class Profissional {
     this.papel = props.papel;
     this.cro = props.cro;
     this.especialidade = props.especialidade;
+    this.slug = props.slug;
   }
 
   static criar(input: {
@@ -43,6 +48,8 @@ export class Profissional {
     papel: Papel;
     cro?: string | null;
     especialidade?: string | null;
+    /** Se omitido, deriva do nome (unicidade por tenant fica na application). */
+    slug?: string;
   }): Profissional {
     const nome = input.nome.trim();
     if (!nome) {
@@ -53,6 +60,11 @@ export class Profissional {
     const especialidade = normalizarOpcional(input.especialidade);
     assertCroSeDentista(input.papel, cro);
 
+    const slug =
+      input.slug != null
+        ? Slug.criar(input.slug).valor
+        : Slug.criarAPartirDoNome(nome).valor;
+
     return new Profissional({
       id: input.id,
       clinicaId: input.clinicaId,
@@ -61,11 +73,15 @@ export class Profissional {
       papel: input.papel,
       cro,
       especialidade,
+      slug,
     });
   }
 
   static reconstituir(props: ProfissionalProps): Profissional {
-    return new Profissional(props);
+    return new Profissional({
+      ...props,
+      slug: Slug.criar(props.slug).valor,
+    });
   }
 
   alterarPapel(novoPapel: Papel, cro?: string | null): Profissional {
@@ -83,6 +99,25 @@ export class Profissional {
       papel: novoPapel,
       cro: croFinal,
       especialidade: this.especialidade,
+      slug: this.slug,
+    });
+  }
+
+  /**
+   * Altera o slug público do profissional nesta clínica.
+   * Invalida links já compartilhados (sem redirect no MVP).
+   * Unicidade por `clinicaId` é responsabilidade da application/port.
+   */
+  atualizarSlug(slug: string): Profissional {
+    return Profissional.reconstituir({
+      id: this.id,
+      clinicaId: this.clinicaId,
+      usuarioId: this.usuarioId,
+      nome: this.nome,
+      papel: this.papel,
+      cro: this.cro,
+      especialidade: this.especialidade,
+      slug: Slug.criar(slug).valor,
     });
   }
 

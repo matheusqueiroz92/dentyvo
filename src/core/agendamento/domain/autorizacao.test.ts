@@ -21,6 +21,7 @@ const MATRIZ_ESPERADA: Record<AcaoAgendamento, readonly Papel[]> = {
   criar_procedimento: ["admin", "dentista", "recepcao"],
   buscar_procedimento: ["admin", "dentista", "recepcao"],
   listar_procedimentos: ["admin", "dentista", "recepcao"],
+  configurar_menu_publico_procedimentos: ["admin"],
 };
 
 describe("matriz de autorização do módulo agendamento", () => {

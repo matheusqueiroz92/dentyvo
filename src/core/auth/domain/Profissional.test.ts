@@ -40,7 +40,7 @@ describe("Profissional", () => {
     ).toThrow(CroObrigatorioError);
   });
 
-  it("cria dentista com CRO", () => {
+  it("cria dentista com CRO e slug derivado do nome", () => {
     const dentista = Profissional.criar({
       id: "p1",
       clinicaId: "c1",
@@ -53,6 +53,21 @@ describe("Profissional", () => {
 
     expect(dentista.papel).toBe("dentista");
     expect(dentista.cro).toBe("12345");
+    expect(dentista.slug).toBe("dr-carlos");
+  });
+
+  it("aceita slug explícito e permite atualizarSlug", () => {
+    const dentista = Profissional.criar({
+      id: "p1",
+      clinicaId: "c1",
+      usuarioId: "u1",
+      nome: "Dr. Carlos",
+      papel: "dentista",
+      cro: "12345",
+      slug: "carlos-endo",
+    });
+    expect(dentista.slug).toBe("carlos-endo");
+    expect(dentista.atualizarSlug("dr-carlos-v2").slug).toBe("dr-carlos-v2");
   });
 
   it("rejeita nome vazio", () => {

@@ -17,7 +17,7 @@ describe("Clinica", () => {
     });
   }
 
-  it("cria clínica com status inicial ativa", () => {
+  it("cria clínica com status inicial ativa e slug derivado do nome", () => {
     const clinica = Clinica.criar({
       id: "cli-1",
       nome: " Consultório Silva ",
@@ -29,8 +29,21 @@ describe("Clinica", () => {
     expect(clinica.nome).toBe("Consultório Silva");
     expect(clinica.endereco).toBe("Rua A, 10");
     expect(clinica.documento.equals(documento)).toBe(true);
+    expect(clinica.slug).toBe("consultorio-silva");
     expect(clinica.logoUrl).toBeNull();
     expect(clinica.tema).toBeNull();
+  });
+
+  it("aceita slug explícito e permite atualizarSlug", () => {
+    const clinica = Clinica.criar({
+      id: "cli-1",
+      nome: "Consultório Silva",
+      endereco: "Rua A, 10",
+      documento,
+      slug: "sorriso-vc",
+    });
+    expect(clinica.slug).toBe("sorriso-vc");
+    expect(clinica.atualizarSlug("nova-clinica").slug).toBe("nova-clinica");
   });
 
   it("rejeita nome vazio", () => {

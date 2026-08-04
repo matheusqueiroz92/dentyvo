@@ -13,6 +13,7 @@ export const ACOES_AGENDAMENTO = [
   "criar_procedimento",
   "buscar_procedimento",
   "listar_procedimentos",
+  "configurar_menu_publico_procedimentos",
 ] as const;
 
 export type AcaoAgendamento = (typeof ACOES_AGENDAMENTO)[number];
@@ -28,6 +29,7 @@ const MATRIZ: Record<AcaoAgendamento, readonly Papel[]> = {
   criar_procedimento: ["admin", "dentista", "recepcao"],
   buscar_procedimento: ["admin", "dentista", "recepcao"],
   listar_procedimentos: ["admin", "dentista", "recepcao"],
+  configurar_menu_publico_procedimentos: ["admin"],
 };
 
 export const { pode, assertPode } = criarVerificadorAutorizacao(MATRIZ);

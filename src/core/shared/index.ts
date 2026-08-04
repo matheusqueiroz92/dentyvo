@@ -4,3 +4,4 @@ export {
   PermissaoNegadaError,
   TenantMismatchError,
 } from "./errors";
+export { Slug } from "./Slug";

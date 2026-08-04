@@ -1,4 +1,5 @@
 import { DadosInvalidosError } from "@/core/shared/errors";
+import { Slug } from "@/core/shared/Slug";
 
 import type { DocumentoFiscal } from "./DocumentoFiscal";
 import { assertTemaClinica, type TemaClinica } from "./TemaClinica";
@@ -11,6 +12,8 @@ export type ClinicaProps = {
   endereco: string;
   documento: DocumentoFiscal;
   status: StatusClinica;
+  /** Identificador público único na plataforma (URL `/agendar/[slug]`). */
+  slug: string;
   /** URL pública do logo (ex.: Vercel Blob). Null = sem logo. */
   logoUrl: string | null;
   /** Tema visual pré-definido. Null = padrão da UI (`azul-padrao`). */
@@ -23,6 +26,7 @@ export class Clinica {
   readonly endereco: string;
   readonly documento: DocumentoFiscal;
   readonly status: StatusClinica;
+  readonly slug: string;
   readonly logoUrl: string | null;
   readonly tema: TemaClinica | null;
 
@@ -32,6 +36,7 @@ export class Clinica {
     this.endereco = props.endereco;
     this.documento = props.documento;
     this.status = props.status;
+    this.slug = props.slug;
     this.logoUrl = props.logoUrl;
     this.tema = props.tema;
   }
@@ -42,6 +47,8 @@ export class Clinica {
     nome: string;
     endereco: string;
     documento: DocumentoFiscal;
+    /** Se omitido, deriva do nome (unicidade/sufixo fica na application). */
+    slug?: string;
   }): Clinica {
     const nome = input.nome.trim();
     const endereco = input.endereco.trim();
@@ -52,19 +59,28 @@ export class Clinica {
       throw new DadosInvalidosError("Endereço da clínica é obrigatório.");
     }
 
+    const slug =
+      input.slug != null
+        ? Slug.criar(input.slug).valor
+        : Slug.criarAPartirDoNome(nome).valor;
+
     return new Clinica({
       id: input.id,
       nome,
       endereco,
       documento: input.documento,
       status: "ativa",
+      slug,
       logoUrl: null,
       tema: null,
     });
   }
 
   static reconstituir(props: ClinicaProps): Clinica {
-    return new Clinica(props);
+    return new Clinica({
+      ...props,
+      slug: Slug.criar(props.slug).valor,
+    });
   }
 
   atualizarDadosCadastrais(input: {
@@ -84,6 +100,17 @@ export class Clinica {
       ...this.toProps(),
       nome,
       endereco,
+    });
+  }
+
+  /**
+   * Altera o slug público. Invalida links já compartilhados (sem redirect no MVP).
+   * Unicidade na plataforma é responsabilidade da application/port.
+   */
+  atualizarSlug(slug: string): Clinica {
+    return Clinica.reconstituir({
+      ...this.toProps(),
+      slug: Slug.criar(slug).valor,
     });
   }
 
@@ -131,6 +158,7 @@ export class Clinica {
       endereco: this.endereco,
       documento: this.documento,
       status: this.status,
+      slug: this.slug,
       logoUrl: this.logoUrl,
       tema: this.tema,
     };

@@ -93,3 +93,45 @@ export class ForaDaDisponibilidadeError extends Error {
     this.name = this.nome;
   }
 }
+
+export class ClinicaNaoEncontradaPorSlugError extends Error {
+  readonly nome = "ClinicaNaoEncontradaPorSlugError" as const;
+
+  constructor(readonly slug: string) {
+    super("Clínica não encontrada para o link público informado.");
+    this.name = this.nome;
+  }
+}
+
+export class ClinicaInelegivelParaLinkPublicoError extends Error {
+  readonly nome = "ClinicaInelegivelParaLinkPublicoError" as const;
+
+  constructor(
+    readonly clinicaId: string,
+    readonly status: string,
+  ) {
+    super("Clínica não está elegível para agendamento via link público.");
+    this.name = this.nome;
+  }
+}
+
+export class ProfissionalNaoEncontradoPorSlugError extends Error {
+  readonly nome = "ProfissionalNaoEncontradoPorSlugError" as const;
+
+  constructor(
+    readonly clinicaId: string,
+    readonly slug: string,
+  ) {
+    super("Profissional não encontrado para o link público informado.");
+    this.name = this.nome;
+  }
+}
+
+export class AcessoClinicaInativoParaLinkPublicoError extends Error {
+  readonly nome = "AcessoClinicaInativoParaLinkPublicoError" as const;
+
+  constructor(readonly clinicaId: string) {
+    super("Clínica sem acesso ativo — link público indisponível.");
+    this.name = this.nome;
+  }
+}

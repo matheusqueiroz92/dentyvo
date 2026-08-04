@@ -1,5 +1,7 @@
 import { and, eq, ilike } from "drizzle-orm";
 
+import { Slug } from "@/core/shared/Slug";
+
 import type {
   ClinicaRepositoryPort,
   FiltrosListagemClinicas,
@@ -31,6 +33,7 @@ export class DrizzleClinicaRepository implements ClinicaRepositoryPort {
         tipoDocumento: clinica.documento.tipo,
         documento: clinica.documento.valor,
         status: clinica.status,
+        slug: clinica.slug,
         logoUrl: clinica.logoUrl,
         tema: clinica.tema,
       })
@@ -42,6 +45,7 @@ export class DrizzleClinicaRepository implements ClinicaRepositoryPort {
           tipoDocumento: clinica.documento.tipo,
           documento: clinica.documento.valor,
           status: clinica.status,
+          slug: clinica.slug,
           logoUrl: clinica.logoUrl,
           tema: clinica.tema,
         },
@@ -60,6 +64,14 @@ export class DrizzleClinicaRepository implements ClinicaRepositoryPort {
   ): Promise<Clinica | null> {
     const row = await this.db.query.clinica.findFirst({
       where: eq(clinicaTable.documento, documento.valor),
+    });
+    return row ? toDomain(row) : null;
+  }
+
+  async buscarPorSlug(slug: string): Promise<Clinica | null> {
+    const normalizado = Slug.criar(slug).valor;
+    const row = await this.db.query.clinica.findFirst({
+      where: eq(clinicaTable.slug, normalizado),
     });
     return row ? toDomain(row) : null;
   }
@@ -88,6 +100,7 @@ function toDomain(row: {
   tipoDocumento: string;
   documento: string;
   status: string;
+  slug: string;
   logoUrl: string | null;
   tema: string | null;
 }): Clinica {
@@ -100,6 +113,7 @@ function toDomain(row: {
       row.documento,
     ),
     status: row.status as StatusClinica,
+    slug: row.slug,
     logoUrl: row.logoUrl,
     tema: normalizarTemaPersistido(row.tema),
   });

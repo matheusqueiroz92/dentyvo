@@ -1,21 +1,10 @@
 import type { ProfissionalRepositoryPort } from "@/core/auth/application/ports/ProfissionalRepositoryPort";
-import { ProfissionalNaoEncontradoError } from "@/core/auth/domain/errors";
 
 import type { HorarioDisponivel } from "../../domain/DisponibilidadeProfissional";
-import { horaParaMinutos } from "../../domain/DisponibilidadeProfissional";
-import { intervalosSobrepoem } from "../../domain/intervalo";
 import type { AgendamentoRepositoryPort } from "../ports/AgendamentoRepositoryPort";
 import type { DisponibilidadeProfissionalRepositoryPort } from "../ports/DisponibilidadeProfissionalRepositoryPort";
-import {
-  autorizar,
-  diaDaSemanaNoTimezone,
-  instanteNoTimezone,
-  obterSolicitanteNaClinica,
-  partesDataNoTimezone,
-} from "./helpers";
-
-/** Duração padrão dos slots listados (alinha aos testes / uso clínico comum). */
-const SLOT_MINUTOS = 60;
+import { autorizar, obterSolicitanteNaClinica } from "./helpers";
+import { ListarHorariosDisponiveisCore } from "./listarHorariosDisponiveisCore";
 
 export type ListarHorariosDisponiveisInput = {
   clinicaId: string;
@@ -26,15 +15,23 @@ export type ListarHorariosDisponiveisInput = {
 };
 
 /**
- * Lista slots livres do profissional na data, cruzando janelas semanais
- * com agendamentos que ocupam slot.
+ * Porta autenticada: valida sessão/RBAC e delega ao
+ * {@link ListarHorariosDisponiveisCore}.
  */
 export class ListarHorariosDisponiveis {
+  private readonly core: ListarHorariosDisponiveisCore;
+
   constructor(
-    private readonly disponibilidadeRepo: DisponibilidadeProfissionalRepositoryPort,
-    private readonly agendamentoRepo: AgendamentoRepositoryPort,
+    disponibilidadeRepo: DisponibilidadeProfissionalRepositoryPort,
+    agendamentoRepo: AgendamentoRepositoryPort,
     private readonly profissionalRepo: ProfissionalRepositoryPort,
-  ) {}
+  ) {
+    this.core = new ListarHorariosDisponiveisCore(
+      disponibilidadeRepo,
+      agendamentoRepo,
+      profissionalRepo,
+    );
+  }
 
   async executar(
     input: ListarHorariosDisponiveisInput,
@@ -46,61 +43,10 @@ export class ListarHorariosDisponiveis {
     );
     autorizar(solicitante, "listar_horarios_disponiveis");
 
-    const profissional = await this.profissionalRepo.buscarPorId(
-      input.clinicaId,
-      input.profissionalId,
-    );
-    if (!profissional) {
-      throw new ProfissionalNaoEncontradoError(input.profissionalId);
-    }
-
-    const diaSemana = diaDaSemanaNoTimezone(input.data);
-    const { ano, mes, dia } = partesDataNoTimezone(input.data);
-
-    const janelas = (
-      await this.disponibilidadeRepo.listarPorProfissional(
-        input.clinicaId,
-        input.profissionalId,
-      )
-    ).filter((j) => j.diaDaSemana === diaSemana);
-
-    const inicioDia = instanteNoTimezone(ano, mes, dia, 0);
-    const fimDia = instanteNoTimezone(ano, mes, dia, 24 * 60);
-    const ocupados =
-      await this.agendamentoRepo.listarOcupadosPorProfissionalNoIntervalo(
-        input.clinicaId,
-        input.profissionalId,
-        inicioDia,
-        fimDia,
-      );
-
-    const horarios: HorarioDisponivel[] = [];
-    for (const janela of janelas) {
-      const inicioJanela = horaParaMinutos(janela.horaInicio);
-      const fimJanela = horaParaMinutos(janela.horaFim);
-      for (
-        let inicio = inicioJanela;
-        inicio + SLOT_MINUTOS <= fimJanela;
-        inicio += SLOT_MINUTOS
-      ) {
-        const fim = inicio + SLOT_MINUTOS;
-        const slotInicio = instanteNoTimezone(ano, mes, dia, inicio);
-        const slotFim = instanteNoTimezone(ano, mes, dia, fim);
-        const conflita = ocupados.some((a) =>
-          intervalosSobrepoem(
-            a.dataHoraInicio,
-            a.dataHoraFim,
-            slotInicio,
-            slotFim,
-          ),
-        );
-        if (!conflita) {
-          horarios.push({ inicio: slotInicio, fim: slotFim });
-        }
-      }
-    }
-
-    horarios.sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
-    return horarios;
+    return this.core.executar({
+      clinicaId: input.clinicaId,
+      profissionalId: input.profissionalId,
+      data: input.data,
+    });
   }
 }

@@ -6,6 +6,7 @@ import type { ContextoSessao } from "../../domain/ContextoSessao";
 import type { Convite } from "../../domain/Convite";
 import type { DocumentoFiscal } from "../../domain/DocumentoFiscal";
 import type { Profissional } from "../../domain/Profissional";
+import { Slug } from "@/core/shared/Slug";
 import type { AuthPort, UsuarioAuth } from "../ports/AuthPort";
 import type {
   ClinicaRepositoryPort,
@@ -32,6 +33,13 @@ export class FakeClinicaRepository implements ClinicaRepositoryPort {
     return (
       [...this.items.values()].find((c) => c.documento.equals(documento)) ??
       null
+    );
+  }
+
+  async buscarPorSlug(slug: string): Promise<Clinica | null> {
+    const normalizado = Slug.criar(slug).valor;
+    return (
+      [...this.items.values()].find((c) => c.slug === normalizado) ?? null
     );
   }
 
@@ -64,6 +72,18 @@ export class FakeProfissionalRepository implements ProfissionalRepositoryPort {
     const encontrado = this.items.get(profissionalId);
     if (!encontrado || encontrado.clinicaId !== clinicaId) return null;
     return encontrado;
+  }
+
+  async buscarPorSlug(
+    clinicaId: string,
+    slug: string,
+  ): Promise<Profissional | null> {
+    const normalizado = Slug.criar(slug).valor;
+    return (
+      [...this.items.values()].find(
+        (p) => p.clinicaId === clinicaId && p.slug === normalizado,
+      ) ?? null
+    );
   }
 
   async buscarPorUsuarioId(usuarioId: string): Promise<Profissional | null> {

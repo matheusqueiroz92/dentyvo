@@ -1,5 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
+import { Slug } from "@/core/shared/Slug";
+
 import type { ProfissionalRepositoryPort } from "../../application/ports/ProfissionalRepositoryPort";
 import { assertPapel } from "../../domain/Papel";
 import { Profissional } from "../../domain/Profissional";
@@ -22,6 +24,7 @@ export class DrizzleProfissionalRepository implements ProfissionalRepositoryPort
         papel: profissional.papel,
         cro: profissional.cro,
         especialidade: profissional.especialidade,
+        slug: profissional.slug,
       })
       .onConflictDoUpdate({
         target: profissionalTable.id,
@@ -32,6 +35,7 @@ export class DrizzleProfissionalRepository implements ProfissionalRepositoryPort
           papel: profissional.papel,
           cro: profissional.cro,
           especialidade: profissional.especialidade,
+          slug: profissional.slug,
         },
       });
   }
@@ -44,6 +48,20 @@ export class DrizzleProfissionalRepository implements ProfissionalRepositoryPort
       where: and(
         eq(profissionalTable.id, profissionalId),
         eq(profissionalTable.clinicaId, clinicaId),
+      ),
+    });
+    return row ? toDomain(row) : null;
+  }
+
+  async buscarPorSlug(
+    clinicaId: string,
+    slug: string,
+  ): Promise<Profissional | null> {
+    const normalizado = Slug.criar(slug).valor;
+    const row = await this.db.query.profissional.findFirst({
+      where: and(
+        eq(profissionalTable.clinicaId, clinicaId),
+        eq(profissionalTable.slug, normalizado),
       ),
     });
     return row ? toDomain(row) : null;
@@ -83,6 +101,7 @@ function toDomain(row: {
   papel: string;
   cro: string | null;
   especialidade: string | null;
+  slug: string;
 }): Profissional {
   return Profissional.reconstituir({
     id: row.id,
@@ -92,5 +111,6 @@ function toDomain(row: {
     papel: assertPapel(row.papel),
     cro: row.cro,
     especialidade: row.especialidade,
+    slug: row.slug,
   });
 }

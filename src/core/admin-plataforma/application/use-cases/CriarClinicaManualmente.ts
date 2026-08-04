@@ -12,6 +12,7 @@ import {
 } from "@/core/auth/domain/errors";
 import { Profissional } from "@/core/auth/domain/Profissional";
 import type { AuditoriaLogPort } from "@/core/prontuario/application/ports/AuditoriaLogPort";
+import { Slug } from "@/core/shared/Slug";
 
 import type { UsuarioPlataformaRepositoryPort } from "../ports/UsuarioPlataformaRepositoryPort";
 import {
@@ -73,11 +74,20 @@ export class CriarClinicaManualmente {
       throw new UsuarioJaVinculadoAClinicaError(email);
     }
 
+    const slugBase = Slug.criarAPartirDoNome(input.clinica.nome).valor;
+    let slug = slugBase;
+    let sufixo = 0;
+    while (await this.clinicaRepo.buscarPorSlug(slug)) {
+      sufixo += 1;
+      slug = `${slugBase}-${sufixo}`;
+    }
+
     const clinica = Clinica.criar({
       id: randomUUID(),
       nome: input.clinica.nome,
       endereco: input.clinica.endereco,
       documento,
+      slug,
     });
 
     const usuario = await this.auth.criarUsuario({

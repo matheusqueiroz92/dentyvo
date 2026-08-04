@@ -7,6 +7,11 @@ export interface ProfissionalRepositoryPort {
     clinicaId: string,
     profissionalId: string,
   ): Promise<Profissional | null>;
+  /** Slug único por clínica (não global) — link `/agendar/[slug]/[profissionalSlug]`. */
+  buscarPorSlug(
+    clinicaId: string,
+    slug: string,
+  ): Promise<Profissional | null>;
   buscarPorUsuarioId(usuarioId: string): Promise<Profissional | null>;
   listarPorClinica(clinicaId: string): Promise<Profissional[]>;
   remover(clinicaId: string, profissionalId: string): Promise<void>;

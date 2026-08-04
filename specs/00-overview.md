@@ -68,9 +68,10 @@ implementação agora). Detalhes nas seções correspondentes abaixo.
 ## Próxima adição de escopo (não é v2 distante)
 
 - **Agendamento via link público (extensão da 002):** ver seção detalhada
-  abaixo. Prioridade de escopo **próxima** — domínio já modela
-  `Agendamento.origem = link-publico`; falta a superfície pública e a
-  action. Baixo custo relativo ao que já existe em `core/agendamento`.
+  abaixo. Spec da emenda **aprovada** em
+  `specs/features/002-agendamento.md` — pronta para o Arquiteto;
+  implementação ainda pendente. Baixo custo relativo ao que já existe em
+  `core/agendamento`.
 
 ## Financeiro — planejamento futuro (spec 013)
 
@@ -224,22 +225,21 @@ estenda), quando for a hora de planejar a entrega.
   `MarcarConsulta` (ou equivalente) com `origem: "link-publico"`, sem
   duplicar regra de negócio.
 
-### O que falta
+### O que falta (implementação — spec aprovada)
 
-- Tela/rota **pública** (sem autenticação de profissional) para o paciente
-  escolher horário e solicitar agendamento.
-- Server action (ou rota) correspondente, escopada por clínica/token de
-  link, chamando o caso de uso existente.
-- Decisões de produto na spec: validade do link, quais profissionais/
-  procedimentos expostos, confirmação automática vs. `pendente`, abuso/
-  rate-limit.
+- Entrega pelo fluxo SDD a partir da emenda aprovada em
+  `specs/features/002-agendamento.md` (*Emenda — Agendamento via link
+  público*): rotas públicas, slugs, menu curto, caso(s) de uso do canal,
+  rate limit + CAPTCHA, gates `ativa` + `VerificarAcessoAtivo`.
 
 ### Relação com a 002 atual
 
-A 002 lista “Link público de autoagendamento” em **Fora de escopo** do
-MVP da feature (origem já modelada; fluxos em 007+). Este registro eleva
-o canal a **próxima adição de escopo** planejada — ao abrir a spec, atualizar
-explicitamente esse item de “fora de escopo” da 002.
+Emenda formal em `specs/features/002-agendamento.md` (*Emenda —
+Agendamento via link público*), status **`aprovada`** — decisões
+consolidadas (slug clínica/profissional, paciente por CPF sem
+sobrescrita, menu público 2–4, dois formatos de link, reuso de
+`ListarHorariosDisponiveis`, abuso MVP, `ContextoAgendamentoPublico`).
+**Pronta para o Arquiteto de Domínio.**
 
 ## Restrições e conformidade
 

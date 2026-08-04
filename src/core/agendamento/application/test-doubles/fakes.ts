@@ -1,6 +1,7 @@
 import { Agendamento } from "../../domain/Agendamento";
 import type { DisponibilidadeProfissional } from "../../domain/DisponibilidadeProfissional";
 import { intervalosSobrepoem } from "../../domain/intervalo";
+import { MenuPublicoProcedimento } from "../../domain/MenuPublicoProcedimento";
 import type { Procedimento } from "../../domain/Procedimento";
 import { SobreposicaoHorarioError } from "../../domain/errors";
 import type { AgendamentoRepositoryPort } from "../ports/AgendamentoRepositoryPort";
@@ -9,6 +10,7 @@ import type {
   IntencaoLembrete,
   LembretePort,
 } from "../ports/LembretePort";
+import type { MenuPublicoProcedimentoRepositoryPort } from "../ports/MenuPublicoProcedimentoRepositoryPort";
 import type { ProcedimentoRepositoryPort } from "../ports/ProcedimentoRepositoryPort";
 
 export class FakeAgendamentoRepository implements AgendamentoRepositoryPort {
@@ -151,6 +153,20 @@ export class FakeLembretePort implements LembretePort {
       throw new Error("falha ao registrar lembrete");
     }
     this.intencoes.push(intencao);
+  }
+}
+
+export class FakeMenuPublicoProcedimentoRepository
+  implements MenuPublicoProcedimentoRepositoryPort
+{
+  readonly items = new Map<string, MenuPublicoProcedimento>();
+
+  async salvar(menu: MenuPublicoProcedimento): Promise<void> {
+    this.items.set(menu.clinicaId, menu);
+  }
+
+  async buscarPorClinicaId(clinicaId: string): Promise<MenuPublicoProcedimento> {
+    return this.items.get(clinicaId) ?? MenuPublicoProcedimento.vazio(clinicaId);
   }
 }
 

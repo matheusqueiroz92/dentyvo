@@ -17,6 +17,14 @@ export const profissional = pgTable(
     papel: text("papel").notNull(),
     cro: text("cro"),
     especialidade: text("especialidade"),
+    /** Identificador público único por clínica (`/agendar/[slug]/[slug]`). */
+    slug: text("slug").notNull(),
   },
-  (table) => [uniqueIndex("profissional_usuarioId_uidx").on(table.usuarioId)],
+  (table) => [
+    uniqueIndex("profissional_usuarioId_uidx").on(table.usuarioId),
+    uniqueIndex("profissional_clinica_slug_uidx").on(
+      table.clinicaId,
+      table.slug,
+    ),
+  ],
 );

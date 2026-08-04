@@ -17,6 +17,18 @@ export class FakePacienteRepository implements PacienteRepositoryPort {
     return encontrado;
   }
 
+  async buscarPorCpf(
+    clinicaId: string,
+    cpf: string,
+  ): Promise<Paciente | null> {
+    const digitos = cpf.replace(/\D/g, "");
+    return (
+      [...this.items.values()].find(
+        (p) => p.clinicaId === clinicaId && p.cpf.valor === digitos,
+      ) ?? null
+    );
+  }
+
   async listarPorClinica(clinicaId: string): Promise<Paciente[]> {
     return [...this.items.values()].filter((p) => p.clinicaId === clinicaId);
   }

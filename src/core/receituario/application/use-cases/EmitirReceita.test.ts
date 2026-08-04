@@ -172,6 +172,7 @@ describe("EmitirReceita", () => {
       papel: "dentista",
       cro: null,
       especialidade: ctx.profissional.especialidade,
+      slug: ctx.profissional.slug,
     });
     await ctx.profissionalRepo.salvar(semCro);
 

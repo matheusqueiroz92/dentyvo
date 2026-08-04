@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { DadosInvalidosError } from "@/core/shared/errors";
+import { Slug } from "@/core/shared/Slug";
 
 import { Clinica } from "../../domain/Clinica";
 import { DocumentoFiscal } from "../../domain/DocumentoFiscal";
@@ -79,11 +80,17 @@ export class CriarClinicaComAdmin {
       usuarioId = usuario.id;
     }
 
+    const slug = await slugClinicaUnico(
+      this.clinicaRepo,
+      input.clinica.nome,
+    );
+
     const clinica = Clinica.criar({
       id: randomUUID(),
       nome: input.clinica.nome,
       endereco: input.clinica.endereco,
       documento,
+      slug,
     });
 
     const profissional = Profissional.criar({
@@ -99,4 +106,18 @@ export class CriarClinicaComAdmin {
 
     return clinica;
   }
+}
+
+async function slugClinicaUnico(
+  clinicaRepo: ClinicaRepositoryPort,
+  nome: string,
+): Promise<string> {
+  const base = Slug.criarAPartirDoNome(nome).valor;
+  let candidato = base;
+  let sufixo = 0;
+  while (await clinicaRepo.buscarPorSlug(candidato)) {
+    sufixo += 1;
+    candidato = `${base}-${sufixo}`;
+  }
+  return candidato;
 }

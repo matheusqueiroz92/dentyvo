@@ -12,6 +12,8 @@ export interface ClinicaRepositoryPort {
   salvar(clinica: Clinica): Promise<void>;
   buscarPorId(id: string): Promise<Clinica | null>;
   buscarPorDocumento(documento: DocumentoFiscal): Promise<Clinica | null>;
+  /** Identificador público único na plataforma (link `/agendar/[slug]`). */
+  buscarPorSlug(slug: string): Promise<Clinica | null>;
   /** Listagem cross-tenant — uso exclusivo do admin da plataforma (009). */
   listar(filtros?: FiltrosListagemClinicas): Promise<Clinica[]>;
 }

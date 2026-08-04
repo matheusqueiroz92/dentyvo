@@ -7,6 +7,8 @@ export const clinica = pgTable("clinica", {
   tipoDocumento: text("tipo_documento").notNull(),
   documento: text("documento").notNull().unique(),
   status: text("status").notNull(),
+  /** Identificador público único na plataforma (`/agendar/[slug]`). */
+  slug: text("slug").notNull().unique(),
   /** URL pública do logo (Vercel Blob); null = sem logo. */
   logoUrl: text("logo_url"),
   /**

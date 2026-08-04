@@ -49,6 +49,20 @@ export class DrizzlePacienteRepository implements PacienteRepositoryPort {
     return row ? toDomain(row) : null;
   }
 
+  async buscarPorCpf(
+    clinicaId: string,
+    cpf: string,
+  ): Promise<Paciente | null> {
+    const digitos = cpf.replace(/\D/g, "");
+    const row = await this.db.query.paciente.findFirst({
+      where: and(
+        eq(pacienteTable.clinicaId, clinicaId),
+        eq(pacienteTable.cpf, digitos),
+      ),
+    });
+    return row ? toDomain(row) : null;
+  }
+
   async listarPorClinica(clinicaId: string): Promise<Paciente[]> {
     const rows = await this.db.query.paciente.findMany({
       where: eq(pacienteTable.clinicaId, clinicaId),

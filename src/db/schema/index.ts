@@ -10,6 +10,7 @@ export * from "./auth";
 export * from "./clinic-whatsapp-account";
 export * from "./clinica";
 export * from "./convite";
+export * from "./menu-publico-procedimento";
 export * from "./notificacao";
 export * from "./odontograma";
 export * from "./paciente";
