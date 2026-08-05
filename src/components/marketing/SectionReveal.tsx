@@ -53,8 +53,18 @@ export function SectionReveal({
 }: SectionRevealProps) {
   const shouldReduceMotion = useReducedMotion();
   const isClient = useIsClient();
-  const MotionTag = as === "section" ? motion.section : motion.div;
   const StaticTag = as;
+  const motionProps = {
+    className: cn(className),
+    initial: { opacity: 0, y: yOffset },
+    whileInView: { opacity: 1, y: 0 },
+    viewport: { once: true, amount: 0.15 as const },
+    transition: {
+      duration: MOTION_DURATION_S[duration],
+      ease: MOTION_EASE,
+    },
+    ...rest,
+  };
 
   if (shouldReduceMotion || !isClient) {
     return (
@@ -67,19 +77,11 @@ export function SectionReveal({
     );
   }
 
+  if (as === "div") {
+    return <motion.div {...(motionProps as HTMLMotionProps<"div">)}>{children}</motion.div>;
+  }
+
   return (
-    <MotionTag
-      className={cn(className)}
-      initial={{ opacity: 0, y: yOffset }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.15 }}
-      transition={{
-        duration: MOTION_DURATION_S[duration],
-        ease: MOTION_EASE,
-      }}
-      {...rest}
-    >
-      {children}
-    </MotionTag>
+    <motion.section {...motionProps}>{children}</motion.section>
   );
 }

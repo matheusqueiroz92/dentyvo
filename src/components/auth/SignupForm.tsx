@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -90,7 +90,8 @@ function SignupFormFields({
   const schema = useMemo(() => criarSchema(viaSocial), [viaSocial]);
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    // Schema condicional (com/sem senha) não alinha 1:1 com FormValues no zodResolver.
+    resolver: zodResolver(schema) as Resolver<FormValues>,
     defaultValues: {
       adminNome: nomeInicial,
       email: emailInicial,
@@ -304,7 +305,7 @@ function SignupFormFields({
                     aria-required
                   />
                 </FormControl>
-                <div className="space-y-1 leading-[22px]">
+                <div className="space-y-1 leading-5.5">
                   <FormLabel className="text-sm font-normal text-foreground">
                     Li e aceito os{" "}
                     <Link
