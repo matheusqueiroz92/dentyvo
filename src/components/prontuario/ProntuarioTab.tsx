@@ -9,13 +9,20 @@ import {
   carregarProntuarioTabAction,
   criarProntuarioAction,
   preencherAnamneseAction,
+  registrarEvolucaoAction,
+  retificarEvolucaoAction,
 } from "@/actions/prontuario";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { AnamneseFormValues } from "@/lib/prontuario/schema";
+import type {
+  AnamneseFormValues,
+  RegistrarEvolucaoFormValues,
+  RetificarEvolucaoFormValues,
+} from "@/lib/prontuario/schema";
 import type {
   AnamneseDTO,
+  EvolucaoDTO,
   ProntuarioTabDTO,
 } from "@/lib/prontuario/types";
 
@@ -25,6 +32,9 @@ import {
   AnamneseRespostasExibicao,
 } from "./AnamneseHistorico";
 import { CriarProntuarioCard } from "./CriarProntuarioCard";
+import { EvolucaoTimeline } from "./EvolucaoTimeline";
+import { RegistrarEvolucaoModal } from "./RegistrarEvolucaoModal";
+import { RetificarEvolucaoModal } from "./RetificarEvolucaoModal";
 
 type ProntuarioTabProps = {
   pacienteId: string;
@@ -55,6 +65,12 @@ export function ProntuarioTab({ pacienteId, podeAcessar }: ProntuarioTabProps) {
   const [versaoHistoricoId, setVersaoHistoricoId] = useState<string | null>(
     null,
   );
+  const [novaEvolucaoOpen, setNovaEvolucaoOpen] = useState(false);
+  const [salvandoEvolucao, setSalvandoEvolucao] = useState(false);
+  const [retificarOpen, setRetificarOpen] = useState(false);
+  const [evolucaoParaRetificar, setEvolucaoParaRetificar] =
+    useState<EvolucaoDTO | null>(null);
+  const [salvandoRetificacao, setSalvandoRetificacao] = useState(false);
 
   const aplicarResultado = useCallback(
     (result: Awaited<ReturnType<typeof carregarProntuarioTabAction>>) => {
@@ -124,8 +140,8 @@ export function ProntuarioTab({ pacienteId, podeAcessar }: ProntuarioTabProps) {
         <Lock aria-hidden />
         <AlertTitle>Acesso restrito</AlertTitle>
         <AlertDescription>
-          O prontuário clínico e a anamnese são visíveis apenas para
-          administradores e dentistas. Peça a um profissional autorizado se
+          O prontuário clínico, a anamnese e as evoluções são visíveis apenas
+          para administradores e dentistas. Peça a um profissional autorizado se
           precisar consultar estes dados.
         </AlertDescription>
       </Alert>
@@ -169,7 +185,8 @@ export function ProntuarioTab({ pacienteId, podeAcessar }: ProntuarioTabProps) {
     );
   }
 
-  const { prontuario, anamneseVigente, versoes } = dados;
+  const { prontuario, anamneseVigente, versoes, evolucoes, procedimentos } =
+    dados;
   const prontuarioId = prontuario.id;
 
   async function handleSalvarAnamnese(values: AnamneseFormValues) {
@@ -201,6 +218,52 @@ export function ProntuarioTab({ pacienteId, podeAcessar }: ProntuarioTabProps) {
       await recarregar();
     } finally {
       setSalvandoAnamnese(false);
+    }
+  }
+
+  async function handleRegistrarEvolucao(values: RegistrarEvolucaoFormValues) {
+    setSalvandoEvolucao(true);
+    try {
+      const result = await registrarEvolucaoAction({
+        prontuarioId,
+        respostas: values,
+      });
+      if (result.serverError || !result.data) {
+        toast.error(
+          result.serverError?.mensagem ??
+            "Não foi possível registrar a evolução.",
+        );
+        return;
+      }
+      toast.success("Evolução registrada.");
+      setNovaEvolucaoOpen(false);
+      await recarregar();
+    } finally {
+      setSalvandoEvolucao(false);
+    }
+  }
+
+  async function handleRetificarEvolucao(values: RetificarEvolucaoFormValues) {
+    if (!evolucaoParaRetificar) return;
+    setSalvandoRetificacao(true);
+    try {
+      const result = await retificarEvolucaoAction({
+        evolucaoId: evolucaoParaRetificar.id,
+        respostas: values,
+      });
+      if (result.serverError || !result.data) {
+        toast.error(
+          result.serverError?.mensagem ??
+            "Não foi possível retificar a evolução.",
+        );
+        return;
+      }
+      toast.success("Retificação registrada.");
+      setRetificarOpen(false);
+      setEvolucaoParaRetificar(null);
+      await recarregar();
+    } finally {
+      setSalvandoRetificacao(false);
     }
   }
 
@@ -307,6 +370,15 @@ export function ProntuarioTab({ pacienteId, podeAcessar }: ProntuarioTabProps) {
         ) : null}
       </section>
 
+      <EvolucaoTimeline
+        evolucoes={evolucoes}
+        onNova={() => setNovaEvolucaoOpen(true)}
+        onRetificar={(e) => {
+          setEvolucaoParaRetificar(e);
+          setRetificarOpen(true);
+        }}
+      />
+
       <AnamneseForm
         open={formAberto}
         onOpenChange={setFormAberto}
@@ -316,6 +388,25 @@ export function ProntuarioTab({ pacienteId, podeAcessar }: ProntuarioTabProps) {
         }
         salvando={salvandoAnamnese}
         onSalvar={handleSalvarAnamnese}
+      />
+
+      <RegistrarEvolucaoModal
+        open={novaEvolucaoOpen}
+        onOpenChange={setNovaEvolucaoOpen}
+        procedimentos={procedimentos}
+        salvando={salvandoEvolucao}
+        onSalvar={handleRegistrarEvolucao}
+      />
+
+      <RetificarEvolucaoModal
+        open={retificarOpen}
+        onOpenChange={(open) => {
+          setRetificarOpen(open);
+          if (!open) setEvolucaoParaRetificar(null);
+        }}
+        original={evolucaoParaRetificar}
+        salvando={salvandoRetificacao}
+        onSalvar={handleRetificarEvolucao}
       />
     </div>
   );
@@ -334,6 +425,10 @@ function ProntuarioSkeleton() {
       <div className="space-y-3">
         <Skeleton className="h-5 w-28" />
         <Skeleton className="h-40 w-full" />
+      </div>
+      <div className="space-y-3">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-32 w-full" />
       </div>
     </div>
   );

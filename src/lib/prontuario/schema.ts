@@ -43,6 +43,27 @@ export function secaoVazia(): AnamneseFormValues["historicoMedico"] {
   return { texto: "", negado: false };
 }
 
+export const registrarEvolucaoFormSchema = z.object({
+  descricao: z.string().trim().min(1, "Informe a descrição da evolução."),
+  procedimentoId: z.string().optional(),
+});
+
+export type RegistrarEvolucaoFormValues = z.infer<
+  typeof registrarEvolucaoFormSchema
+>;
+
+export const retificarEvolucaoFormSchema = z.object({
+  descricao: z.string().trim().min(1, "Informe a nova descrição."),
+  motivoRetificacao: z
+    .string()
+    .trim()
+    .min(1, "Informe o motivo da retificação."),
+});
+
+export type RetificarEvolucaoFormValues = z.infer<
+  typeof retificarEvolucaoFormSchema
+>;
+
 export function respostasParaForm(
   respostas: AnamneseFormValues | null | undefined,
 ): AnamneseFormValues {

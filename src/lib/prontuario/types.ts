@@ -26,6 +26,27 @@ export type ProntuarioDTO = {
   criadoEmIso: string;
 };
 
+export type EvolucaoDTO = {
+  id: string;
+  prontuarioId: string;
+  profissionalId: string;
+  profissionalNome: string;
+  tipo: "registro" | "retificacao";
+  descricao: string;
+  registradoEmIso: string;
+  procedimentoId: string | null;
+  procedimentoNome: string | null;
+  evolucaoRetificadaId: string | null;
+  motivoRetificacao: string | null;
+  /** Só para tipo registro: já existe retificação vinculada. */
+  jaRetificada: boolean;
+};
+
+export type ProcedimentoOpcaoDTO = {
+  id: string;
+  label: string;
+};
+
 /** Resultado da carga da aba Prontuário (após ConsultarProntuario quando existe). */
 export type ProntuarioTabDTO =
   | { status: "sem_prontuario" }
@@ -34,4 +55,6 @@ export type ProntuarioTabDTO =
       prontuario: ProntuarioDTO;
       anamneseVigente: AnamneseDTO | null;
       versoes: AnamneseDTO[];
+      evolucoes: EvolucaoDTO[];
+      procedimentos: ProcedimentoOpcaoDTO[];
     };
