@@ -59,6 +59,21 @@ implementação agora). Detalhes nas seções correspondentes abaixo.
   ou mockar dado financeiro.
 - **014 — Estoque/Insumos:** ver seção detalhada abaixo. Sem urgência de
   schema agora — módulo desenhável do zero quando chegar a vez.
+- **015 — Orçamento:** ver seção detalhada abaixo. Candidato a próxima
+  spec após Prontuário — complexidade baixa/média, valor comercial
+  direto. **Sem abrir Arquiteto agora.**
+- **016 — Transcrição de voz assistida (anamnese):** ver seção detalhada
+  abaixo. **v2**, após módulos clínicos centrais estarem maduros.
+- **017 — Sugestão de tratamento por IA:** ver seção detalhada abaixo.
+  Apenas **ideia em avaliação** — **não** é spec ativa; bloqueada até
+  consulta jurídica/regulatória.
+- **018 — Chatbot de suporte à plataforma:** ver seção detalhada abaixo.
+  Assistente de **uso do produto** (não clínico). **Não priorizar** antes
+  do lançamento comercial — aguardar volume real de dúvidas das primeiras
+  clínicas. **Não confundir** com o bot WhatsApp de pacientes (007).
+- **Gravação de paciente pré-consulta (link público/WhatsApp):** ver
+  seção detalhada abaixo. Ideia **rejeitada** no formato de link público;
+  se revisitada no futuro, só sob restrições fortes (nunca no MVP).
 - **Multi-clínica por usuário — v2:** ver seção detalhada abaixo. Um usuário
   podendo pertencer a múltiplas clínicas, com seletor de unidade no topbar
   (`docs/DESIGN_SYSTEM.md`, seção 9). **Depois do lançamento inicial.**
@@ -146,6 +161,79 @@ retrabalho de dado retroativo — **não gerar falsa urgência**.
 Compra de insumo é categoria natural de `DespesaOperacional`. Considerar
 essa relação ao desenhar ambas as specs, para não duplicar o conceito de
 “custo”.
+
+## Orçamento — planejamento futuro (spec 015)
+
+Registro **conceitual** (sem spec formal ainda). **Não abrir Arquiteto
+nem implementação agora.**
+
+Modelo similar a Receita (006): vinculado a prontuário, com itens
+(procedimento + valor em snapshot) e workflow de status
+(`rascunho` | `enviado` | `aceito` | `recusado`). Possivelmente gera
+origem nova de `Agendamento` quando aceito (detalhe na spec formal).
+
+Candidato a **próxima spec após Prontuário** — complexidade baixa/média,
+valor comercial direto. A spec formal (`specs/features/015-*.md`) só
+será aberta quando for a hora de planejar a entrega.
+
+## Transcrição de voz assistida (anamnese) — planejamento futuro (spec 016)
+
+Registro **conceitual** (sem spec formal ainda). **v2** — depois que os
+módulos clínicos centrais estiverem maduros.
+
+- Gravação pelo dentista **durante** a consulta.
+- Transcrição via API (Whisper / Deepgram / similar).
+- Resultado **sempre** como rascunho editável antes de salvar — **nunca**
+  preenchimento automático sem revisão humana.
+
+Não confundir com gravação feita pelo paciente fora do consultório (ideia
+rejeitada no formato de link público — ver seção abaixo).
+
+## Sugestão de tratamento por IA — ideia em avaliação (017)
+
+**Não é spec ativa.** Registrar apenas como ideia sob avaliação.
+
+Requer consulta jurídica/regulatória (possível enquadramento como suporte
+à decisão clínica / dispositivo médico) **antes** de qualquer
+especificação técnica. **Bloqueado** até essa avaliação acontecer —
+não numerar como entrega planejada nem abrir `specs/features/017-*.md`
+enquanto o bloqueio permanecer.
+
+## Chatbot de suporte à plataforma — planejamento futuro (spec 018)
+
+Registro **conceitual** (sem spec formal ainda). **Não abrir Arquiteto
+nem implementação agora.** **Não priorizar** antes do lançamento
+comercial.
+
+Assistente conversacional **dentro do produto** para dúvidas de **uso da
+plataforma** (como configurar agenda, convites, assinatura, etc.) —
+**não** dúvidas clínicas. **Não confundir** com o bot de WhatsApp para
+pacientes (007).
+
+### Timing
+
+Aguardar volume real de dúvidas de suporte das primeiras clínicas para
+construir conteúdo relevante. Sem base empírica pós-lançamento, a
+especificação formal (`specs/features/018-*.md`) não deve ser aberta.
+
+### Requisitos de escopo obrigatórios (quando especificado de verdade)
+
+- **Base de conhecimento real:** gerada a partir de dúvidas reais
+  pós-lançamento — não FAQs hipotéticas inventadas no planejamento.
+- **Recusa explícita e redirecionamento** para qualquer pergunta de
+  natureza clínica: nunca responder sobre tratamento, medicação,
+  dosagem (mesmo que o usuário peça).
+- Considerar como **diferencial do plano Full** (010).
+
+## Gravação de paciente pré-consulta — ideia rejeitada (link público)
+
+Ideia **rejeitada** para o formato de **link público**: risco de
+consentimento e de triagem de emergência sem supervisão humana.
+
+Se revisitada no futuro:
+- restringir a canal **WhatsApp** com relação já estabelecida;
+- revisão humana **obrigatória** antes de qualquer processamento por IA;
+- **nunca** no MVP nem no canal público de agendamento.
 
 ## Multi-clínica por usuário — planejamento futuro (v2)
 

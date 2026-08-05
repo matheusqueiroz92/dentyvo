@@ -374,6 +374,8 @@ Schema Drizzle esperado (orientação para implementação futura):
   slug antigo no MVP (avisar na UI de edição — Configurações).
 - **Confirmação WhatsApp do agendamento público:** fase 2 (007); MVP usa
   rate limit + CAPTCHA + status `pendente` com confirmação no painel.
+- **Notificação de novo agendamento público (destinatários):** ver detalhe
+  na emenda de link público (*Débito técnico conhecido (emenda)*).
 
 ---
 
@@ -625,6 +627,27 @@ público.
 - Expor prontuário, odontograma, receita ou PII de terceiros no link.
 - Substituir o fluxo autenticado do painel.
 - SMS como canal de verificação.
+
+### Débito técnico conhecido (emenda)
+
+- **Notificação in-app de novo agendamento público — destinatários
+  incompletos:** hoje o alerta (`novo_agendamento_publico_pendente`) é
+  enviado apenas a membros com papel `admin` ou `recepcao` da clínica.
+  Não notifica o `Profissional` dono do horário (`profissionalId` do
+  agendamento) quando este tem papel `dentista` (sem admin).
+  - **Cenário órfão:** dentista sem papel admin numa clínica com
+    sócios/administração separada não recebe o alerta proativo do
+    próprio agendamento novo, mesmo sendo quem vai atender. Dentista
+    solo costuma ser o `admin` do cadastro e, nesse caso, é coberto.
+  - **Sem perda de dado:** o agendamento permanece `pendente`,
+    `origem = link-publico`, e continua visível na agenda para quem tem
+    RBAC de listar/confirmar (inclui `dentista`). Só o empurrão in-app
+    não chega até o profissional do slot.
+  - **Sugestão ao resolver:** complementar (não substituir) os
+    destinatários admin/recepção notificando também o usuário vinculado
+    ao `profissionalId` do agendamento. Se esse profissional já for
+    admin/recepção, deduplicar para não criar duas notificações iguais
+    para o mesmo usuário.
 
 ### Plano de testes
 - **Aplicação (contexto):** slug clínica inexistente falha; clínica
