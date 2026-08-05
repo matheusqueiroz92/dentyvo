@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { PacienteDetalheClient } from "@/components/pacientes";
 import { Skeleton } from "@/components/ui/skeleton";
+import { carregarContextoApp } from "@/lib/layout/carregar-contexto-app";
 import { carregarPacientePorId } from "@/lib/pacientes/carregar-pacientes";
 
 export const metadata = {
@@ -14,11 +15,16 @@ type PageProps = {
 };
 
 async function PacienteDetalheConteudo({ id }: { id: string }) {
-  const paciente = await carregarPacientePorId(id);
+  const [paciente, contexto] = await Promise.all([
+    carregarPacientePorId(id),
+    carregarContextoApp(),
+  ]);
   if (!paciente) {
     notFound();
   }
-  return <PacienteDetalheClient paciente={paciente} />;
+  return (
+    <PacienteDetalheClient paciente={paciente} papel={contexto.usuario.papel} />
+  );
 }
 
 export default async function PacienteDetalhePage({ params }: PageProps) {

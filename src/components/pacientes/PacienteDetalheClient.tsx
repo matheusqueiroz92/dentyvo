@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 
+import { ProntuarioTab } from "@/components/prontuario";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { Papel } from "@/core/auth/domain/Papel";
 import { formatarCpfCompleto } from "@/lib/pacientes/cpf";
 import {
   formatarDataNascimento,
@@ -16,19 +18,23 @@ import { PacienteDetalheHeader } from "./PacienteDetalheHeader";
 
 type PacienteDetalheClientProps = {
   paciente: PacienteDTO;
+  papel: Papel;
 };
 
 export function PacienteDetalheClient({
   paciente: pacienteInicial,
+  papel,
 }: PacienteDetalheClientProps) {
   const [paciente, setPaciente] = useState(pacienteInicial);
   const [editarOpen, setEditarOpen] = useState(false);
+  const [aba, setAba] = useState("dados");
+  const podeAcessarProntuario = papel === "admin" || papel === "dentista";
 
   return (
     <main className="flex flex-col gap-6">
       <PacienteDetalheHeader paciente={paciente} />
 
-      <Tabs defaultValue="dados">
+      <Tabs value={aba} onValueChange={setAba}>
         <TabsList variant="line">
           <TabsTrigger value="dados" className="min-h-11 px-3 sm:min-h-8">
             Dados gerais
@@ -88,10 +94,12 @@ export function PacienteDetalheClient({
         </TabsContent>
 
         <TabsContent value="prontuario" className="mt-4">
-          <PlaceholderAba
-            titulo="Prontuário"
-            descricao="O prontuário completo do paciente será entregue em feature futura. Em construção."
-          />
+          {aba === "prontuario" ? (
+            <ProntuarioTab
+              pacienteId={paciente.id}
+              podeAcessar={podeAcessarProntuario}
+            />
+          ) : null}
         </TabsContent>
       </Tabs>
 
