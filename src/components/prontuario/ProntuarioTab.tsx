@@ -26,6 +26,8 @@ import type {
   ProntuarioTabDTO,
 } from "@/lib/prontuario/types";
 
+import { OdontogramaChart } from "@/components/odontograma/OdontogramaChart";
+
 import { AnamneseForm } from "./AnamneseForm";
 import {
   AnamneseHistorico,
@@ -369,6 +371,8 @@ export function ProntuarioTab({ pacienteId, podeAcessar }: ProntuarioTabProps) {
           />
         ) : null}
       </section>
+
+      <OdontogramaChart prontuarioId={prontuarioId} />
 
       <EvolucaoTimeline
         evolucoes={evolucoes}

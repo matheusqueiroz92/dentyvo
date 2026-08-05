@@ -44,6 +44,17 @@
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
 
+  --color-odontograma-higido: hsl(var(--odontograma-higido));
+  --color-odontograma-cariado: hsl(var(--odontograma-cariado));
+  --color-odontograma-restaurado: hsl(var(--odontograma-restaurado));
+  --color-odontograma-ausente: hsl(var(--odontograma-ausente));
+  --color-odontograma-indicado-extracao: hsl(var(--odontograma-indicado-extracao));
+  --color-odontograma-protese: hsl(var(--odontograma-protese));
+  --color-odontograma-implante: hsl(var(--odontograma-implante));
+  --color-odontograma-fraturado: hsl(var(--odontograma-fraturado));
+  --color-odontograma-endodontico: hsl(var(--odontograma-endodontico));
+  --color-odontograma-selante: hsl(var(--odontograma-selante));
+
   --color-sidebar: hsl(var(--sidebar));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
   --color-sidebar-primary: hsl(var(--sidebar-primary));

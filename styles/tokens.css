@@ -74,6 +74,20 @@
   --chart-4: 35 100% 35%;
   --chart-5: 267 52% 52%;
 
+  /* Odontograma — estados (aliases semânticos / chart; sem HEX em componentes) */
+  --odontograma-higido: 214 33% 95%;
+  --odontograma-cariado: 354 58% 51%;
+  --odontograma-restaurado: 210 92% 40%;
+  --odontograma-ausente: 217 12% 62%;
+  --odontograma-indicado-extracao: 35 100% 35%;
+  --odontograma-protese: 267 52% 52%;
+  --odontograma-implante: 185 87% 42%;
+  --odontograma-fraturado: 331 52% 45%;
+  --odontograma-endodontico: 199 85% 35%;
+  --odontograma-selante: 158 72% 31%;
+  --odontograma-stroke: 226 74% 15%;
+  --odontograma-pending: 35 100% 35%;
+
   /* Geometry — --radius é o alias consumido pelo shadcn (equivale a md = 8px) */
   --radius: 0.5rem;
   --radius-xs: 0.25rem;

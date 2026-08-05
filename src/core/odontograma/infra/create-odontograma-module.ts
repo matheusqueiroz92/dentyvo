@@ -17,6 +17,7 @@ export function createOdontogramaModule() {
 
   return {
     odontogramaRepo,
+    profissionalRepo,
     registrarEventosOdontograma: new RegistrarEventosOdontograma(
       odontogramaRepo,
       prontuarioRepo,
