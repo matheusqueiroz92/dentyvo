@@ -71,6 +71,10 @@ implementação agora). Detalhes nas seções correspondentes abaixo.
   Assistente de **uso do produto** (não clínico). **Não priorizar** antes
   do lançamento comercial — aguardar volume real de dúvidas das primeiras
   clínicas. **Não confundir** com o bot WhatsApp de pacientes (007).
+- **019 — Anexos de exame no prontuário:** ver seção detalhada abaixo.
+  Upload de imagens (ex.: radiografias) via Vercel Blob já existente, com
+  ferramenta de anotação/desenho sobre a imagem. Extensão da 003 —
+  **fora do escopo do odontograma (004)**. **Sem abrir Arquiteto agora.**
 - **Gravação de paciente pré-consulta (link público/WhatsApp):** ver
   seção detalhada abaixo. Ideia **rejeitada** no formato de link público;
   se revisitada no futuro, só sob restrições fortes (nunca no MVP).
@@ -224,6 +228,45 @@ especificação formal (`specs/features/018-*.md`) não deve ser aberta.
   natureza clínica: nunca responder sobre tratamento, medicação,
   dosagem (mesmo que o usuário peça).
 - Considerar como **diferencial do plano Full** (010).
+
+## Anexos de exame no prontuário — planejamento futuro (spec 019)
+
+Registro **conceitual** (sem spec formal ainda). **Não abrir Arquiteto
+nem implementação agora.**
+
+Extensão do **prontuário (003)** — **não** do odontograma (004). Serve
+para anexar exames de imagem (radiografias panorâmicas/periapicais,
+fotos clínicas, etc.) ao prontuário do paciente, com possibilidade de
+**anotar/desenhar** sobre a imagem (referência de produto: fluxo tipo
+Codental com radiografia panorâmica anotável).
+
+### Infraestrutura a reaproveitar
+
+- Upload via **Vercel Blob** já decidido em `specs/01-architecture.md`
+  (logo da clínica hoje; mesma seção prevê reaproveitamento para anexos
+  de prontuário).
+- Padrão: upload na delivery (server action autenticada) → URL no
+  domínio; o domínio **não** conhece o Blob.
+- Até a spec formal: **não** criar tabela/entidade de anexo “por
+  antecipação”.
+
+### Decisões abertas (para a spec formal `019-*.md`)
+
+- **Vínculo:** anexos como extensão de `Evolucao` **ou** entidade
+  própria ligada a `Prontuario` (e, opcionalmente, a uma evolução) —
+  escolher na spec formal com base em ciclo de vida, retificação e
+  auditoria.
+- Formato/persistência das **anotações** (overlay vetorial vs. raster
+  “achatado”; versionamento se o dentista editar de novo).
+- Tipos de arquivo aceitos, limites de tamanho e retenção LGPD.
+- RBAC alinhado à 003 (`admin` + `dentista`; recepção sem acesso a
+  conteúdo clínico, salvo decisão explícita na spec).
+
+### Fora de escopo deste registro
+
+- Odontograma/periograma (004/005) — mapas por dente/face e sondagem.
+- Spec formal completa, ports, schema ou UI de anotação.
+- Qualquer avanço para o Arquiteto de Domínio.
 
 ## Gravação de paciente pré-consulta — ideia rejeitada (link público)
 
