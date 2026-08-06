@@ -97,6 +97,7 @@ export function PacienteDetalheClient({
           {aba === "prontuario" ? (
             <ProntuarioTab
               pacienteId={paciente.id}
+              dataNascimentoIso={paciente.dataNascimentoIso}
               podeAcessar={podeAcessarProntuario}
             />
           ) : null}

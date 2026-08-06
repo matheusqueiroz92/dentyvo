@@ -40,6 +40,8 @@ import { RetificarEvolucaoModal } from "./RetificarEvolucaoModal";
 
 type ProntuarioTabProps = {
   pacienteId: string;
+  /** YYYY-MM-DD — usada no odontograma (visibilidade da dentição decídua). */
+  dataNascimentoIso: string;
   /** false para recepção — mensagem de acesso restrito, sem chamar use cases. */
   podeAcessar: boolean;
 };
@@ -54,7 +56,11 @@ type EstadoCarga =
   | { tipo: "erro"; mensagem: string }
   | { tipo: "ok"; dados: ProntuarioTabDTO };
 
-export function ProntuarioTab({ pacienteId, podeAcessar }: ProntuarioTabProps) {
+export function ProntuarioTab({
+  pacienteId,
+  dataNascimentoIso,
+  podeAcessar,
+}: ProntuarioTabProps) {
   const [estado, setEstado] = useState<EstadoCarga>(() =>
     podeAcessar ? { tipo: "carregando" } : { tipo: "idle" },
   );
@@ -372,7 +378,11 @@ export function ProntuarioTab({ pacienteId, podeAcessar }: ProntuarioTabProps) {
         ) : null}
       </section>
 
-      <OdontogramaChart prontuarioId={prontuarioId} />
+      <OdontogramaChart
+        key={dataNascimentoIso}
+        prontuarioId={prontuarioId}
+        dataNascimentoIso={dataNascimentoIso}
+      />
 
       <EvolucaoTimeline
         evolucoes={evolucoes}

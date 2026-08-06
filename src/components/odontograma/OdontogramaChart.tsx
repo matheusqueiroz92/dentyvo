@@ -19,16 +19,14 @@ import type {
   EventoOdontogramaPendenteDTO,
   OdontogramaVigenteDTO,
 } from "@/lib/odontograma/types";
+import { deciduaVisivelPorPadrao } from "@/lib/odontograma/visibilidade-decidua";
 import { cn } from "@/lib/utils";
 
 import { DenteSvg, type EstadosFacesDente } from "./DenteSvg";
 import { HistoricoDenteModal } from "./HistoricoDenteModal";
+import { IlustracaoTipoDente } from "./IlustracaoTipoDente";
 import { LegendaEstados } from "./LegendaEstados";
 import { SeletorEstadoFace } from "./SeletorEstadoFace";
-
-type OdontogramaChartProps = {
-  prontuarioId: string;
-};
 
 type Fileira = {
   id: string;
@@ -36,6 +34,7 @@ type Fileira = {
   numeros: number[];
   /** FDI acima (superior) ou abaixo (inferior) do ícone. */
   fdi: "acima" | "abaixo";
+  decidua?: boolean;
 };
 
 type EstadoVisualDente = {
@@ -57,12 +56,14 @@ const FILEIRAS: Fileira[] = [
     label: "Decídua superior",
     numeros: [55, 54, 53, 52, 51, 61, 62, 63, 64, 65],
     fdi: "acima",
+    decidua: true,
   },
   {
     id: "dec-inf",
     label: "Decídua inferior",
     numeros: [85, 84, 83, 82, 81, 71, 72, 73, 74, 75],
     fdi: "abaixo",
+    decidua: true,
   },
   {
     id: "perm-inf",
@@ -71,6 +72,12 @@ const FILEIRAS: Fileira[] = [
     fdi: "abaixo",
   },
 ];
+
+type OdontogramaChartProps = {
+  prontuarioId: string;
+  /** YYYY-MM-DD — mesma base do header do paciente (`calcularIdade`). */
+  dataNascimentoIso: string;
+};
 
 type FaceAlvo = { numeroDente: number; face: FaceOdontograma };
 
@@ -84,7 +91,13 @@ type EstadoCarga =
   | { tipo: "erro"; mensagem: string }
   | { tipo: "ok"; vigente: OdontogramaVigenteDTO };
 
-export function OdontogramaChart({ prontuarioId }: OdontogramaChartProps) {
+export function OdontogramaChart({
+  prontuarioId,
+  dataNascimentoIso,
+}: OdontogramaChartProps) {
+  const [mostrarDecidua, setMostrarDecidua] = useState(() =>
+    deciduaVisivelPorPadrao(dataNascimentoIso),
+  );
   const [estado, setEstado] = useState<EstadoCarga>({ tipo: "carregando" });
   const [pendencias, setPendencias] = useState<
     Map<string, EventoOdontogramaPendenteDTO>
@@ -95,6 +108,11 @@ export function OdontogramaChart({ prontuarioId }: OdontogramaChartProps) {
   const [seletorOpen, setSeletorOpen] = useState(false);
   const [historicoDente, setHistoricoDente] = useState<number | null>(null);
   const [historicoOpen, setHistoricoOpen] = useState(false);
+
+  const fileirasVisiveis = useMemo(
+    () => FILEIRAS.filter((f) => (f.decidua ? mostrarDecidua : true)),
+    [mostrarDecidua],
+  );
 
   const carregar = useCallback(async (mostrarLoading: boolean) => {
     if (mostrarLoading) {
@@ -290,34 +308,46 @@ export function OdontogramaChart({ prontuarioId }: OdontogramaChartProps) {
             Odontograma
           </h2>
         </div>
-        {qtdPendencias > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11"
-              disabled={salvando}
-              onClick={handleDescartar}
-            >
-              <Trash2 className="size-4" aria-hidden />
-              Descartar alterações
-            </Button>
-            <Button
-              type="button"
-              className="min-h-11"
-              disabled={salvando}
-              onClick={() => void handleSalvar()}
-            >
-              {salvando
-                ? "Salvando…"
-                : `Salvar alterações (${qtdPendencias} ${
-                    qtdPendencias === 1
-                      ? "alteração pendente"
-                      : "alterações pendentes"
-                  })`}
-            </Button>
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="min-h-11 text-[13px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline sm:min-h-0"
+            onClick={() => setMostrarDecidua((v) => !v)}
+            aria-pressed={mostrarDecidua}
+          >
+            {mostrarDecidua
+              ? "Ocultar dentição decídua"
+              : "Mostrar dentição decídua"}
+          </button>
+          {qtdPendencias > 0 ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                disabled={salvando}
+                onClick={handleDescartar}
+              >
+                <Trash2 className="size-4" aria-hidden />
+                Descartar alterações
+              </Button>
+              <Button
+                type="button"
+                className="min-h-11"
+                disabled={salvando}
+                onClick={() => void handleSalvar()}
+              >
+                {salvando
+                  ? "Salvando…"
+                  : `Salvar alterações (${qtdPendencias} ${
+                      qtdPendencias === 1
+                        ? "alteração pendente"
+                        : "alterações pendentes"
+                    })`}
+              </Button>
+            </>
+          ) : null}
+        </div>
       </div>
 
       {erroLote ? (
@@ -348,7 +378,7 @@ export function OdontogramaChart({ prontuarioId }: OdontogramaChartProps) {
       {estado.tipo === "ok" ? (
         <>
           <div className="space-y-5 overflow-x-auto rounded-lg border border-border bg-card p-3 sm:p-4">
-            {FILEIRAS.map((fileira) => (
+            {fileirasVisiveis.map((fileira) => (
               <FileiraDentes
                 key={fileira.id}
                 fileira={fileira}
@@ -397,6 +427,11 @@ export function OdontogramaChart({ prontuarioId }: OdontogramaChartProps) {
         }}
         prontuarioId={prontuarioId}
         numeroDente={historicoDente ?? 0}
+        ausente={
+          historicoDente != null
+            ? resolverEstadoDente(historicoDente).ausente
+            : false
+        }
       />
     </section>
   );
@@ -438,6 +473,11 @@ function FileiraDentes({
               )}
             >
               {fileira.fdi === "acima" ? fdiEl : null}
+              <IlustracaoTipoDente
+                numeroDente={numero}
+                variante="grade"
+                ausente={ausente}
+              />
               <DenteSvg
                 numeroDente={numero}
                 estadosFaces={faces}

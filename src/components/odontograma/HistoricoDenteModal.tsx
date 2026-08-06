@@ -26,6 +26,8 @@ type HistoricoDenteModalProps = {
   onOpenChange: (open: boolean) => void;
   prontuarioId: string;
   numeroDente: number;
+  /** Espelha ausente_extraido na ilustração decorativa do cabeçalho. */
+  ausente?: boolean;
 };
 
 const formatadorData = new Intl.DateTimeFormat("pt-BR", {
@@ -43,6 +45,7 @@ export function HistoricoDenteModal({
   onOpenChange,
   prontuarioId,
   numeroDente,
+  ausente = false,
 }: HistoricoDenteModalProps) {
   const [estado, setEstado] = useState<EstadoHistorico>({ tipo: "carregando" });
   const tipoAnatomico = tipoDentePorFdi(numeroDente);
@@ -82,7 +85,10 @@ export function HistoricoDenteModal({
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <div className="flex items-start gap-4 pr-6">
-            <IlustracaoTipoDente numeroDente={numeroDente} />
+            <IlustracaoTipoDente
+              numeroDente={numeroDente}
+              ausente={ausente}
+            />
             <div className="min-w-0 flex-1 space-y-1.5 pt-0.5">
               <DialogTitle className="flex flex-wrap items-center gap-2">
                 <History
