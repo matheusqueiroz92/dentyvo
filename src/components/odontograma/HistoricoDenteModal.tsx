@@ -4,6 +4,7 @@ import { History } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { listarHistoricoOdontogramaAction } from "@/actions/odontograma";
+import { IlustracaoTipoDente } from "@/components/odontograma/IlustracaoTipoDente";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ROTULOS_ESTADO, ROTULOS_FACE } from "@/lib/odontograma/estados";
+import {
+  ROTULOS_ESTADO,
+  ROTULOS_FACE,
+  ROTULOS_TIPO_DENTE,
+  tipoDentePorFdi,
+} from "@/lib/odontograma/estados";
 import type { EventoOdontogramaDTO } from "@/lib/odontograma/types";
 
 type HistoricoDenteModalProps = {
@@ -39,6 +45,7 @@ export function HistoricoDenteModal({
   numeroDente,
 }: HistoricoDenteModalProps) {
   const [estado, setEstado] = useState<EstadoHistorico>({ tipo: "carregando" });
+  const tipoAnatomico = tipoDentePorFdi(numeroDente);
 
   useEffect(() => {
     if (!open) return;
@@ -74,14 +81,25 @@ export function HistoricoDenteModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <History className="size-4 text-muted-foreground" aria-hidden />
-            Histórico do dente{" "}
-            <span className="tabular-nums">{numeroDente}</span>
-          </DialogTitle>
-          <DialogDescription>
-            Linha do tempo de mudanças (mais recente primeiro).
-          </DialogDescription>
+          <div className="flex items-start gap-4 pr-6">
+            <IlustracaoTipoDente numeroDente={numeroDente} />
+            <div className="min-w-0 flex-1 space-y-1.5 pt-0.5">
+              <DialogTitle className="flex flex-wrap items-center gap-2">
+                <History
+                  className="size-4 shrink-0 text-muted-foreground"
+                  aria-hidden
+                />
+                <span>
+                  Histórico do dente{" "}
+                  <span className="tabular-nums">{numeroDente}</span>
+                </span>
+              </DialogTitle>
+              <DialogDescription>
+                {ROTULOS_TIPO_DENTE[tipoAnatomico]} · linha do tempo de mudanças
+                (mais recente primeiro).
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         {estado.tipo === "carregando" ? (

@@ -74,19 +74,35 @@
   --chart-4: 35 100% 35%;
   --chart-5: 267 52% 52%;
 
-  /* Odontograma — estados (aliases semânticos / chart; sem HEX em componentes) */
-  --odontograma-higido: 214 33% 95%;
+  /* Odontograma — estados (base + tom claro p/ gradiente; contraste legível) */
+  --odontograma-higido: 40 28% 92%;
+  --odontograma-higido-soft: 42 35% 97%;
   --odontograma-cariado: 354 58% 51%;
+  --odontograma-cariado-soft: 352 72% 72%;
   --odontograma-restaurado: 210 92% 40%;
+  --odontograma-restaurado-soft: 205 85% 68%;
   --odontograma-ausente: 217 12% 62%;
+  --odontograma-ausente-soft: 214 14% 78%;
   --odontograma-indicado-extracao: 35 100% 35%;
+  --odontograma-indicado-extracao-soft: 38 90% 58%;
   --odontograma-protese: 267 52% 52%;
+  --odontograma-protese-soft: 270 55% 72%;
   --odontograma-implante: 185 87% 42%;
+  --odontograma-implante-soft: 182 70% 68%;
   --odontograma-fraturado: 331 52% 45%;
+  --odontograma-fraturado-soft: 330 55% 68%;
   --odontograma-endodontico: 199 85% 35%;
+  --odontograma-endodontico-soft: 198 75% 62%;
   --odontograma-selante: 158 72% 31%;
-  --odontograma-stroke: 226 74% 15%;
+  --odontograma-selante-soft: 156 55% 58%;
+  --odontograma-stroke: 226 40% 28%;
+  --odontograma-stroke-soft: 214 25% 78%;
   --odontograma-pending: 35 100% 35%;
+  --odontograma-enamel: 40 35% 94%;
+  --odontograma-enamel-mid: 38 28% 82%;
+  --odontograma-enamel-deep: 32 22% 68%;
+  --odontograma-root: 28 18% 62%;
+  --odontograma-root-deep: 25 22% 48%;
 
   /* Geometry — --radius é o alias consumido pelo shadcn (equivale a md = 8px) */
   --radius: 0.5rem;

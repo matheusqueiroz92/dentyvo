@@ -67,3 +67,78 @@ export function mesialNaDireitaDoSvg(numeroDente: number): boolean {
   const quadrante = Math.floor(numeroDente / 10);
   return quadrante === 1 || quadrante === 4 || quadrante === 5 || quadrante === 8;
 }
+
+/** Tipo anatômico pelo dígito de posição FDI (permanente e decídua). */
+export type TipoDenteAnatomico =
+  | "incisivo"
+  | "canino"
+  | "pre_molar"
+  | "molar";
+
+export const ROTULOS_TIPO_DENTE: Record<TipoDenteAnatomico, string> = {
+  incisivo: "Incisivo",
+  canino: "Canino",
+  pre_molar: "Pré-molar",
+  molar: "Molar",
+};
+
+/**
+ * Permanente: 1–2 incisivo, 3 canino, 4–5 pré-molar, 6–8 molar.
+ * Decídua: 1–2 incisivo, 3 canino, 4–5 molar (sem pré-molar).
+ */
+export function tipoDentePorFdi(numeroDente: number): TipoDenteAnatomico {
+  const posicao = numeroDente % 10;
+  const permanente = Math.floor(numeroDente / 10) <= 4;
+
+  if (posicao === 1 || posicao === 2) return "incisivo";
+  if (posicao === 3) return "canino";
+  if (permanente && (posicao === 4 || posicao === 5)) return "pre_molar";
+  return "molar";
+}
+
+/** Par de tokens CSS (base + soft) para gradiente SVG por estado. */
+export const GRADIENTE_ESTADO: Record<
+  EstadoOdontograma,
+  { base: string; soft: string }
+> = {
+  higido: {
+    soft: "hsl(var(--odontograma-higido-soft))",
+    base: "hsl(var(--odontograma-higido))",
+  },
+  cariado: {
+    soft: "hsl(var(--odontograma-cariado-soft))",
+    base: "hsl(var(--odontograma-cariado))",
+  },
+  restaurado: {
+    soft: "hsl(var(--odontograma-restaurado-soft))",
+    base: "hsl(var(--odontograma-restaurado))",
+  },
+  ausente_extraido: {
+    soft: "hsl(var(--odontograma-ausente-soft))",
+    base: "hsl(var(--odontograma-ausente))",
+  },
+  indicado_extracao: {
+    soft: "hsl(var(--odontograma-indicado-extracao-soft))",
+    base: "hsl(var(--odontograma-indicado-extracao))",
+  },
+  protese_coroa: {
+    soft: "hsl(var(--odontograma-protese-soft))",
+    base: "hsl(var(--odontograma-protese))",
+  },
+  implante: {
+    soft: "hsl(var(--odontograma-implante-soft))",
+    base: "hsl(var(--odontograma-implante))",
+  },
+  fraturado: {
+    soft: "hsl(var(--odontograma-fraturado-soft))",
+    base: "hsl(var(--odontograma-fraturado))",
+  },
+  tratamento_endodontico: {
+    soft: "hsl(var(--odontograma-endodontico-soft))",
+    base: "hsl(var(--odontograma-endodontico))",
+  },
+  selante: {
+    soft: "hsl(var(--odontograma-selante-soft))",
+    base: "hsl(var(--odontograma-selante))",
+  },
+};
