@@ -1,5 +1,5 @@
-import { DenteAusenteSemFacesError } from "./errors";
-import { ehEstadoAusente, type EstadoOdontograma } from "./EstadoOdontograma";
+import { EstadoDenteInteiroConflitanteError } from "./errors";
+import type { EstadoOdontograma } from "./EstadoOdontograma";
 import type { FaceOdontograma } from "./FaceOdontograma";
 import { compararEventos, type EventoOdontograma } from "./EventoOdontograma";
 
@@ -15,20 +15,27 @@ export type FaceVigente = {
 
 export type DenteVigente = {
   numeroDente: number;
-  /** Estado de nível do dente (ex.: ausente_extraido); null se nunca houve evento de dente. */
+  /**
+   * Estado de dente inteiro vigente; `null` se nunca houve, ou se um evento
+   * de face posterior encerrou o último estado de dente inteiro.
+   */
   estadoDente: EstadoOdontograma | null;
   eventoDenteId: string | null;
   registradoEmDente: Date | null;
   profissionalIdDente: string | null;
   sequenciaDente: number | null;
-  /** Faces vigentes; sempre vazia se o dente estiver ausente. */
+  /**
+   * Faces vigentes **posteriores** ao último evento de dente inteiro
+   * (vazia se o dente inteiro ainda estiver vigente).
+   */
   faces: FaceVigente[];
 };
 
 /**
  * Visão agregada derivada dos eventos (não é snapshot persistido).
- * Estado atual de face = evento mais recente para dente+face
- * (ordem: `registradoEm`, depois `sequencia`).
+ * Bidirecional (spec 004):
+ * - último `nivel = dente` sem face posterior → `estadoDente` vigente, faces limpas;
+ * - face posterior a esse dente → encerra dente inteiro; faces pós-corte vigem.
  */
 export type OdontogramaVigente = {
   prontuarioId: string;
@@ -36,10 +43,22 @@ export type OdontogramaVigente = {
   dentes: DenteVigente[];
 };
 
+type MetaDente = {
+  estado: EstadoOdontograma;
+  eventoId: string;
+  registradoEm: Date;
+  profissionalId: string;
+  sequencia: number | null;
+};
+
 /**
  * Projeta o estado vigente a partir do histórico append-only.
- * Eventos de face de dente ausente permanecem no histórico, mas não entram
- * na visão vigente (invariante ausente ⇒ sem faces vigentes).
+ * Modelo sparse: dente/face sem evento não materializa `higido`.
+ *
+ * **Leitura graciosa:** nunca lança por histórico que viole a regra de
+ * conflito de dente inteiro (dado pré-correção). O evento de dente mais
+ * recente (`registradoEm`, `sequencia`) vence; `EstadoDenteInteiroConflitanteError`
+ * aplica-se só a **novos** registros (`assertLoteNaoViolaEstadoDenteInteiro`).
  */
 export function projetarOdontogramaVigente(
   prontuarioId: string,
@@ -47,34 +66,49 @@ export function projetarOdontogramaVigente(
   eventos: readonly EventoOdontograma[],
 ): OdontogramaVigente {
   const ordenados = [...eventos].sort(compararEventos);
-
-  const estadoDentePorNumero = new Map<
-    number,
-    {
-      estado: EstadoOdontograma;
-      eventoId: string;
-      registradoEm: Date;
-      profissionalId: string;
-      sequencia: number | null;
-    }
-  >();
-  const facePorChave = new Map<string, FaceVigente>();
+  const porDente = new Map<number, EventoOdontograma[]>();
 
   for (const evento of ordenados) {
+    const lista = porDente.get(evento.numeroDente) ?? [];
+    lista.push(evento);
+    porDente.set(evento.numeroDente, lista);
+  }
+
+  const dentes: DenteVigente[] = [...porDente.keys()]
+    .sort((a, b) => a - b)
+    .map((numeroDente) => projetarDente(numeroDente, porDente.get(numeroDente)!));
+
+  return { prontuarioId, clinicaId, dentes };
+}
+
+function projetarDente(
+  numeroDente: number,
+  eventosDoDente: readonly EventoOdontograma[],
+): DenteVigente {
+  let ultimoDente: MetaDente | null = null;
+  let indiceUltimoDente = -1;
+
+  for (let i = 0; i < eventosDoDente.length; i++) {
+    const evento = eventosDoDente[i]!;
     if (evento.nivel === "dente") {
-      estadoDentePorNumero.set(evento.numeroDente, {
+      ultimoDente = {
         estado: evento.estadoNovo,
         eventoId: evento.id,
         registradoEm: evento.registradoEm,
         profissionalId: evento.profissionalId,
         sequencia: evento.sequencia,
-      });
-      continue;
+      };
+      indiceUltimoDente = i;
     }
+  }
 
-    if (evento.face == null) continue;
+  const facesAposCorte = new Map<FaceOdontograma, FaceVigente>();
+  const inicioFaces = indiceUltimoDente + 1;
 
-    facePorChave.set(chaveFace(evento.numeroDente, evento.face), {
+  for (let i = inicioFaces; i < eventosDoDente.length; i++) {
+    const evento = eventosDoDente[i]!;
+    if (evento.nivel !== "face" || evento.face == null) continue;
+    facesAposCorte.set(evento.face, {
       face: evento.face,
       estado: evento.estadoNovo,
       eventoId: evento.id,
@@ -85,83 +119,81 @@ export function projetarOdontogramaVigente(
     });
   }
 
-  const numeros = new Set<number>([
-    ...estadoDentePorNumero.keys(),
-    ...[...facePorChave.keys()].map((k) => Number(k.split(":")[0])),
-  ]);
+  const haFacePosterior = facesAposCorte.size > 0;
 
-  const dentes: DenteVigente[] = [...numeros]
-    .sort((a, b) => a - b)
-    .map((numeroDente) => {
-      const nivelDente = estadoDentePorNumero.get(numeroDente) ?? null;
-      const ausente = nivelDente != null && ehEstadoAusente(nivelDente.estado);
-
-      const faces: FaceVigente[] = ausente
-        ? []
-        : [...facePorChave.entries()]
-            .filter(([chave]) => chave.startsWith(`${numeroDente}:`))
-            .map(([, face]) => face)
-            .sort((a, b) => a.face.localeCompare(b.face));
-
-      return {
-        numeroDente,
-        estadoDente: nivelDente?.estado ?? null,
-        eventoDenteId: nivelDente?.eventoId ?? null,
-        registradoEmDente: nivelDente?.registradoEm ?? null,
-        profissionalIdDente: nivelDente?.profissionalId ?? null,
-        sequenciaDente: nivelDente?.sequencia ?? null,
-        faces,
-      };
-    });
-
-  return { prontuarioId, clinicaId, dentes };
-}
-
-/**
- * Invariante: não registrar evento de face enquanto o dente estiver ausente
- * no estado vigente.
- */
-export function assertPodeRegistrarEvento(
-  vigente: OdontogramaVigente,
-  evento: EventoOdontograma,
-): void {
-  if (!evento.ehNivelFace()) return;
-
-  const dente = vigente.dentes.find((d) => d.numeroDente === evento.numeroDente);
-  if (dente?.estadoDente != null && ehEstadoAusente(dente.estadoDente)) {
-    throw new DenteAusenteSemFacesError(evento.numeroDente);
+  if (ultimoDente != null && !haFacePosterior) {
+    return {
+      numeroDente,
+      estadoDente: ultimoDente.estado,
+      eventoDenteId: ultimoDente.eventoId,
+      registradoEmDente: ultimoDente.registradoEm,
+      profissionalIdDente: ultimoDente.profissionalId,
+      sequenciaDente: ultimoDente.sequencia,
+      faces: [],
+    };
   }
+
+  return {
+    numeroDente,
+    estadoDente: null,
+    eventoDenteId: null,
+    registradoEmDente: null,
+    profissionalIdDente: null,
+    sequenciaDente: null,
+    faces: [...facesAposCorte.values()].sort((a, b) =>
+      a.face.localeCompare(b.face),
+    ),
+  };
 }
 
 /**
- * Valida o lote na ordem de registro, atualizando o conjunto de dentes ausentes
- * (inclui efeitos dos próprios eventos do lote). Usa o vigente já persistido
- * como base — dente ausente em consulta anterior bloqueia face em chamada futura.
+ * Valida o lote na **ordem do array `novos`**.
+ *
+ * **Contrato de ordem (obrigatório — não é coincidência de implementação):**
+ * A ordem do array é a mesma ordem em que `OdontogramaRepositoryPort.salvarEventos`
+ * atribui `sequencia` (índice i < j ⇒ sequencia(i) < sequencia(j)). Por isso
+ * este assert e `projetarOdontogramaVigente` (que ordena por
+ * `registradoEm`/`sequencia`) concordam sobre o estado final do lote
+ * **depois** da persistência.
+ *
+ * O caso de uso deve:
+ * 1. montar `novos` na ordem de `input.eventos` (sem reordenar);
+ * 2. chamar este assert com esse array;
+ * 3. passar o **mesmo** array a `salvarEventos` (insert sequencial; sem
+ *    `Promise.all` no lote).
+ *
+ * Dois estados de dente inteiro **diferentes** no mesmo dente (vigente
+ * persistido ou dentro do lote) → `EstadoDenteInteiroConflitanteError`.
+ * Face no lote encerra o vigente daquele dente (permite novo dente
+ * inteiro depois).
  */
-export function assertLoteNaoViolaDenteAusente(
+export function assertLoteNaoViolaEstadoDenteInteiro(
   vigente: OdontogramaVigente,
   novos: readonly EventoOdontograma[],
 ): void {
-  const ausentes = new Set(
-    vigente.dentes
-      .filter((d) => d.estadoDente != null && ehEstadoAusente(d.estadoDente))
-      .map((d) => d.numeroDente),
-  );
-
-  for (const evento of novos) {
-    if (evento.ehNivelFace() && ausentes.has(evento.numeroDente)) {
-      throw new DenteAusenteSemFacesError(evento.numeroDente);
-    }
-    if (evento.ehNivelDente()) {
-      if (ehEstadoAusente(evento.estadoNovo)) {
-        ausentes.add(evento.numeroDente);
-      } else {
-        ausentes.delete(evento.numeroDente);
-      }
+  const estadoVigentePorDente = new Map<number, EstadoOdontograma>();
+  for (const dente of vigente.dentes) {
+    if (dente.estadoDente != null) {
+      estadoVigentePorDente.set(dente.numeroDente, dente.estadoDente);
     }
   }
-}
 
-function chaveFace(numeroDente: number, face: FaceOdontograma): string {
-  return `${numeroDente}:${face}`;
+  for (const evento of novos) {
+    if (evento.ehNivelFace()) {
+      estadoVigentePorDente.delete(evento.numeroDente);
+      continue;
+    }
+
+    if (!evento.ehNivelDente()) continue;
+
+    const atual = estadoVigentePorDente.get(evento.numeroDente);
+    if (atual != null && atual !== evento.estadoNovo) {
+      throw new EstadoDenteInteiroConflitanteError(
+        evento.numeroDente,
+        atual,
+        evento.estadoNovo,
+      );
+    }
+    estadoVigentePorDente.set(evento.numeroDente, evento.estadoNovo);
+  }
 }

@@ -4,7 +4,8 @@ import type { EstadoOdontograma } from "@/core/odontograma/domain/EstadoOdontogr
 
 import {
   CLASSE_COR_ESTADO,
-  ESTADOS_ODONTOGRAMA,
+  ESTADOS_DENTE,
+  ESTADOS_FACE,
   ROTULOS_ESTADO,
 } from "@/lib/odontograma/estados";
 import { cn } from "@/lib/utils";
@@ -12,15 +13,33 @@ import { cn } from "@/lib/utils";
 export function LegendaEstados() {
   return (
     <div
-      className="rounded-lg border border-border bg-card p-3"
-      role="list"
+      className="space-y-3 rounded-lg border border-border bg-card p-3"
       aria-label="Legenda de estados do odontograma"
     >
-      <p className="mb-2 text-xs font-medium text-muted-foreground">
-        Legenda de estados
-      </p>
-      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-        {ESTADOS_ODONTOGRAMA.map((estado) => (
+      <GrupoLegenda
+        titulo="Por face"
+        estados={[...ESTADOS_FACE]}
+      />
+      <GrupoLegenda
+        titulo="Dente inteiro"
+        estados={[...ESTADOS_DENTE]}
+      />
+    </div>
+  );
+}
+
+function GrupoLegenda({
+  titulo,
+  estados,
+}: {
+  titulo: string;
+  estados: EstadoOdontograma[];
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium text-muted-foreground">{titulo}</p>
+      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5" role="list">
+        {estados.map((estado) => (
           <li
             key={estado}
             role="listitem"
@@ -29,7 +48,7 @@ export function LegendaEstados() {
             <span
               className={cn(
                 "size-3.5 shrink-0 rounded-sm border border-border",
-                CLASSE_COR_ESTADO[estado as EstadoOdontograma],
+                CLASSE_COR_ESTADO[estado],
               )}
               aria-hidden
             />

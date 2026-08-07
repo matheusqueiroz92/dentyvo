@@ -1,5 +1,9 @@
 import type { EstadoOdontograma } from "@/core/odontograma/domain/EstadoOdontograma";
-import { ESTADOS_ODONTOGRAMA } from "@/core/odontograma/domain/EstadoOdontograma";
+import {
+  ESTADOS_DENTE_INTEIRO,
+  ESTADOS_ODONTOGRAMA,
+  ESTADOS_POR_FACE,
+} from "@/core/odontograma/domain/EstadoOdontograma";
 import type { FaceOdontograma } from "@/core/odontograma/domain/FaceOdontograma";
 import { FACES_ODONTOGRAMA } from "@/core/odontograma/domain/FaceOdontograma";
 
@@ -52,12 +56,13 @@ export const ROTULOS_FACE: Record<FaceOdontograma, string> = {
   oclusal: "Oclusal",
 };
 
-/** Estados selecionáveis em face (ausente é só nível dente). */
-export const ESTADOS_FACE = ESTADOS_ODONTOGRAMA.filter(
-  (e) => e !== "ausente_extraido",
-);
+/** Estados selecionáveis em face (`nivel = face`). */
+export const ESTADOS_FACE = ESTADOS_POR_FACE;
 
-export { ESTADOS_ODONTOGRAMA, FACES_ODONTOGRAMA };
+/** Estados selecionáveis no dente como um todo (`nivel = dente`). */
+export const ESTADOS_DENTE = ESTADOS_DENTE_INTEIRO;
+
+export { ESTADOS_ODONTOGRAMA, ESTADOS_POR_FACE, ESTADOS_DENTE_INTEIRO, FACES_ODONTOGRAMA };
 
 /**
  * Quadrantes FDI do lado direito do paciente (mesial à direita no SVG).

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { EventoOdontogramaInvalidoError } from "./errors";
+import { EstadoIncompativelComNivelError } from "./errors";
 import {
   compararEventos,
   EventoOdontograma,
@@ -58,7 +58,7 @@ describe("EventoOdontograma", () => {
         estadoNovo: "ausente_extraido",
         profissionalId: base.profissionalId,
       }),
-    ).toThrow(EventoOdontogramaInvalidoError);
+    ).toThrow(EstadoIncompativelComNivelError);
   });
 
   describe("compararEventos", () => {

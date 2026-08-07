@@ -24,6 +24,42 @@ export class EstadoOdontogramaInvalidoError extends Error {
   }
 }
 
+/** Estado da categoria errada para o `nivel` do evento (spec 004). */
+export class EstadoIncompativelComNivelError extends Error {
+  readonly nome = "EstadoIncompativelComNivelError" as const;
+
+  constructor(
+    readonly estado: string,
+    readonly nivel: "face" | "dente",
+  ) {
+    super(
+      nivel === "face"
+        ? `Estado "${estado}" é de dente inteiro; não pode ser registrado em nivel=face.`
+        : `Estado "${estado}" é por face; não pode ser registrado em nivel=dente.`,
+    );
+    this.name = this.nome;
+  }
+}
+
+/**
+ * Dois estados de dente inteiro diferentes no mesmo dente
+ * (lote atual e/ou vigente persistido) — sem sobrescrita silenciosa.
+ */
+export class EstadoDenteInteiroConflitanteError extends Error {
+  readonly nome = "EstadoDenteInteiroConflitanteError" as const;
+
+  constructor(
+    readonly numeroDente: number,
+    readonly estadoVigente: string,
+    readonly estadoNovo: string,
+  ) {
+    super(
+      `Dente ${numeroDente} já tem estado de dente inteiro vigente "${estadoVigente}"; não é permitido registrar "${estadoNovo}" sem encerrar o anterior via evento de face.`,
+    );
+    this.name = this.nome;
+  }
+}
+
 export class FaceOdontogramaInvalidaError extends Error {
   readonly nome = "FaceOdontogramaInvalidaError" as const;
 
@@ -38,18 +74,6 @@ export class EventoOdontogramaInvalidoError extends Error {
 
   constructor(readonly mensagem: string) {
     super(mensagem);
-    this.name = this.nome;
-  }
-}
-
-/** Invariante: dente ausente não recebe eventos de face. */
-export class DenteAusenteSemFacesError extends Error {
-  readonly nome = "DenteAusenteSemFacesError" as const;
-
-  constructor(readonly numeroDente: number) {
-    super(
-      `Dente ${numeroDente} está ausente/extraído; não é permitido registrar estado de face.`,
-    );
     this.name = this.nome;
   }
 }

@@ -19,7 +19,11 @@ type Database = typeof Db;
 /**
  * Persistência Drizzle de eventos do odontograma (spec 004).
  * `salvarEventos` é atômico via `db.transaction` — tudo-ou-nada.
- * `sequencia` é preenchida pelo bigserial do PostgreSQL no insert.
+ *
+ * `sequencia` (bigserial) é atribuída por **insert sequencial na ordem do
+ * array** — um por vez na mesma transação — para cumprir o contrato da
+ * port: índice i < j ⇒ sequencia(i) < sequencia(j). Não usa Promise.all
+ * nem multi-row INSERT (ordem de bigserial não é garantia portável).
  */
 export class DrizzleOdontogramaRepository implements OdontogramaRepositoryPort {
   constructor(private readonly db: Database) {}
@@ -32,10 +36,12 @@ export class DrizzleOdontogramaRepository implements OdontogramaRepositoryPort {
     }
 
     return this.db.transaction(async (tx) => {
-      const rows = await tx
-        .insert(eventoTable)
-        .values(
-          eventos.map((evento) => ({
+      const persistidos: EventoOdontograma[] = [];
+
+      for (const evento of eventos) {
+        const [row] = await tx
+          .insert(eventoTable)
+          .values({
             id: evento.id,
             clinicaId: evento.clinicaId,
             prontuarioId: evento.prontuarioId,
@@ -46,12 +52,19 @@ export class DrizzleOdontogramaRepository implements OdontogramaRepositoryPort {
             procedimentoId: evento.procedimentoId,
             registradoEm: evento.registradoEm,
             profissionalId: evento.profissionalId,
-            // sequencia omitida — bigserial no banco
-          })),
-        )
-        .returning();
+            // sequencia omitida — bigserial no banco, monotônico por insert
+          })
+          .returning();
 
-      return rows.map(toDomain);
+        if (!row) {
+          throw new Error(
+            "Falha ao persistir evento de odontograma (sem row retornada).",
+          );
+        }
+        persistidos.push(toDomain(row));
+      }
+
+      return persistidos;
     });
   }
 

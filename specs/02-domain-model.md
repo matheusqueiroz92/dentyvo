@@ -65,8 +65,7 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 
 ### Odontograma (v2 — spec 004)
 - Fonte de verdade: eventos append-only `EventoOdontograma` (sem snapshot
-  completo). Estado vigente = projeção do evento mais recente por
-  `numeroDente`+`face` (nível face) ou por `numeroDente` (nível dente).
+  completo). Estado vigente = projeção por recência (ver abaixo).
 - Ordenação determinística: `registradoEm` asc, depois `sequencia` asc
   (bigserial no banco — desempate monotônico; **não** usar `id` UUID).
 - `EventoOdontograma`: id, clinicaId, prontuarioId, numeroDente, nivel
@@ -74,16 +73,49 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
   procedimentoId?, registradoEm, profissionalId, sequencia (null só antes
   de persistir; preenchida pelo adapter no insert)
 - `salvarEventos`: **atômico (tudo-ou-nada)** — transação explícita no
-  adapter; falha em qualquer item ⇒ nenhum evento do lote persiste
+  adapter; falha em qualquer item ⇒ nenhum evento do lote persiste.
+  **Contrato de ordem:** `sequencia` monotônica na ordem do array de
+  entrada (índice i < j ⇒ sequencia(i) < sequencia(j)); insert
+  **sequencial** na mesma transação — proibido `Promise.all` / inserts
+  paralelos do lote. `assertLoteNaoViolaEstadoDenteInteiro` valida nessa
+  mesma ordem de array (= ordem futura de `sequencia`).
 - `numeroDente`: FDI — permanentes `{11–18,21–28,31–38,41–48}` + decíduos
   `{51–55,61–65,71–75,81–85}`; fora disso → `NumeroDenteInvalidoError`
 - Faces: vestibular, lingual_palatina, mesial, distal, oclusal
-- `EstadoOdontograma` (enum extensível): higido, cariado, restaurado,
-  ausente_extraido, indicado_extracao, protese_coroa, implante, fraturado,
-  tratamento_endodontico, selante
-- `ausente_extraido`: estado no **nível do dente**; dente ausente não tem
-  faces vigentes (eventos de face rejeitados enquanto ausente — valida
-  contra vigente reconstruído do histórico persistido, não só o lote)
+- `EstadoOdontograma` (enum extensível) em **duas categorias**:
+  - **POR FACE** (`nivel = face`): higido, cariado, restaurado, fraturado,
+    selante — coexistem entre faces do mesmo dente
+  - **DENTE INTEIRO** (`nivel = dente`): ausente_extraido, implante,
+    indicado_extracao, protese_coroa, tratamento_endodontico —
+    mutuamente exclusivos enquanto vigentes
+  - valor na categoria errada para o `nivel` →
+    `EstadoIncompativelComNivelError`
+- **Projeção bidirecional** (por `numeroDente`):
+  - último evento `nivel = dente` **sem** face posterior → `estadoDente`
+    vigente e faces sem vigente (limpa faces anteriores);
+  - evento `nivel = face` **mais recente** que o último dente inteiro →
+    encerra o dente inteiro; faces vigentes = só as posteriores a esse
+    corte (sem caso de uso / evento dedicado de “desmarcar”);
+  - dois estados de dente inteiro **diferentes** no mesmo dente (lote ou
+    vigente) → `EstadoDenteInteiroConflitanteError` (sem sobrescrita
+    silenciosa); re-registrar o **mesmo** estado é permitido — **só em
+    novos registros**. Ao **ler/projetar** histórico legado que já viole
+    essa regra, a projeção **não lança**: o evento de dente mais recente
+    (`registradoEm`, `sequencia`) vence
+- **Ausência de evento ≠ hígido no domínio:** em
+  `projetarOdontogramaVigente` / `OdontogramaVigente`, dente ou face
+  **sem nenhum evento** **não** recebe `estado = higido` implícito e
+  **não** exige evento explícito de `higido` para “existir”. Comportamento
+  oficial:
+  - dente nunca tocado → **não entra** em `dentes[]`;
+  - face sem evento (ou só eventos anteriores ao último dente inteiro
+    ainda vigente / anteriores ao corte) → **não entra** em `faces[]`;
+  - `higido` só aparece na projeção quando há **evento append-only** com
+    `estadoNovo = higido`.
+  Isso **não** é lacuna de dado: é o modelo sparse (só o que foi
+  registrado). A **apresentação** (UI do mapa) pode renderizar face sem
+  registro como visualmente hígida (`?? "higido"`) — convenção de
+  delivery, **fora** do domínio persistido/projetado.
 - RBAC: admin + dentista (igual 003); recepção sem acesso
 
 ### Periograma (v2) — spec 005

@@ -9,6 +9,9 @@ import type {
  * - `salvarEventos` ou persiste o lote inteiro com `sequencia`, ou não persiste nada.
  * - `salvarEventosCalls` registra cada tentativa (para assertir ausência de
  *   chamada parcial quando o caso de uso rejeita o lote antes).
+ * - **Contrato de ordem:** percorre o array em ordem e atribui `sequencia`
+ *   monotônica (índice i < j ⇒ sequencia(i) < sequencia(j)) — espelha o
+ *   adapter real; proibido paralelizar inserts do lote.
  */
 export class FakeOdontogramaRepository implements OdontogramaRepositoryPort {
   readonly items = new Map<string, EventoOdontograma>();

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { DenteAusenteSemFacesError } from "./errors";
+import { EstadoDenteInteiroConflitanteError } from "./errors";
 import { EventoOdontograma } from "./EventoOdontograma";
 import {
-  assertLoteNaoViolaDenteAusente,
+  assertLoteNaoViolaEstadoDenteInteiro,
   projetarOdontogramaVigente,
 } from "./OdontogramaVigente";
 
@@ -37,7 +37,12 @@ function facePersistida(input: {
 function dentePersistido(input: {
   id: string;
   numeroDente: number;
-  estadoNovo: "ausente_extraido" | "implante" | "higido";
+  estadoNovo:
+    | "ausente_extraido"
+    | "implante"
+    | "indicado_extracao"
+    | "protese_coroa"
+    | "tratamento_endodontico";
   registradoEm: Date;
   sequencia: number;
 }) {
@@ -156,43 +161,132 @@ describe("OdontogramaVigente", () => {
       expect(dente?.estadoDente).toBe("ausente_extraido");
       expect(dente?.faces).toEqual([]);
     });
-  });
 
-  describe("assertLoteNaoViolaDenteAusente", () => {
-    it("bloqueia evento de face quando o dente já está ausente no histórico persistido (chamada isolada)", () => {
+    it("histórico pré-correção com vários dente-inteiro conflitantes no mesmo dente: lê sem erro e o mais recente vence", () => {
+      // Simula dado legado (ex. dente 23 com 5 estados de dente inteiro
+      // gravados antes da regra de conflito). Array propositalmente fora
+      // de ordem — a projeção deve seguir sequencia, não a ordem do array.
+      const instante = new Date("2026-03-01T15:00:00.000Z");
+      const historicoLegadoEmbaralhado = [
+        dentePersistido({
+          id: "d23-protese",
+          numeroDente: 23,
+          estadoNovo: "protese_coroa",
+          registradoEm: instante,
+          sequencia: 4,
+        }),
+        dentePersistido({
+          id: "d23-ausente",
+          numeroDente: 23,
+          estadoNovo: "ausente_extraido",
+          registradoEm: instante,
+          sequencia: 1,
+        }),
+        dentePersistido({
+          id: "d23-endodontico",
+          numeroDente: 23,
+          estadoNovo: "tratamento_endodontico",
+          registradoEm: instante,
+          sequencia: 5,
+        }),
+        dentePersistido({
+          id: "d23-implante",
+          numeroDente: 23,
+          estadoNovo: "implante",
+          registradoEm: instante,
+          sequencia: 2,
+        }),
+        dentePersistido({
+          id: "d23-indicado",
+          numeroDente: 23,
+          estadoNovo: "indicado_extracao",
+          registradoEm: instante,
+          sequencia: 3,
+        }),
+      ];
+
+      expect(() =>
+        projetarOdontogramaVigente(
+          prontuarioId,
+          clinicaId,
+          historicoLegadoEmbaralhado,
+        ),
+      ).not.toThrow();
+
+      const vigente = projetarOdontogramaVigente(
+        prontuarioId,
+        clinicaId,
+        historicoLegadoEmbaralhado,
+      );
+      const dente = vigente.dentes.find((d) => d.numeroDente === 23);
+
+      expect(dente?.estadoDente).toBe("tratamento_endodontico");
+      expect(dente?.eventoDenteId).toBe("d23-endodontico");
+      expect(dente?.sequenciaDente).toBe(5);
+      expect(dente?.faces).toEqual([]);
+    });
+
+    it("lote implante→restaurado (sequencia): encerra dente inteiro e face vigora", () => {
+      const instante = new Date("2026-04-01T10:00:00.000Z");
       const vigente = projetarOdontogramaVigente(prontuarioId, clinicaId, [
         dentePersistido({
-          id: "ev-consulta-anterior",
-          numeroDente: 26,
-          estadoNovo: "ausente_extraido",
-          registradoEm: new Date("2026-01-01T10:00:00.000Z"),
-          sequencia: 1,
+          id: "ev-implante",
+          numeroDente: 25,
+          estadoNovo: "implante",
+          registradoEm: instante,
+          sequencia: 10,
+        }),
+        facePersistida({
+          id: "ev-restaurado",
+          numeroDente: 25,
+          face: "oclusal",
+          estadoNovo: "restaurado",
+          registradoEm: instante,
+          sequencia: 11,
         }),
       ]);
 
-      const novoFace = EventoOdontograma.criarFace({
-        id: "ev-futuro",
-        clinicaId,
-        prontuarioId,
-        numeroDente: 26,
-        face: "oclusal",
-        estadoNovo: "cariado",
-        profissionalId,
-      });
-
-      expect(() =>
-        assertLoteNaoViolaDenteAusente(vigente, [novoFace]),
-      ).toThrow(DenteAusenteSemFacesError);
+      const dente = vigente.dentes.find((d) => d.numeroDente === 25);
+      expect(dente?.estadoDente).toBeNull();
+      expect(dente?.faces).toHaveLength(1);
+      expect(dente?.faces[0]?.estado).toBe("restaurado");
     });
 
-    it("bloqueia face no mesmo lote após marcar ausente_extraido", () => {
+    it("lote restaurado→implante (sequencia): implante vigente e faces limpas", () => {
+      const instante = new Date("2026-04-01T10:00:00.000Z");
+      const vigente = projetarOdontogramaVigente(prontuarioId, clinicaId, [
+        facePersistida({
+          id: "ev-restaurado",
+          numeroDente: 26,
+          face: "oclusal",
+          estadoNovo: "restaurado",
+          registradoEm: instante,
+          sequencia: 20,
+        }),
+        dentePersistido({
+          id: "ev-implante",
+          numeroDente: 26,
+          estadoNovo: "implante",
+          registradoEm: instante,
+          sequencia: 21,
+        }),
+      ]);
+
+      const dente = vigente.dentes.find((d) => d.numeroDente === 26);
+      expect(dente?.estadoDente).toBe("implante");
+      expect(dente?.faces).toEqual([]);
+    });
+  });
+
+  describe("assertLoteNaoViolaEstadoDenteInteiro", () => {
+    it("permite face após dente inteiro no mesmo lote (encerra — ordem do array)", () => {
       const vigente = projetarOdontogramaVigente(prontuarioId, clinicaId, []);
-      const marcarAusente = EventoOdontograma.criarDente({
+      const marcarImplante = EventoOdontograma.criarDente({
         id: "ev-a",
         clinicaId,
         prontuarioId,
         numeroDente: 36,
-        estadoNovo: "ausente_extraido",
+        estadoNovo: "implante",
         profissionalId,
       });
       const faceDepois = EventoOdontograma.criarFace({
@@ -206,11 +300,38 @@ describe("OdontogramaVigente", () => {
       });
 
       expect(() =>
-        assertLoteNaoViolaDenteAusente(vigente, [marcarAusente, faceDepois]),
-      ).toThrow(DenteAusenteSemFacesError);
+        assertLoteNaoViolaEstadoDenteInteiro(vigente, [
+          marcarImplante,
+          faceDepois,
+        ]),
+      ).not.toThrow();
     });
 
-    it("permite evento de face quando o dente não está ausente", () => {
+    it("rejeita dois dente-inteiro diferentes no mesmo dente no lote", () => {
+      const vigente = projetarOdontogramaVigente(prontuarioId, clinicaId, []);
+      const implante = EventoOdontograma.criarDente({
+        id: "ev-1",
+        clinicaId,
+        prontuarioId,
+        numeroDente: 37,
+        estadoNovo: "implante",
+        profissionalId,
+      });
+      const indicado = EventoOdontograma.criarDente({
+        id: "ev-2",
+        clinicaId,
+        prontuarioId,
+        numeroDente: 37,
+        estadoNovo: "indicado_extracao",
+        profissionalId,
+      });
+
+      expect(() =>
+        assertLoteNaoViolaEstadoDenteInteiro(vigente, [implante, indicado]),
+      ).toThrow(EstadoDenteInteiroConflitanteError);
+    });
+
+    it("permite face quando o dente não tem dente inteiro vigente", () => {
       const vigente = projetarOdontogramaVigente(prontuarioId, clinicaId, []);
       const face = EventoOdontograma.criarFace({
         id: "ev-ok",
@@ -223,7 +344,7 @@ describe("OdontogramaVigente", () => {
       });
 
       expect(() =>
-        assertLoteNaoViolaDenteAusente(vigente, [face]),
+        assertLoteNaoViolaEstadoDenteInteiro(vigente, [face]),
       ).not.toThrow();
     });
   });

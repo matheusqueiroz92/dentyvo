@@ -12,33 +12,39 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { EstadoOdontograma } from "@/core/odontograma/domain/EstadoOdontograma";
-import { ehEstadoAusente } from "@/core/odontograma/domain/EstadoOdontograma";
+import {
+  ehEstadoDenteInteiro,
+} from "@/core/odontograma/domain/EstadoOdontograma";
 import type { FaceOdontograma } from "@/core/odontograma/domain/FaceOdontograma";
+import { ROTULOS_ESTADO } from "@/lib/odontograma/estados";
 import type {
   DenteVigenteDTO,
   EventoOdontogramaPendenteDTO,
   OdontogramaVigenteDTO,
 } from "@/lib/odontograma/types";
 import { deciduaVisivelPorPadrao } from "@/lib/odontograma/visibilidade-decidua";
+import type { ServerActionError } from "@/lib/safe-action";
 import { cn } from "@/lib/utils";
 
 import { DenteSvg, type EstadosFacesDente } from "./DenteSvg";
 import { HistoricoDenteModal } from "./HistoricoDenteModal";
 import { IlustracaoTipoDente } from "./IlustracaoTipoDente";
 import { LegendaEstados } from "./LegendaEstados";
-import { SeletorEstadoFace } from "./SeletorEstadoFace";
+import {
+  SeletorEstadoDenteInteiro,
+  SeletorEstadoFace,
+} from "./SeletorEstadoFace";
 
 type Fileira = {
   id: string;
   label: string;
   numeros: number[];
-  /** FDI acima (superior) ou abaixo (inferior) do ícone. */
   fdi: "acima" | "abaixo";
   decidua?: boolean;
 };
 
 type EstadoVisualDente = {
-  ausente: boolean;
+  estadoDenteInteiro: EstadoOdontograma | null;
   faces: EstadosFacesDente;
   facesPendentes: Set<FaceOdontograma>;
   dentePendente: boolean;
@@ -75,7 +81,6 @@ const FILEIRAS: Fileira[] = [
 
 type OdontogramaChartProps = {
   prontuarioId: string;
-  /** YYYY-MM-DD — mesma base do header do paciente (`calcularIdade`). */
   dataNascimentoIso: string;
 };
 
@@ -84,6 +89,21 @@ type FaceAlvo = { numeroDente: number; face: FaceOdontograma };
 function chavePendencia(p: EventoOdontogramaPendenteDTO): string {
   if (p.nivel === "dente") return `${p.numeroDente}:dente`;
   return `${p.numeroDente}:face:${p.face}`;
+}
+
+function mensagemErroSalvar(erro: ServerActionError | undefined): string {
+  if (!erro) {
+    return "Não foi possível salvar as alterações do odontograma.";
+  }
+  if (erro.codigo === "EstadoDenteInteiroConflitanteError") {
+    return (
+      erro.mensagem ||
+      "Já existe outro estado de dente inteiro ativo neste dente. " +
+        "Não é possível registrar um segundo estado de dente inteiro diferente " +
+        "sem antes voltar ao modo por face (registre um estado numa face)."
+    );
+  }
+  return erro.mensagem;
 }
 
 type EstadoCarga =
@@ -105,7 +125,9 @@ export function OdontogramaChart({
   const [salvando, setSalvando] = useState(false);
   const [erroLote, setErroLote] = useState<string | null>(null);
   const [faceAlvo, setFaceAlvo] = useState<FaceAlvo | null>(null);
-  const [seletorOpen, setSeletorOpen] = useState(false);
+  const [seletorFaceOpen, setSeletorFaceOpen] = useState(false);
+  const [denteAlvo, setDenteAlvo] = useState<number | null>(null);
+  const [seletorDenteOpen, setSeletorDenteOpen] = useState(false);
   const [historicoDente, setHistoricoDente] = useState<number | null>(null);
   const [historicoOpen, setHistoricoOpen] = useState(false);
 
@@ -166,39 +188,48 @@ export function OdontogramaChart({
       faces[f.face] = f.estado;
     }
 
-    let ausente =
-      vigente?.estadoDente != null && ehEstadoAusente(vigente.estadoDente);
+    let estadoDenteInteiro: EstadoOdontograma | null =
+      vigente?.estadoDente != null && ehEstadoDenteInteiro(vigente.estadoDente)
+        ? vigente.estadoDente
+        : null;
     let dentePendente = false;
     const facesPendentes = new Set<FaceOdontograma>();
 
     for (const p of pendencias.values()) {
       if (p.numeroDente !== numero) continue;
-      if (p.nivel === "dente") {
-        ausente = ehEstadoAusente(p.estadoNovo);
+      if (p.nivel === "dente" && ehEstadoDenteInteiro(p.estadoNovo)) {
+        estadoDenteInteiro = p.estadoNovo;
         dentePendente = true;
-      } else if (p.face) {
+      } else if (p.nivel === "face" && p.face) {
+        // Face pendente encerra otimisticamente o dente inteiro vigente.
+        estadoDenteInteiro = null;
         faces[p.face] = p.estadoNovo;
         facesPendentes.add(p.face);
       }
     }
 
-    if (ausente) {
+    if (estadoDenteInteiro != null) {
       return {
-        ausente: true,
+        estadoDenteInteiro,
         faces: {},
         facesPendentes: new Set(),
         dentePendente,
       };
     }
 
-    return { ausente, faces, facesPendentes, dentePendente };
+    return {
+      estadoDenteInteiro: null,
+      faces,
+      facesPendentes,
+      dentePendente,
+    };
   }
 
   function upsertPendencia(p: EventoOdontogramaPendenteDTO) {
     setPendencias((prev) => {
       const next = new Map(prev);
       next.set(chavePendencia(p), p);
-      if (p.nivel === "dente" && ehEstadoAusente(p.estadoNovo)) {
+      if (p.nivel === "dente" && ehEstadoDenteInteiro(p.estadoNovo)) {
         for (const [k, v] of next) {
           if (v.numeroDente === p.numeroDente && v.nivel === "face") {
             next.delete(k);
@@ -211,13 +242,13 @@ export function OdontogramaChart({
   }
 
   function handleFaceClick(numeroDente: number, face: FaceOdontograma) {
-    const { ausente } = resolverEstadoDente(numeroDente);
-    if (ausente) return;
+    setDenteAlvo(null);
+    setSeletorDenteOpen(false);
     setFaceAlvo({ numeroDente, face });
-    setSeletorOpen(true);
+    setSeletorFaceOpen(true);
   }
 
-  function handleSelecionarEstado(estadoNovo: EstadoOdontograma) {
+  function handleSelecionarEstadoFace(estadoNovo: EstadoOdontograma) {
     if (!faceAlvo) return;
     upsertPendencia({
       numeroDente: faceAlvo.numeroDente,
@@ -227,23 +258,34 @@ export function OdontogramaChart({
     });
   }
 
-  function handleToggleAusente(numeroDente: number) {
-    const { ausente } = resolverEstadoDente(numeroDente);
-    if (ausente) {
-      upsertPendencia({
-        numeroDente,
-        nivel: "dente",
-        face: null,
-        estadoNovo: "higido",
-      });
-    } else {
-      upsertPendencia({
-        numeroDente,
-        nivel: "dente",
-        face: null,
-        estadoNovo: "ausente_extraido",
-      });
+  function handleDenteClick(numeroDente: number) {
+    setFaceAlvo(null);
+    setSeletorFaceOpen(false);
+    setDenteAlvo(numeroDente);
+    setSeletorDenteOpen(true);
+  }
+
+  function handleSelecionarEstadoDente(estadoNovo: EstadoOdontograma) {
+    if (denteAlvo == null) return;
+    const visual = resolverEstadoDente(denteAlvo);
+    if (
+      visual.estadoDenteInteiro != null &&
+      visual.estadoDenteInteiro !== estadoNovo &&
+      !visual.dentePendente
+    ) {
+      const atual = ROTULOS_ESTADO[visual.estadoDenteInteiro];
+      const novo = ROTULOS_ESTADO[estadoNovo];
+      toast.error(
+        `O dente ${denteAlvo} já está como “${atual}”. Não é possível marcar “${novo}” sem antes voltar ao modo por face (clique numa face e registre um estado).`,
+      );
+      return;
     }
+    upsertPendencia({
+      numeroDente: denteAlvo,
+      nivel: "dente",
+      face: null,
+      estadoNovo,
+    });
   }
 
   function handleDescartar() {
@@ -269,9 +311,9 @@ export function OdontogramaChart({
       });
 
       if (result.serverError || !result.data) {
-        const msg =
-          result.serverError?.mensagem ??
-          "Não foi possível salvar as alterações do odontograma.";
+        const msg = mensagemErroSalvar(
+          result.serverError as ServerActionError | undefined,
+        );
         setErroLote(msg);
         toast.error(msg);
         return;
@@ -384,7 +426,7 @@ export function OdontogramaChart({
                 fileira={fileira}
                 resolver={resolverEstadoDente}
                 onFaceClick={handleFaceClick}
-                onToggleAusente={handleToggleAusente}
+                onDenteClick={handleDenteClick}
                 onHistorico={(n) => {
                   setHistoricoDente(n);
                   setHistoricoOpen(true);
@@ -394,10 +436,10 @@ export function OdontogramaChart({
           </div>
 
           <p className="text-[13px] text-muted-foreground">
-            Clique numa face para alterar o estado (fica pendente até salvar).
-            Use ✕ para marcar ausente/extraído; H ou duplo clique para o
-            histórico. Botão direito numa face também abre o controle de
-            ausente.
+            Clique numa face para estados por face (hígido, cariado…). Use ✕ / D
+            ou botão direito para estados de dente inteiro (ausente, implante,
+            coroa…). Registrar uma face num dente com estado de dente inteiro
+            encerra esse estado. H ou duplo clique abre o histórico.
           </p>
 
           <LegendaEstados />
@@ -406,15 +448,28 @@ export function OdontogramaChart({
 
       {faceAlvo ? (
         <SeletorEstadoFace
-          open={seletorOpen}
+          open={seletorFaceOpen}
           onOpenChange={(open) => {
-            setSeletorOpen(open);
+            setSeletorFaceOpen(open);
             if (!open) setFaceAlvo(null);
           }}
           numeroDente={faceAlvo.numeroDente}
           face={faceAlvo.face}
           estadoAtual={estadoAtualFace(faceAlvo)}
-          onSelecionar={handleSelecionarEstado}
+          onSelecionar={handleSelecionarEstadoFace}
+        />
+      ) : null}
+
+      {denteAlvo != null ? (
+        <SeletorEstadoDenteInteiro
+          open={seletorDenteOpen}
+          onOpenChange={(open) => {
+            setSeletorDenteOpen(open);
+            if (!open) setDenteAlvo(null);
+          }}
+          numeroDente={denteAlvo}
+          estadoAtual={resolverEstadoDente(denteAlvo).estadoDenteInteiro}
+          onSelecionar={handleSelecionarEstadoDente}
         />
       ) : null}
 
@@ -429,7 +484,8 @@ export function OdontogramaChart({
         numeroDente={historicoDente ?? 0}
         ausente={
           historicoDente != null
-            ? resolverEstadoDente(historicoDente).ausente
+            ? resolverEstadoDente(historicoDente).estadoDenteInteiro ===
+              "ausente_extraido"
             : false
         }
       />
@@ -441,13 +497,13 @@ function FileiraDentes({
   fileira,
   resolver,
   onFaceClick,
-  onToggleAusente,
+  onDenteClick,
   onHistorico,
 }: {
   fileira: Fileira;
   resolver: (n: number) => EstadoVisualDente;
   onFaceClick: (numero: number, face: FaceOdontograma) => void;
-  onToggleAusente: (numero: number) => void;
+  onDenteClick: (numero: number) => void;
   onHistorico: (numero: number) => void;
 }) {
   const meio = fileira.numeros.length / 2;
@@ -457,13 +513,19 @@ function FileiraDentes({
       <p className="text-xs font-medium text-muted-foreground">{fileira.label}</p>
       <div className="flex flex-wrap items-end justify-center gap-x-0.5 gap-y-2 sm:gap-x-1">
         {fileira.numeros.map((numero, idx) => {
-          const { ausente, faces, facesPendentes, dentePendente } =
-            resolver(numero);
+          const {
+            estadoDenteInteiro,
+            faces,
+            facesPendentes,
+            dentePendente,
+          } = resolver(numero);
           const fdiEl = (
             <span className="text-[10px] tabular-nums text-muted-foreground">
               {numero}
             </span>
           );
+          const ilustracaoAusente =
+            estadoDenteInteiro === "ausente_extraido";
           return (
             <div
               key={numero}
@@ -476,16 +538,16 @@ function FileiraDentes({
               <IlustracaoTipoDente
                 numeroDente={numero}
                 variante="grade"
-                ausente={ausente}
+                ausente={ilustracaoAusente}
               />
               <DenteSvg
                 numeroDente={numero}
                 estadosFaces={faces}
-                ausente={ausente}
+                estadoDenteInteiro={estadoDenteInteiro}
                 facesPendentes={facesPendentes}
                 dentePendente={dentePendente}
                 onFaceClick={(face) => onFaceClick(numero, face)}
-                onDenteClick={() => onToggleAusente(numero)}
+                onDenteClick={() => onDenteClick(numero)}
                 onHistorico={() => onHistorico(numero)}
               />
               {fileira.fdi === "abaixo" ? fdiEl : null}

@@ -4,7 +4,10 @@ import type { ProfissionalRepositoryPort } from "@/core/auth/application/ports/P
 import type { ProntuarioRepositoryPort } from "@/core/prontuario/application/ports/ProntuarioRepositoryPort";
 import { ProntuarioNaoEncontradoError } from "@/core/prontuario/domain/errors";
 
-import { NenhumEventoOdontogramaError, EventoOdontogramaInvalidoError } from "../../domain/errors";
+import {
+  EventoOdontogramaInvalidoError,
+  NenhumEventoOdontogramaError,
+} from "../../domain/errors";
 import type { EstadoOdontograma } from "../../domain/EstadoOdontograma";
 import {
   EventoOdontograma,
@@ -12,7 +15,7 @@ import {
 } from "../../domain/EventoOdontograma";
 import type { FaceOdontograma } from "../../domain/FaceOdontograma";
 import {
-  assertLoteNaoViolaDenteAusente,
+  assertLoteNaoViolaEstadoDenteInteiro,
   projetarOdontogramaVigente,
 } from "../../domain/OdontogramaVigente";
 import type { OdontogramaRepositoryPort } from "../ports/OdontogramaRepositoryPort";
@@ -45,6 +48,9 @@ export type RegistrarEventosOdontogramaInput = {
 
 /**
  * Registra um ou mais eventos append-only no odontograma do prontuário (spec 004).
+ *
+ * Preserva a ordem de `input.eventos` até `salvarEventos` (contrato:
+ * ordem do array ≡ ordem de `sequencia`).
  */
 export class RegistrarEventosOdontograma {
   constructor(
@@ -85,15 +91,19 @@ export class RegistrarEventosOdontograma {
       historico,
     );
 
-    const novos = input.eventos.map((item) =>
-      criarEventoDoInput(item, {
-        clinicaId: input.clinicaId,
-        prontuarioId: prontuario.id,
-        profissionalId: solicitante.id,
-      }),
-    );
+    // Ordem do array = ordem de input.eventos = ordem futura de sequencia.
+    const novos: EventoOdontograma[] = [];
+    for (const item of input.eventos) {
+      novos.push(
+        criarEventoDoInput(item, {
+          clinicaId: input.clinicaId,
+          prontuarioId: prontuario.id,
+          profissionalId: solicitante.id,
+        }),
+      );
+    }
 
-    assertLoteNaoViolaDenteAusente(vigente, novos);
+    assertLoteNaoViolaEstadoDenteInteiro(vigente, novos);
 
     return this.odontogramaRepo.salvarEventos(novos);
   }

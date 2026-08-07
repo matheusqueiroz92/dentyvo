@@ -7,7 +7,7 @@ import { ESTADOS_ODONTOGRAMA } from "@/core/odontograma/domain/EstadoOdontograma
 import type { FaceOdontograma } from "@/core/odontograma/domain/FaceOdontograma";
 
 import {
-  ESTADOS_FACE,
+  FACES_ODONTOGRAMA,
   FILL_ESTADO,
   GRADIENTE_ESTADO,
   ROTULOS_ESTADO,
@@ -21,7 +21,8 @@ export type EstadosFacesDente = Partial<Record<FaceOdontograma, EstadoOdontogram
 type DenteSvgProps = {
   numeroDente: number;
   estadosFaces: EstadosFacesDente;
-  ausente: boolean;
+  /** Estado de dente inteiro vigente; `null` = modo por faces. */
+  estadoDenteInteiro: EstadoOdontograma | null;
   facesPendentes?: ReadonlySet<FaceOdontograma>;
   dentePendente?: boolean;
   onFaceClick?: (face: FaceOdontograma) => void;
@@ -56,7 +57,7 @@ const PATHS = {
 export function DenteSvg({
   numeroDente,
   estadosFaces,
-  ausente,
+  estadoDenteInteiro,
   facesPendentes,
   dentePendente,
   onFaceClick,
@@ -68,6 +69,8 @@ export function DenteSvg({
   const mesialDireita = mesialNaDireitaDoSvg(numeroDente);
   const faceEsquerda: FaceOdontograma = mesialDireita ? "distal" : "mesial";
   const faceDireita: FaceOdontograma = mesialDireita ? "mesial" : "distal";
+  const denteInteiro = estadoDenteInteiro != null;
+  const ausenteExtraido = estadoDenteInteiro === "ausente_extraido";
 
   const estadoFace = (face: FaceOdontograma): EstadoOdontograma =>
     estadosFaces[face] ?? "higido";
@@ -75,6 +78,10 @@ export function DenteSvg({
   const gradId = (estado: EstadoOdontograma) => `odonto-g-${uid}-${estado}`;
   const filterDepth = `odonto-depth-${uid}`;
   const filterPending = `odonto-pending-${uid}`;
+
+  const rotuloAria = denteInteiro
+    ? `, ${ROTULOS_ESTADO[estadoDenteInteiro]}`
+    : "";
 
   return (
     <div
@@ -90,7 +97,7 @@ export function DenteSvg({
             "outline outline-1 outline-dashed outline-[hsl(var(--odontograma-pending))] outline-offset-1 rounded-sm",
         )}
         role="img"
-        aria-label={`Dente ${numeroDente}${ausente ? ", ausente ou extraído" : ""}`}
+        aria-label={`Dente ${numeroDente}${rotuloAria}`}
       >
         <defs>
           {ESTADOS_ODONTOGRAMA.map((estado) => {
@@ -142,18 +149,25 @@ export function DenteSvg({
           </filter>
         </defs>
 
-        {ausente ? (
+        {denteInteiro && estadoDenteInteiro ? (
           <g>
-            <title>{`Dente ${numeroDente}: ${ROTULOS_ESTADO.ausente_extraido}`}</title>
+            <title>
+              {`Dente ${numeroDente}: ${ROTULOS_ESTADO[estadoDenteInteiro]}`}
+            </title>
             <path
               d={PATHS.ausente}
-              fill={`url(#${gradId("ausente_extraido")})`}
+              fill={`url(#${gradId(estadoDenteInteiro)})`}
               stroke={STROKE}
               strokeWidth={1.75}
-              opacity={0.7}
+              opacity={ausenteExtraido ? 0.7 : 0.92}
               filter={`url(#${filterDepth})`}
               className="cursor-pointer"
               onClick={(e) => {
+                e.stopPropagation();
+                onDenteClick?.();
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 onDenteClick?.();
               }}
@@ -162,28 +176,55 @@ export function DenteSvg({
                 onHistorico?.();
               }}
             />
-            <line
-              x1={28}
-              y1={28}
-              x2={72}
-              y2={72}
-              stroke={STROKE}
-              strokeWidth={2.25}
-              strokeLinecap="round"
-              opacity={0.65}
-              pointerEvents="none"
-            />
-            <line
-              x1={72}
-              y1={28}
-              x2={28}
-              y2={72}
-              stroke={STROKE}
-              strokeWidth={2.25}
-              strokeLinecap="round"
-              opacity={0.65}
-              pointerEvents="none"
-            />
+            {ausenteExtraido ? (
+              <>
+                <line
+                  x1={28}
+                  y1={28}
+                  x2={72}
+                  y2={72}
+                  stroke={STROKE}
+                  strokeWidth={2.25}
+                  strokeLinecap="round"
+                  opacity={0.65}
+                  pointerEvents="none"
+                />
+                <line
+                  x1={72}
+                  y1={28}
+                  x2={28}
+                  y2={72}
+                  stroke={STROKE}
+                  strokeWidth={2.25}
+                  strokeLinecap="round"
+                  opacity={0.65}
+                  pointerEvents="none"
+                />
+              </>
+            ) : null}
+            {/* Faces transparentes: clique encerra o estado de dente inteiro */}
+            <g opacity={0}>
+              {(
+                [
+                  ["vestibular", PATHS.vestibular],
+                  [faceEsquerda, PATHS.esquerda],
+                  [faceDireita, PATHS.direita],
+                  ["lingual_palatina", PATHS.lingual],
+                  ["oclusal", PATHS.oclusal],
+                ] as const
+              ).map(([face, d]) => (
+                <path
+                  key={face}
+                  d={d}
+                  fill="transparent"
+                  className="cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFaceClick?.(face);
+                  }}
+                />
+              ))}
+            </g>
           </g>
         ) : (
           <g filter={`url(#${filterDepth})`}>
@@ -242,7 +283,6 @@ export function DenteSvg({
               onContextMenu={() => onDenteClick?.()}
               onDoubleClick={() => onHistorico?.()}
             />
-            {/* Separadores sutis entre faces (profundidade sem depender só de cor) */}
             <g pointerEvents="none" opacity={0.35}>
               <path
                 d="M30 29 L70 29"
@@ -276,14 +316,10 @@ export function DenteSvg({
         <button
           type="button"
           className="min-h-0 rounded px-1 py-0.5 text-[9px] text-muted-foreground hover:bg-muted hover:text-foreground"
-          title={
-            ausente
-              ? "Desmarcar ausente/extraído"
-              : "Marcar ausente/extraído (também: botão direito)"
-          }
+          title="Estado do dente inteiro (ausente, implante, coroa…)"
           onClick={() => onDenteClick?.()}
         >
-          {ausente ? "↻" : "✕"}
+          {denteInteiro ? "D" : "✕"}
         </button>
         <button
           type="button"
@@ -360,7 +396,7 @@ function FacePath({
 }
 
 /** Exportado para testes / seletor — lista de faces válidas. */
-export const FACES_CLICAVEIS = ESTADOS_FACE;
+export const FACES_CLICAVEIS = FACES_ODONTOGRAMA;
 
 /** Mantém FILL_ESTADO disponível para consumidores que precisem de cor sólida. */
 export { FILL_ESTADO };

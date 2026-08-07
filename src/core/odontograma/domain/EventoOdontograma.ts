@@ -1,13 +1,15 @@
 import { DadosInvalidosError, TenantMismatchError } from "@/core/shared/errors";
 
 import {
+  EstadoIncompativelComNivelError,
   EstadoOdontogramaInvalidoError,
-  EventoOdontogramaInvalidoError,
   FaceOdontogramaInvalidaError,
 } from "./errors";
 import {
   ehEstadoAusente,
+  ehEstadoDenteInteiro,
   ehEstadoOdontograma,
+  ehEstadoPorFace,
   type EstadoOdontograma,
 } from "./EstadoOdontograma";
 import {
@@ -41,8 +43,8 @@ export type EventoOdontogramaProps = {
 
 /**
  * Evento append-only do odontograma (spec 004).
- * Imutável após criação; estado vigente = projeção do evento mais recente
- * por (dente+face) ou por dente (nível dente).
+ * Imutável após criação; estado vigente = projeção por recência
+ * (face ↔ dente inteiro bidirecional — ver `OdontogramaVigente`).
  *
  * Ordenação determinística: `registradoEm`, depois `sequencia` (não `id`).
  */
@@ -73,7 +75,7 @@ export class EventoOdontograma {
     this.sequencia = props.sequencia;
   }
 
-  /** Evento no nível da face (estado independente por face). */
+  /** Evento no nível da face — só estados da categoria POR FACE. */
   static criarFace(input: {
     id: string;
     clinicaId: string;
@@ -87,10 +89,8 @@ export class EventoOdontograma {
   }): EventoOdontograma {
     const numero = NumeroDente.criar(input.numeroDente);
     const estado = assertEstado(input.estadoNovo);
-    if (ehEstadoAusente(estado)) {
-      throw new EventoOdontogramaInvalidoError(
-        "Estado ausente_extraido é exclusivo do nível do dente; não pode ser registrado por face.",
-      );
+    if (!ehEstadoPorFace(estado)) {
+      throw new EstadoIncompativelComNivelError(estado, "face");
     }
     const face = assertFace(input.face);
     const registradoEm = input.registradoEm ?? new Date();
@@ -112,8 +112,8 @@ export class EventoOdontograma {
   }
 
   /**
-   * Evento no nível do dente (ex.: `ausente_extraido`).
-   * Dente ausente não possui estados de face vigentes (ver projeção).
+   * Evento no nível do dente — só estados da categoria DENTE INTEIRO.
+   * Limpa faces vigentes anteriores na projeção até ser encerrado por face.
    */
   static criarDente(input: {
     id: string;
@@ -127,6 +127,9 @@ export class EventoOdontograma {
   }): EventoOdontograma {
     const numero = NumeroDente.criar(input.numeroDente);
     const estado = assertEstado(input.estadoNovo);
+    if (!ehEstadoDenteInteiro(estado)) {
+      throw new EstadoIncompativelComNivelError(estado, "dente");
+    }
     const registradoEm = input.registradoEm ?? new Date();
     assertDataValida(registradoEm, "registradoEm");
 
@@ -168,6 +171,10 @@ export class EventoOdontograma {
 
   marcaDenteAusente(): boolean {
     return this.nivel === "dente" && ehEstadoAusente(this.estadoNovo);
+  }
+
+  marcaEstadoDenteInteiro(): boolean {
+    return this.nivel === "dente" && ehEstadoDenteInteiro(this.estadoNovo);
   }
 }
 

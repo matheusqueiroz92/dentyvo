@@ -1,6 +1,10 @@
 import { z } from "zod";
 
-import { ESTADOS_ODONTOGRAMA } from "@/core/odontograma/domain/EstadoOdontograma";
+import {
+  ehEstadoDenteInteiro,
+  ehEstadoPorFace,
+  ESTADOS_ODONTOGRAMA,
+} from "@/core/odontograma/domain/EstadoOdontograma";
 import { FACES_ODONTOGRAMA } from "@/core/odontograma/domain/FaceOdontograma";
 import { NIVEIS_EVENTO_ODONTOGRAMA } from "@/core/odontograma/domain/EventoOdontograma";
 
@@ -25,6 +29,22 @@ export const eventoOdontogramaInputSchema = z
         code: "custom",
         message: "Evento de nível dente não deve informar face.",
         path: ["face"],
+      });
+    }
+    if (val.nivel === "face" && !ehEstadoPorFace(val.estadoNovo)) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Este estado é de dente inteiro; selecione-o pelo controle do dente (não pela face).",
+        path: ["estadoNovo"],
+      });
+    }
+    if (val.nivel === "dente" && !ehEstadoDenteInteiro(val.estadoNovo)) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Este estado é por face; selecione-o clicando numa face do dente.",
+        path: ["estadoNovo"],
       });
     }
   });
