@@ -35,6 +35,7 @@ import {
 } from "./AnamneseHistorico";
 import { CriarProntuarioCard } from "./CriarProntuarioCard";
 import { EvolucaoTimeline } from "./EvolucaoTimeline";
+import { ReceitasLista } from "./ReceitasLista";
 import { RegistrarEvolucaoModal } from "./RegistrarEvolucaoModal";
 import { RetificarEvolucaoModal } from "./RetificarEvolucaoModal";
 
@@ -44,6 +45,8 @@ type ProntuarioTabProps = {
   dataNascimentoIso: string;
   /** false para recepção — mensagem de acesso restrito, sem chamar use cases. */
   podeAcessar: boolean;
+  /** Spec 006: só dentista emite/lista/PDF; admin sem CRO não vê a seção. */
+  podeReceituario: boolean;
 };
 
 const formatadorData = new Intl.DateTimeFormat("pt-BR", {
@@ -60,6 +63,7 @@ export function ProntuarioTab({
   pacienteId,
   dataNascimentoIso,
   podeAcessar,
+  podeReceituario,
 }: ProntuarioTabProps) {
   const [estado, setEstado] = useState<EstadoCarga>(() =>
     podeAcessar ? { tipo: "carregando" } : { tipo: "idle" },
@@ -392,6 +396,8 @@ export function ProntuarioTab({
           setRetificarOpen(true);
         }}
       />
+
+      {podeReceituario ? <ReceitasLista prontuarioId={prontuarioId} /> : null}
 
       <AnamneseForm
         open={formAberto}

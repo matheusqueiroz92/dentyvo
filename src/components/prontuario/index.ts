@@ -1,7 +1,9 @@
 export { AnamneseForm } from "./AnamneseForm";
 export { AnamneseHistorico } from "./AnamneseHistorico";
 export { CriarProntuarioCard } from "./CriarProntuarioCard";
+export { EmitirReceitaModal } from "./EmitirReceitaModal";
 export { EvolucaoTimeline } from "./EvolucaoTimeline";
 export { ProntuarioTab } from "./ProntuarioTab";
+export { ReceitasLista } from "./ReceitasLista";
 export { RegistrarEvolucaoModal } from "./RegistrarEvolucaoModal";
 export { RetificarEvolucaoModal } from "./RetificarEvolucaoModal";
