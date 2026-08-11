@@ -1,7 +1,9 @@
 /**
  * Datas civis do atestado na UI: ISO `yyyy-mm-dd` e rótulo pt-BR.
- * Aritmética inclusiva igual ao domínio (`dataInicio + dias - 1`).
+ * `dataFim` do preview vem de `PeriodoAfastamento` (mesma regra da emissão).
  */
+
+import { PeriodoAfastamento } from "@/core/atestado/domain/PeriodoAfastamento";
 
 export function dataCivilUtcDeIso(iso: string): Date {
   const [ano, mes, dia] = iso.split("-").map(Number);
@@ -18,10 +20,12 @@ export function calcularDataFimIso(
 ): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataInicioIso)) return null;
   if (!Number.isInteger(quantidadeDias) || quantidadeDias < 1) return null;
-  const inicio = dataCivilUtcDeIso(dataInicioIso);
-  const fim = new Date(inicio);
-  fim.setUTCDate(fim.getUTCDate() + (quantidadeDias - 1));
-  return isoCivilUtc(fim);
+
+  const periodo = PeriodoAfastamento.criar(
+    dataCivilUtcDeIso(dataInicioIso),
+    quantidadeDias,
+  );
+  return isoCivilUtc(periodo.dataFim);
 }
 
 export function formatarPeriodoAfastamento(

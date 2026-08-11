@@ -11,4 +11,3 @@ export {
   ListarAtestadosDoProntuario,
   type ListarAtestadosDoProntuarioInput,
 } from "./ListarAtestadosDoProntuario";
-export { CasoDeUsoNaoImplementadoError } from "./nao-implementado";

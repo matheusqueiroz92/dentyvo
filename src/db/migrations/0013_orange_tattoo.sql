@@ -1,0 +1,2 @@
+ALTER TABLE "atestado" ADD CONSTRAINT "atestado_quantidade_dias_check" CHECK ("atestado"."quantidade_dias" >= 1);--> statement-breakpoint
+ALTER TABLE "atestado" ADD CONSTRAINT "atestado_periodo_datas_check" CHECK ("atestado"."data_fim" >= "atestado"."data_inicio");

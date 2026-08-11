@@ -47,10 +47,10 @@ export class FakeGeradorPdfPort implements GeradorPdfPort {
     return this.bytesGerados;
   }
 
-  /** Stub de extensão 006b — testes de receita não exercitam este método. */
+  /** Satisfaz a interface; testes de receita não exercitam este método. */
   async gerarAtestado(atestado: Atestado): Promise<Uint8Array> {
     void atestado;
-    throw new Error("gerarAtestado ainda não implementado (spec 006b).");
+    return this.bytesGerados;
   }
 }
 
