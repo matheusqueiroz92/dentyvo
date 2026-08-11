@@ -26,6 +26,10 @@
 .DS_Store
 *.pem
 
+# artefatos de teste manual de PDF (raiz / scripts)
+/tmp-*.pdf
+tmp-atestado-*.pdf
+
 # debug
 npm-debug.log*
 yarn-debug.log*
