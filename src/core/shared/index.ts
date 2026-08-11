@@ -5,3 +5,8 @@ export {
   TenantMismatchError,
 } from "./errors";
 export { Slug } from "./Slug";
+export {
+  SnapshotCabecalhoDocumento,
+  SnapshotCabecalhoInvalidoError,
+  type SnapshotCabecalhoDocumentoProps,
+} from "./SnapshotCabecalhoDocumento";

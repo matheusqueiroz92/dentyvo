@@ -31,14 +31,7 @@ export class ItemReceitaInvalidoError extends Error {
   }
 }
 
-export class SnapshotCabecalhoInvalidoError extends Error {
-  readonly nome = "SnapshotCabecalhoInvalidoError" as const;
-
-  constructor(readonly campo: string) {
-    super(`Snapshot de cabeçalho inválido: campo "${campo}" é obrigatório.`);
-    this.name = this.nome;
-  }
-}
+export { SnapshotCabecalhoInvalidoError } from "@/core/shared/SnapshotCabecalhoDocumento";
 
 export class CroAusenteNaEmissaoError extends Error {
   readonly nome = "CroAusenteNaEmissaoError" as const;

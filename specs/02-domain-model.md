@@ -57,11 +57,30 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 - id, clinicaId, prontuarioId, profissionalId, emitidaEm,
   itens[] (`ItemReceita`: medicamento, dosagem, posologia, duracao — textos
   livres estruturados),
-  snapshot de cabeçalho persistido na emissão (obrigatórios: clinicaNome,
-  clinicaEndereco, profissionalNome, profissionalCro, pacienteNome,
-  pacienteCpf; opcionais: pacienteDataNascimento, profissionalEspecialidade;
-  documento fiscal da clínica fora do MVP — ver feature 006),
+  snapshot de cabeçalho persistido na emissão (`SnapshotCabecalhoDocumento`
+  — mesmos campos da 006: obrigatórios clinicaNome, clinicaEndereco,
+  profissionalNome, profissionalCro, pacienteNome, pacienteCpf; opcionais
+  pacienteDataNascimento, profissionalEspecialidade; documento fiscal da
+  clínica fora do MVP — ver feature 006). Forma JSON da coluna
+  `receita.cabecalho` **não muda**.
   assinaturaDigitalId (nullable — v2; assinatura digital fora do MVP)
+
+### SnapshotCabecalhoDocumento (VO compartilhado)
+- VO canônico em `src/core/shared` (antes `SnapshotCabecalhoReceita` na 006).
+  Alias `SnapshotCabecalhoReceita` permanece no módulo receituário.
+  Usado por `Receita` e `Atestado`. Rename estrutural apenas — sem migração.
+
+### Atestado
+- id, clinicaId, prontuarioId, profissionalId, emitidaEm,
+  motivo (texto livre obrigatório),
+  cid (opcional; se preenchido, formato CID-10 estrutural: letra + 2–3
+  dígitos, subcategoria opcional de 1 dígito após ponto; trim + maiúsculas;
+  sem catálogo semântico — ver feature 006b),
+  período estruturado em data civil UTC: dataInicio, quantidadeDias (≥ 1),
+  dataFim inclusiva = dataInicio + (quantidadeDias − 1),
+  snapshot `SnapshotCabecalhoDocumento` (mesmo contrato da Receita),
+  assinaturaDigitalId (nullable — v2). Sem lista de itens. Imutável após
+  emissão; correção = nova emissão. RBAC: só `dentista`.
 
 ### Odontograma (v2 — spec 004)
 - Fonte de verdade: eventos append-only `EventoOdontograma` (sem snapshot
@@ -229,6 +248,9 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
   automática do bot até um atendente humano encerrar ou devolver ao bot.
 - Anamnese só pode ser preenchida/editada por usuário vinculado à clínica dona
   do prontuário (checagem de tenant obrigatória).
+- `Receita` e `Atestado` são imutáveis após emissão; correção = nova emissão.
+  Só `dentista` emite/lista/gera PDF. CID do atestado, se presente, valida
+  apenas formato CID-10 (não catálogo).
 - Uma `Clinica` com `Assinatura` em status diferente de `trialing`/`ativa`
   perde acesso às funcionalidades operacionais (agendamento, prontuário, bot),
   mas mantém acesso de leitura/exportação dos próprios dados (nunca bloquear

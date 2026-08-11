@@ -85,6 +85,13 @@
       "when": 1785807407172,
       "tag": "0011_brainy_krista_starr",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786471561688,
+      "tag": "0012_spotty_strong_guy",
+      "breakpoints": true
     }
   ]
 }

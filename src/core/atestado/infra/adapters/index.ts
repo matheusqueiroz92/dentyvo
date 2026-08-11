@@ -1,0 +1,1 @@
+export { DrizzleAtestadoRepository } from "./DrizzleAtestadoRepository";

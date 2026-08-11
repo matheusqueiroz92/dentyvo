@@ -4,6 +4,7 @@
  */
 export * from "./agendamento";
 export * from "./anamnese";
+export * from "./atestado";
 export * from "./assinatura";
 export * from "./auditoria-log";
 export * from "./auth";

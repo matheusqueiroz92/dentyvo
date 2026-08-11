@@ -1,8 +1,10 @@
+import type { Atestado } from "@/core/atestado/domain/Atestado";
+
+import type { ItemReceitaProps } from "../../domain/ItemReceita";
+import type { Receita } from "../../domain/Receita";
+import type { SnapshotCabecalhoReceitaProps } from "../../domain/SnapshotCabecalhoReceita";
 import type { GeradorPdfPort } from "../ports/GeradorPdfPort";
 import type { ReceitaRepositoryPort } from "../ports/ReceitaRepositoryPort";
-import type { Receita } from "../../domain/Receita";
-import type { ItemReceitaProps } from "../../domain/ItemReceita";
-import type { SnapshotCabecalhoReceitaProps } from "../../domain/SnapshotCabecalhoReceita";
 
 export class FakeReceitaRepository implements ReceitaRepositoryPort {
   readonly items = new Map<string, Receita>();
@@ -43,6 +45,12 @@ export class FakeGeradorPdfPort implements GeradorPdfPort {
   async gerar(receita: Receita): Promise<Uint8Array> {
     this.geracoes.push(receita);
     return this.bytesGerados;
+  }
+
+  /** Stub de extensão 006b — testes de receita não exercitam este método. */
+  async gerarAtestado(atestado: Atestado): Promise<Uint8Array> {
+    void atestado;
+    throw new Error("gerarAtestado ainda não implementado (spec 006b).");
   }
 }
 
