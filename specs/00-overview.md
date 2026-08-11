@@ -32,7 +32,9 @@ automaticamente.
 1. Autenticação multi-tenant (clínica = tenant).
 2. Agendamento (profissionais, disponibilidade, confirmação, lembrete).
 3. Prontuário eletrônico com anamnese digital.
-4. Receituário com modelo padrão.
+4. Receituário com modelo padrão; **atestado odontológico** (extensão
+   documentada em `specs/features/006b-atestado.md`, spec `aprovada` —
+   mesma arquitetura de emissão imutável + PDF da 006).
 5. Bot de WhatsApp (secretária virtual) via Meta Cloud API com Embedded Signup:
    boas-vindas, menu (marcar consulta / orçamento / falar com atendente).
 6. Painel administrativo (super-admin) para o dono da plataforma gerenciar

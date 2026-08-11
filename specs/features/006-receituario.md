@@ -3,6 +3,10 @@
 ## Status
 `aprovada`
 
+> **Ver também:** atestado odontológico (irmã desta feature) em
+> `specs/features/006b-atestado.md` — reusa o padrão de emissão imutável,
+> snapshot de cabeçalho e PDF; **não** altera o escopo desta 006.
+
 ## Contexto
 Evita o dentista escrever receita à mão, reduzindo tempo de atendimento e erros
 de legibilidade.
