@@ -82,7 +82,7 @@ async function criarPagina(): Promise<{
   const draw: DrawTexto = (texto, opts) => {
     const size = opts?.size ?? 11;
     const used = opts?.bold ? fontBold : font;
-    page.drawText(texto, {
+    page.drawText(paraWinAnsi(texto), {
       x: margin,
       y,
       size,
@@ -139,6 +139,11 @@ function desenharRodapeAssinatura(draw: DrawTexto): void {
   draw("(Assinatura digital com validade juridica fora do MVP)", {
     size: 9,
   });
+}
+
+/** Helvetica (WinAnsi) não cobre acentos — NFD remove o diacrítico. */
+function paraWinAnsi(texto: string): string {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function formatarData(data: Date): string {
