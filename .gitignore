@@ -26,9 +26,11 @@
 .DS_Store
 *.pem
 
-# artefatos de teste manual de PDF (raiz / scripts)
+# artefatos de teste manual de PDF / screenshots (raiz)
 /tmp-*.pdf
+/tmp-*.png
 tmp-atestado-*.pdf
+tmp-atestado-*.png
 
 # debug
 npm-debug.log*

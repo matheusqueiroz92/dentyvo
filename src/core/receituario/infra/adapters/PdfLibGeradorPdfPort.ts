@@ -1,4 +1,8 @@
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import fontkit from "@pdf-lib/fontkit";
+import { PDFDocument, rgb, type PDFFont } from "pdf-lib";
 
 import type { Atestado } from "@/core/atestado/domain/Atestado";
 import type { SnapshotCabecalhoDocumento } from "@/core/shared/SnapshotCabecalhoDocumento";
@@ -11,28 +15,38 @@ type DrawTexto = (
   opts?: { size?: number; bold?: boolean; gap?: number },
 ) => void;
 
+type FontesInter = {
+  regular: PDFFont;
+  bold: PDFFont;
+};
+
+let cacheBytes: { regular: Buffer; bold: Buffer } | null = null;
+
 /**
- * Gera PDF sob demanda com pdf-lib a partir do snapshot (specs 006 / 006b).
+ * Gera PDF sob demanda com pdf-lib + Inter embutida (specs 006 / 006b).
  * Sem Chromium; sem persistência de blob.
+ *
+ * Helvetica/WinAnsi falha com acentos em forma NFD (marca combinante U+0301).
+ * Inter via fontkit preserva á é í ó ú ã õ ç â ê ô etc.
  */
 export class PdfLibGeradorPdfPort implements GeradorPdfPort {
   async gerar(receita: Receita): Promise<Uint8Array> {
     const { pdfDoc, draw } = await criarPagina();
     const cab = receita.cabecalho;
 
-    desenharCabecalho(draw, cab, "RECEITUARIO ODONTOLOGICO");
+    desenharCabecalho(draw, cab, "RECEITUÁRIO ODONTOLÓGICO");
     draw(`Emitida em: ${formatarDataHora(receita.emitidaEm)}`, {
       size: 11,
       gap: 20,
     });
 
-    draw("Prescricao", { size: 13, bold: true, gap: 16 });
+    draw("Prescrição", { size: 13, bold: true, gap: 16 });
 
     receita.itens.forEach((item, index) => {
       draw(`${index + 1}. ${item.medicamento}`, { size: 11, bold: true });
       draw(`   Dosagem: ${item.dosagem}`, { size: 10 });
       draw(`   Posologia: ${item.posologia}`, { size: 10 });
-      draw(`   Duracao: ${item.duracao}`, { size: 10, gap: 14 });
+      draw(`   Duração: ${item.duracao}`, { size: 10, gap: 14 });
     });
 
     desenharRodapeAssinatura(draw);
@@ -43,7 +57,7 @@ export class PdfLibGeradorPdfPort implements GeradorPdfPort {
     const { pdfDoc, draw } = await criarPagina();
     const cab = atestado.cabecalho;
 
-    desenharCabecalho(draw, cab, "ATESTADO ODONTOLOGICO");
+    desenharCabecalho(draw, cab, "ATESTADO ODONTOLÓGICO");
     draw(`Emitido em: ${formatarDataHora(atestado.emitidaEm)}`, {
       size: 11,
       gap: 20,
@@ -56,7 +70,7 @@ export class PdfLibGeradorPdfPort implements GeradorPdfPort {
       draw(`CID: ${atestado.cid}`, { size: 11, gap: 14 });
     }
 
-    draw("Periodo de afastamento", { size: 13, bold: true, gap: 16 });
+    draw("Período de afastamento", { size: 13, bold: true, gap: 16 });
     draw(
       `${formatarData(atestado.dataInicio)} a ${formatarData(atestado.dataFim)} (${atestado.quantidadeDias} dia(s))`,
       { size: 11, gap: 14 },
@@ -72,8 +86,8 @@ async function criarPagina(): Promise<{
   draw: DrawTexto;
 }> {
   const pdfDoc = await PDFDocument.create();
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  pdfDoc.registerFontkit(fontkit);
+  const fontes = await embutirInter(pdfDoc);
   const page = pdfDoc.addPage([595.28, 841.89]); // A4
   const { width, height } = page.getSize();
   const margin = 50;
@@ -81,8 +95,8 @@ async function criarPagina(): Promise<{
 
   const draw: DrawTexto = (texto, opts) => {
     const size = opts?.size ?? 11;
-    const used = opts?.bold ? fontBold : font;
-    page.drawText(paraWinAnsi(texto), {
+    const used = opts?.bold ? fontes.bold : fontes.regular;
+    page.drawText(normalizarTextoPdf(texto), {
       x: margin,
       y,
       size,
@@ -94,6 +108,25 @@ async function criarPagina(): Promise<{
   };
 
   return { pdfDoc, draw };
+}
+
+async function embutirInter(pdfDoc: PDFDocument): Promise<FontesInter> {
+  const bytes = carregarBytesInter();
+  const [regular, bold] = await Promise.all([
+    pdfDoc.embedFont(bytes.regular, { subset: true }),
+    pdfDoc.embedFont(bytes.bold, { subset: true }),
+  ]);
+  return { regular, bold };
+}
+
+function carregarBytesInter(): { regular: Buffer; bold: Buffer } {
+  if (cacheBytes) return cacheBytes;
+  const dir = join(process.cwd(), "assets", "fonts");
+  cacheBytes = {
+    regular: readFileSync(join(dir, "Inter-Regular.ttf")),
+    bold: readFileSync(join(dir, "Inter-Bold.ttf")),
+  };
+  return cacheBytes;
 }
 
 function desenharCabecalho(
@@ -136,14 +169,23 @@ function desenharRodapeAssinatura(draw: DrawTexto): void {
     size: 10,
     gap: 14,
   });
-  draw("(Assinatura digital com validade juridica fora do MVP)", {
+  draw("(Assinatura digital com validade jurídica fora do MVP)", {
     size: 9,
   });
 }
 
-/** Helvetica (WinAnsi) não cobre acentos — NFD remove o diacrítico. */
-function paraWinAnsi(texto: string): string {
-  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+/**
+ * NFC recompõe acentos (evita U+0301 solto de NFD).
+ * Pontuação tipográfica fora do núcleo PT-BR → equivalentes ASCII
+ * (aspas retas, hífen, reticências), sem remover diacríticos.
+ */
+export function normalizarTextoPdf(texto: string): string {
+  return texto
+    .normalize("NFC")
+    .replace(/[\u201C\u201D\u00AB\u00BB]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\u2026/g, "...");
 }
 
 function formatarData(data: Date): string {
