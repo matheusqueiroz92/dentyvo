@@ -29,7 +29,7 @@ export function PacienteDetalheClient({
   const [editarOpen, setEditarOpen] = useState(false);
   const [aba, setAba] = useState("dados");
   const podeAcessarProntuario = papel === "admin" || papel === "dentista";
-  /** Spec 006: receituário só para dentista (admin precisa trocar de papel / CRO). */
+  /** Specs 006/006b: receituário e atestado só para dentista (admin precisa CRO). */
   const podeReceituario = papel === "dentista";
 
   return (
