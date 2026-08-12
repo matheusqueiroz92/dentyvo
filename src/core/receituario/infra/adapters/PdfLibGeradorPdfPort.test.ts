@@ -99,4 +99,38 @@ describe("PdfLibGeradorPdfPort", () => {
     expect(texto).toContain("1 cápsula a cada 8 horas");
     expect(texto).toContain("RECEITUÁRIO ODONTOLÓGICO");
   });
+
+  it("preserva acentos portugueses no PDF do orçamento (nome, clínica, item)", async () => {
+    const { Orcamento } = await import("@/core/orcamento/domain/Orcamento");
+    const orcamento = Orcamento.emitir({
+      id: "orc-acentos",
+      clinicaId: "clin-1",
+      prontuarioId: "pront-1",
+      profissionalId: "prof-1",
+      itens: [
+        {
+          procedimentoId: "proc-1",
+          nome: "Clareamento dentário — sessão única".normalize("NFD"),
+          valor: 850,
+          quantidade: 1,
+        },
+      ],
+      cabecalho: cabecalhoAcentuado,
+      validoAte: new Date("2026-09-30T00:00:00.000Z"),
+      emitidoEm: new Date("2026-08-12T15:00:00.000Z"),
+    });
+
+    const bytes = await new PdfLibGeradorPdfPort().gerarOrcamento(orcamento);
+    const texto = await textoDoPdf(bytes);
+
+    expect(texto).toContain("José Antônio da Conceição");
+    expect(texto).toContain("Clínica Sorriso");
+    expect(texto).toContain("São Paulo");
+    expect(texto).toContain("Márcia Gonçalves");
+    expect(texto).toContain("Clareamento dentário");
+    expect(texto).toContain("Válido até");
+    expect(texto).toContain("ORÇAMENTO ODONTOLÓGICO");
+    expect(texto).not.toContain("Jose Antonio da Conceicao");
+    expect(texto).not.toContain("Clinica Sorriso");
+  });
 });

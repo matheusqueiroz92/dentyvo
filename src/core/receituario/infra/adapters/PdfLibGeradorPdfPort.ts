@@ -5,6 +5,7 @@ import fontkit from "@pdf-lib/fontkit";
 import { PDFDocument, rgb, type PDFFont } from "pdf-lib";
 
 import type { Atestado } from "@/core/atestado/domain/Atestado";
+import type { Orcamento } from "@/core/orcamento/domain/Orcamento";
 import type { SnapshotCabecalhoDocumento } from "@/core/shared/SnapshotCabecalhoDocumento";
 
 import type { GeradorPdfPort } from "../../application/ports/GeradorPdfPort";
@@ -79,6 +80,64 @@ export class PdfLibGeradorPdfPort implements GeradorPdfPort {
     desenharRodapeAssinatura(draw);
     return pdfDoc.save();
   }
+
+  async gerarOrcamento(orcamento: Orcamento): Promise<Uint8Array> {
+    const { pdfDoc, draw } = await criarPagina();
+    const cab = orcamento.cabecalho;
+
+    desenharCabecalho(draw, cab, "ORÇAMENTO ODONTOLÓGICO");
+    draw(`Emitido em: ${formatarDataHora(orcamento.emitidoEm)}`, {
+      size: 11,
+      gap: 12,
+    });
+    draw(`Status: ${rotuloStatus(orcamento.status)}`, {
+      size: 11,
+      gap: orcamento.validoAte ? 12 : 20,
+    });
+    if (orcamento.validoAte) {
+      draw(`Válido até: ${formatarData(orcamento.validoAte)}`, {
+        size: 11,
+        gap: 20,
+      });
+    }
+
+    draw("Itens", { size: 13, bold: true, gap: 16 });
+
+    orcamento.itens.forEach((item, index) => {
+      draw(`${index + 1}. ${item.nome}`, { size: 11, bold: true });
+      draw(
+        `   Qtd: ${item.quantidade}  ·  Valor unit.: ${formatarMoeda(item.valor)}  ·  Subtotal: ${formatarMoeda(item.subtotal)}`,
+        { size: 10, gap: 14 },
+      );
+    });
+
+    draw(`Total: ${formatarMoeda(orcamento.total)}`, {
+      size: 12,
+      bold: true,
+      gap: 20,
+    });
+
+    desenharRodapeAssinatura(draw);
+    return pdfDoc.save();
+  }
+}
+
+function rotuloStatus(status: Orcamento["status"]): string {
+  switch (status) {
+    case "enviado":
+      return "Enviado";
+    case "aceito":
+      return "Aceito";
+    case "recusado":
+      return "Recusado";
+  }
+}
+
+function formatarMoeda(valor: number): string {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(valor);
 }
 
 async function criarPagina(): Promise<{

@@ -61,9 +61,6 @@ implementação agora). Detalhes nas seções correspondentes abaixo.
   ou mockar dado financeiro.
 - **014 — Estoque/Insumos:** ver seção detalhada abaixo. Sem urgência de
   schema agora — módulo desenhável do zero quando chegar a vez.
-- **015 — Orçamento:** ver seção detalhada abaixo. Candidato a próxima
-  spec após Prontuário — complexidade baixa/média, valor comercial
-  direto. **Sem abrir Arquiteto agora.**
 - **016 — Transcrição de voz assistida (anamnese):** ver seção detalhada
   abaixo. **v2**, após módulos clínicos centrais estarem maduros.
 - **017 — Sugestão de tratamento por IA:** ver seção detalhada abaixo.
@@ -168,19 +165,13 @@ Compra de insumo é categoria natural de `DespesaOperacional`. Considerar
 essa relação ao desenhar ambas as specs, para não duplicar o conceito de
 “custo”.
 
-## Orçamento — planejamento futuro (spec 015)
+## Orçamento (spec 015)
 
-Registro **conceitual** (sem spec formal ainda). **Não abrir Arquiteto
-nem implementação agora.**
-
-Modelo similar a Receita (006): vinculado a prontuário, com itens
-(procedimento + valor em snapshot) e workflow de status
-(`rascunho` | `enviado` | `aceito` | `recusado`). Possivelmente gera
-origem nova de `Agendamento` quando aceito (detalhe na spec formal).
-
-Candidato a **próxima spec após Prontuário** — complexidade baixa/média,
-valor comercial direto. A spec formal (`specs/features/015-*.md`) só
-será aberta quando for a hora de planejar a entrega.
+Spec formal **`aprovada`** em `specs/features/015-orcamento.md` — pronta
+para o Arquiteto de Domínio. Orçamento vinculado a prontuário, itens com
+snapshot de procedimento/valor, status `enviado` → `aceito` \| `recusado`,
+`validoAte` opcional (informativo), PDF e atalho de agendamento pós-aceite
+(sem criar consulta automaticamente).
 
 ## Transcrição de voz assistida (anamnese) — planejamento futuro (spec 016)
 

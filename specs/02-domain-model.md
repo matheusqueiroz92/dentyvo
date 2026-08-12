@@ -68,7 +68,8 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 ### SnapshotCabecalhoDocumento (VO compartilhado)
 - VO canônico em `src/core/shared` (antes `SnapshotCabecalhoReceita` na 006).
   Alias `SnapshotCabecalhoReceita` permanece no módulo receituário.
-  Usado por `Receita` e `Atestado`. Rename estrutural apenas — sem migração.
+  Usado por `Receita`, `Atestado` e `Orcamento`. Rename estrutural apenas —
+  sem migração.
 
 ### Atestado
 - id, clinicaId, prontuarioId, profissionalId, emitidaEm,
@@ -81,6 +82,28 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
   snapshot `SnapshotCabecalhoDocumento` (mesmo contrato da Receita),
   assinaturaDigitalId (nullable — v2). Sem lista de itens. Imutável após
   emissão; correção = nova emissão. RBAC: só `dentista`.
+
+### Orcamento (feature 015)
+- id, clinicaId, prontuarioId, profissionalId, emitidoEm,
+  status (`enviado` \| `aceito` \| `recusado` — nasce como `enviado`;
+  sem `rascunho` / `expirado` no MVP),
+  itens[] (`ItemOrcamento`: procedimentoId, nome snapshot, valor snapshot
+  ≥ 0 ajustável na criação, quantidade inteiro ≥ 1; total derivado =
+  Σ valor × quantidade),
+  snapshot `SnapshotCabecalhoDocumento` (mesmo contrato da Receita/Atestado),
+  `validoAte` opcional (data civil informativa — PDF/UI; **não** altera
+  status; sem job/cron; sem status `expirado`).
+- **Imutabilidade parcial:** conteúdo (itens, cabeçalho, `validoAte`)
+  congelado após emissão; só o status transiciona via métodos da entidade
+  `aceitar()` / `recusar()` a partir de `enviado` (estados terminais não
+  reabrem). Persistência: `OrcamentoRepositoryPort.atualizarStatus` com
+  UPDATE condicional `WHERE status = 'enviado'` (0 linhas →
+  `OrcamentoStatusConflitoError`). Aceite **não** cria `Agendamento`.
+- RBAC comercial: `admin` + `dentista` + `recepcao` (diferente de
+  Receita/Atestado). PDF via `GeradorPdfPort.gerarOrcamento`.
+- Consome `Procedimento` (002) só como fonte de sugestão nome/valor na
+  emissão — leitura via `ProcedimentoRepositoryPort`, sem alterar o módulo
+  agendamento.
 
 ### Odontograma (v2 — spec 004)
 - Fonte de verdade: eventos append-only `EventoOdontograma` (sem snapshot

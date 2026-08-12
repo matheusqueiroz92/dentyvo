@@ -14,6 +14,7 @@ export * from "./convite";
 export * from "./menu-publico-procedimento";
 export * from "./notificacao";
 export * from "./odontograma";
+export * from "./orcamento";
 export * from "./paciente";
 export * from "./periograma";
 export * from "./profissional";

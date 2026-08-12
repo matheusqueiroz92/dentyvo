@@ -1,4 +1,5 @@
 import type { Atestado } from "@/core/atestado/domain/Atestado";
+import type { Orcamento } from "@/core/orcamento/domain/Orcamento";
 
 import type { ItemReceitaProps } from "../../domain/ItemReceita";
 import type { Receita } from "../../domain/Receita";
@@ -50,6 +51,12 @@ export class FakeGeradorPdfPort implements GeradorPdfPort {
   /** Satisfaz a interface; testes de receita não exercitam este método. */
   async gerarAtestado(atestado: Atestado): Promise<Uint8Array> {
     void atestado;
+    return this.bytesGerados;
+  }
+
+  /** Satisfaz a interface; testes de receita não exercitam este método. */
+  async gerarOrcamento(orcamento: Orcamento): Promise<Uint8Array> {
+    void orcamento;
     return this.bytesGerados;
   }
 }
