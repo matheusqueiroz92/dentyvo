@@ -8,6 +8,10 @@ import {
   consultarOdontogramaVigenteAction,
   registrarEventosOdontogramaAction,
 } from "@/actions/odontograma";
+import {
+  GradeArcadas,
+  ToggleDenticaoDecidua,
+} from "@/components/domain/GradeArcadas";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,32 +20,22 @@ import {
   ehEstadoDenteInteiro,
 } from "@/core/odontograma/domain/EstadoOdontograma";
 import type { FaceOdontograma } from "@/core/odontograma/domain/FaceOdontograma";
+import { useVisibilidadeDecidua } from "@/hooks/useVisibilidadeDecidua";
 import { ROTULOS_ESTADO } from "@/lib/odontograma/estados";
 import type {
   DenteVigenteDTO,
   EventoOdontogramaPendenteDTO,
   OdontogramaVigenteDTO,
 } from "@/lib/odontograma/types";
-import { deciduaVisivelPorPadrao } from "@/lib/odontograma/visibilidade-decidua";
 import type { ServerActionError } from "@/lib/safe-action";
-import { cn } from "@/lib/utils";
 
 import { DenteSvg, type EstadosFacesDente } from "./DenteSvg";
 import { HistoricoDenteModal } from "./HistoricoDenteModal";
-import { IlustracaoTipoDente } from "./IlustracaoTipoDente";
 import { LegendaEstados } from "./LegendaEstados";
 import {
   SeletorEstadoDenteInteiro,
   SeletorEstadoFace,
 } from "./SeletorEstadoFace";
-
-type Fileira = {
-  id: string;
-  label: string;
-  numeros: number[];
-  fdi: "acima" | "abaixo";
-  decidua?: boolean;
-};
 
 type EstadoVisualDente = {
   estadoDenteInteiro: EstadoOdontograma | null;
@@ -49,35 +43,6 @@ type EstadoVisualDente = {
   facesPendentes: Set<FaceOdontograma>;
   dentePendente: boolean;
 };
-
-const FILEIRAS: Fileira[] = [
-  {
-    id: "perm-sup",
-    label: "Permanente superior",
-    numeros: [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28],
-    fdi: "acima",
-  },
-  {
-    id: "dec-sup",
-    label: "Decídua superior",
-    numeros: [55, 54, 53, 52, 51, 61, 62, 63, 64, 65],
-    fdi: "acima",
-    decidua: true,
-  },
-  {
-    id: "dec-inf",
-    label: "Decídua inferior",
-    numeros: [85, 84, 83, 82, 81, 71, 72, 73, 74, 75],
-    fdi: "abaixo",
-    decidua: true,
-  },
-  {
-    id: "perm-inf",
-    label: "Permanente inferior",
-    numeros: [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38],
-    fdi: "abaixo",
-  },
-];
 
 type OdontogramaChartProps = {
   prontuarioId: string;
@@ -115,9 +80,8 @@ export function OdontogramaChart({
   prontuarioId,
   dataNascimentoIso,
 }: OdontogramaChartProps) {
-  const [mostrarDecidua, setMostrarDecidua] = useState(() =>
-    deciduaVisivelPorPadrao(dataNascimentoIso),
-  );
+  const { mostrarDecidua, alternarDecidua } =
+    useVisibilidadeDecidua(dataNascimentoIso);
   const [estado, setEstado] = useState<EstadoCarga>({ tipo: "carregando" });
   const [pendencias, setPendencias] = useState<
     Map<string, EventoOdontogramaPendenteDTO>
@@ -130,11 +94,6 @@ export function OdontogramaChart({
   const [seletorDenteOpen, setSeletorDenteOpen] = useState(false);
   const [historicoDente, setHistoricoDente] = useState<number | null>(null);
   const [historicoOpen, setHistoricoOpen] = useState(false);
-
-  const fileirasVisiveis = useMemo(
-    () => FILEIRAS.filter((f) => (f.decidua ? mostrarDecidua : true)),
-    [mostrarDecidua],
-  );
 
   const carregar = useCallback(async (mostrarLoading: boolean) => {
     if (mostrarLoading) {
@@ -351,16 +310,10 @@ export function OdontogramaChart({
           </h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className="min-h-11 text-[13px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline sm:min-h-0"
-            onClick={() => setMostrarDecidua((v) => !v)}
-            aria-pressed={mostrarDecidua}
-          >
-            {mostrarDecidua
-              ? "Ocultar dentição decídua"
-              : "Mostrar dentição decídua"}
-          </button>
+          <ToggleDenticaoDecidua
+            mostrarDecidua={mostrarDecidua}
+            onAlternar={alternarDecidua}
+          />
           {qtdPendencias > 0 ? (
             <>
               <Button
@@ -419,21 +372,35 @@ export function OdontogramaChart({
 
       {estado.tipo === "ok" ? (
         <>
-          <div className="space-y-5 overflow-x-auto rounded-lg border border-border bg-card p-3 sm:p-4">
-            {fileirasVisiveis.map((fileira) => (
-              <FileiraDentes
-                key={fileira.id}
-                fileira={fileira}
-                resolver={resolverEstadoDente}
-                onFaceClick={handleFaceClick}
-                onDenteClick={handleDenteClick}
-                onHistorico={(n) => {
-                  setHistoricoDente(n);
-                  setHistoricoOpen(true);
-                }}
-              />
-            ))}
-          </div>
+          <GradeArcadas
+            mostrarDecidua={mostrarDecidua}
+            denteAusente={(n) =>
+              resolverEstadoDente(n).estadoDenteInteiro === "ausente_extraido"
+            }
+            renderConteudoDente={(numero) => {
+              const {
+                estadoDenteInteiro,
+                faces,
+                facesPendentes,
+                dentePendente,
+              } = resolverEstadoDente(numero);
+              return (
+                <DenteSvg
+                  numeroDente={numero}
+                  estadosFaces={faces}
+                  estadoDenteInteiro={estadoDenteInteiro}
+                  facesPendentes={facesPendentes}
+                  dentePendente={dentePendente}
+                  onFaceClick={(face) => handleFaceClick(numero, face)}
+                  onDenteClick={() => handleDenteClick(numero)}
+                  onHistorico={() => {
+                    setHistoricoDente(numero);
+                    setHistoricoOpen(true);
+                  }}
+                />
+              );
+            }}
+          />
 
           <p className="text-[13px] text-muted-foreground">
             Clique numa face para estados por face (hígido, cariado…). Use ✕ / D
@@ -490,72 +457,6 @@ export function OdontogramaChart({
         }
       />
     </section>
-  );
-}
-
-function FileiraDentes({
-  fileira,
-  resolver,
-  onFaceClick,
-  onDenteClick,
-  onHistorico,
-}: {
-  fileira: Fileira;
-  resolver: (n: number) => EstadoVisualDente;
-  onFaceClick: (numero: number, face: FaceOdontograma) => void;
-  onDenteClick: (numero: number) => void;
-  onHistorico: (numero: number) => void;
-}) {
-  const meio = fileira.numeros.length / 2;
-
-  return (
-    <div className="space-y-1.5">
-      <p className="text-xs font-medium text-muted-foreground">{fileira.label}</p>
-      <div className="flex flex-wrap items-end justify-center gap-x-0.5 gap-y-2 sm:gap-x-1">
-        {fileira.numeros.map((numero, idx) => {
-          const {
-            estadoDenteInteiro,
-            faces,
-            facesPendentes,
-            dentePendente,
-          } = resolver(numero);
-          const fdiEl = (
-            <span className="text-[10px] tabular-nums text-muted-foreground">
-              {numero}
-            </span>
-          );
-          const ilustracaoAusente =
-            estadoDenteInteiro === "ausente_extraido";
-          return (
-            <div
-              key={numero}
-              className={cn(
-                "flex flex-col items-center",
-                idx === meio - 1 && "mr-2 sm:mr-3",
-              )}
-            >
-              {fileira.fdi === "acima" ? fdiEl : null}
-              <IlustracaoTipoDente
-                numeroDente={numero}
-                variante="grade"
-                ausente={ilustracaoAusente}
-              />
-              <DenteSvg
-                numeroDente={numero}
-                estadosFaces={faces}
-                estadoDenteInteiro={estadoDenteInteiro}
-                facesPendentes={facesPendentes}
-                dentePendente={dentePendente}
-                onFaceClick={(face) => onFaceClick(numero, face)}
-                onDenteClick={() => onDenteClick(numero)}
-                onHistorico={() => onHistorico(numero)}
-              />
-              {fileira.fdi === "abaixo" ? fdiEl : null}
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 

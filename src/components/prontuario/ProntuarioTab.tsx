@@ -27,6 +27,7 @@ import type {
 } from "@/lib/prontuario/types";
 
 import { OdontogramaChart } from "@/components/odontograma/OdontogramaChart";
+import { PeriogramaChart } from "@/components/periograma/PeriogramaChart";
 
 import { AnamneseForm } from "./AnamneseForm";
 import {
@@ -385,6 +386,12 @@ export function ProntuarioTab({
 
       <OdontogramaChart
         key={dataNascimentoIso}
+        prontuarioId={prontuarioId}
+        dataNascimentoIso={dataNascimentoIso}
+      />
+
+      <PeriogramaChart
+        key={`periograma-${dataNascimentoIso}`}
         prontuarioId={prontuarioId}
         dataNascimentoIso={dataNascimentoIso}
       />

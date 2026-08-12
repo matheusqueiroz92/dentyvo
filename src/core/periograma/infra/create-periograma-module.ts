@@ -17,6 +17,7 @@ export function createPeriogramaModule() {
 
   return {
     periogramaRepo,
+    profissionalRepo,
     registrarPeriograma: new RegistrarPeriograma(
       periogramaRepo,
       prontuarioRepo,
