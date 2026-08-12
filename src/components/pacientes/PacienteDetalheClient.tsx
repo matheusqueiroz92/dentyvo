@@ -28,9 +28,12 @@ export function PacienteDetalheClient({
   const [paciente, setPaciente] = useState(pacienteInicial);
   const [editarOpen, setEditarOpen] = useState(false);
   const [aba, setAba] = useState("dados");
-  const podeAcessarProntuario = papel === "admin" || papel === "dentista";
+  const podeAcessarClinico = papel === "admin" || papel === "dentista";
   /** Specs 006/006b: receituário e atestado só para dentista (admin precisa CRO). */
   const podeReceituario = papel === "dentista";
+  /** Spec 015: orçamento comercial — admin, dentista e recepção. */
+  const podeOrcamento =
+    papel === "admin" || papel === "dentista" || papel === "recepcao";
 
   return (
     <main className="flex flex-col gap-6">
@@ -99,9 +102,11 @@ export function PacienteDetalheClient({
           {aba === "prontuario" ? (
             <ProntuarioTab
               pacienteId={paciente.id}
+              pacienteNome={paciente.nome}
               dataNascimentoIso={paciente.dataNascimentoIso}
-              podeAcessar={podeAcessarProntuario}
+              podeAcessarClinico={podeAcessarClinico}
               podeReceituario={podeReceituario}
+              podeOrcamento={podeOrcamento}
             />
           ) : null}
         </TabsContent>

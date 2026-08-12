@@ -36,7 +36,9 @@ type NovoAgendamentoModalProps = {
   profissionais: OpcaoSelect[];
   procedimentos: OpcaoSelect[];
   defaults?: {
+    pacienteId?: string;
     profissionalId?: string;
+    procedimentoId?: string;
     dataHoraInicioIso?: string;
   };
   onCriado: (agendamento: AgendamentoAgendaDTO) => void;
@@ -62,9 +64,9 @@ export function NovoAgendamentoModal({
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      pacienteId: "",
+      pacienteId: defaults?.pacienteId ?? "",
       profissionalId: defaults?.profissionalId ?? "",
-      procedimentoId: "",
+      procedimentoId: defaults?.procedimentoId ?? "",
       dataHoraInicioLocal: isoParaLocalInput(defaults?.dataHoraInicioIso),
     },
   });
@@ -72,9 +74,10 @@ export function NovoAgendamentoModal({
   useEffect(() => {
     if (open) {
       form.reset({
-        pacienteId: "",
+        pacienteId: defaults?.pacienteId ?? "",
         profissionalId: defaults?.profissionalId ?? profissionais[0]?.id ?? "",
-        procedimentoId: procedimentos[0]?.id ?? "",
+        procedimentoId:
+          defaults?.procedimentoId ?? procedimentos[0]?.id ?? "",
         dataHoraInicioLocal: isoParaLocalInput(defaults?.dataHoraInicioIso),
       });
     }

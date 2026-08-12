@@ -37,18 +37,22 @@ import {
 import { CriarProntuarioCard } from "./CriarProntuarioCard";
 import { EvolucaoTimeline } from "./EvolucaoTimeline";
 import { AtestadosLista } from "./AtestadosLista";
+import { OrcamentosLista } from "./OrcamentosLista";
 import { ReceitasLista } from "./ReceitasLista";
 import { RegistrarEvolucaoModal } from "./RegistrarEvolucaoModal";
 import { RetificarEvolucaoModal } from "./RetificarEvolucaoModal";
 
 type ProntuarioTabProps = {
   pacienteId: string;
+  pacienteNome: string;
   /** YYYY-MM-DD — usada no odontograma (visibilidade da dentição decídua). */
   dataNascimentoIso: string;
-  /** false para recepção — mensagem de acesso restrito, sem chamar use cases. */
-  podeAcessar: boolean;
+  /** false para recepção — anamnese/evolução/odontograma restritos. */
+  podeAcessarClinico: boolean;
   /** Specs 006/006b: só dentista emite/lista/PDF; admin sem CRO não vê as seções. */
   podeReceituario: boolean;
+  /** Spec 015: admin + dentista + recepção. */
+  podeOrcamento: boolean;
 };
 
 const formatadorData = new Intl.DateTimeFormat("pt-BR", {
@@ -63,12 +67,14 @@ type EstadoCarga =
 
 export function ProntuarioTab({
   pacienteId,
+  pacienteNome,
   dataNascimentoIso,
-  podeAcessar,
+  podeAcessarClinico,
   podeReceituario,
+  podeOrcamento,
 }: ProntuarioTabProps) {
   const [estado, setEstado] = useState<EstadoCarga>(() =>
-    podeAcessar ? { tipo: "carregando" } : { tipo: "idle" },
+    podeAcessarClinico ? { tipo: "carregando" } : { tipo: "idle" },
   );
   const [criando, setCriando] = useState(false);
   const [formAberto, setFormAberto] = useState(false);
@@ -109,7 +115,7 @@ export function ProntuarioTab({
   );
 
   useEffect(() => {
-    if (!podeAcessar) return;
+    if (!podeAcessarClinico) return;
 
     let cancelado = false;
     void (async () => {
@@ -121,10 +127,10 @@ export function ProntuarioTab({
     return () => {
       cancelado = true;
     };
-  }, [pacienteId, podeAcessar, aplicarResultado]);
+  }, [pacienteId, podeAcessarClinico, aplicarResultado]);
 
   async function recarregar() {
-    if (!podeAcessar) return;
+    if (!podeAcessarClinico) return;
     setEstado({ tipo: "carregando" });
     const result = await carregarProntuarioTabAction({ pacienteId });
     aplicarResultado(result);
@@ -148,17 +154,25 @@ export function ProntuarioTab({
     }
   }
 
-  if (!podeAcessar) {
+  if (!podeAcessarClinico) {
     return (
-      <Alert variant="warning">
-        <Lock aria-hidden />
-        <AlertTitle>Acesso restrito</AlertTitle>
-        <AlertDescription>
-          O prontuário clínico, a anamnese e as evoluções são visíveis apenas
-          para administradores e dentistas. Peça a um profissional autorizado se
-          precisar consultar estes dados.
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-6">
+        <Alert variant="warning">
+          <Lock aria-hidden />
+          <AlertTitle>Acesso clínico restrito</AlertTitle>
+          <AlertDescription>
+            Anamnese, evoluções e exames do prontuário são visíveis apenas para
+            administradores e dentistas. Orçamentos comerciais permanecem
+            disponíveis para a recepção.
+          </AlertDescription>
+        </Alert>
+        {podeOrcamento ? (
+          <OrcamentosLista
+            pacienteId={pacienteId}
+            pacienteNome={pacienteNome}
+          />
+        ) : null}
+      </div>
     );
   }
 
@@ -407,6 +421,13 @@ export function ProntuarioTab({
 
       {podeReceituario ? <ReceitasLista prontuarioId={prontuarioId} /> : null}
       {podeReceituario ? <AtestadosLista prontuarioId={prontuarioId} /> : null}
+      {podeOrcamento ? (
+        <OrcamentosLista
+          pacienteId={pacienteId}
+          pacienteNome={pacienteNome}
+          prontuarioIdInicial={prontuarioId}
+        />
+      ) : null}
 
       <AnamneseForm
         open={formAberto}
