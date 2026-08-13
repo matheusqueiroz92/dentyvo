@@ -46,6 +46,9 @@ export class FakeClinicaRepository implements ClinicaRepositoryPort {
     if (input.slug !== undefined) {
       next = next.atualizarSlug(input.slug);
     }
+    if (input.status === "inativa") {
+      next = next.desativar();
+    }
 
     this.items.set(input.id, next);
     return next;

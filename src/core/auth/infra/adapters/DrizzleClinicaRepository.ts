@@ -62,12 +62,14 @@ export class DrizzleClinicaRepository implements ClinicaRepositoryPort {
       logoUrl?: string | null;
       tema?: string | null;
       slug?: string;
+      status?: string;
     } = {};
     if (input.nome !== undefined) set.nome = input.nome;
     if (input.endereco !== undefined) set.endereco = input.endereco;
     if (input.logoUrl !== undefined) set.logoUrl = input.logoUrl;
     if (input.tema !== undefined) set.tema = input.tema;
     if (input.slug !== undefined) set.slug = input.slug;
+    if (input.status !== undefined) set.status = input.status;
     if (Object.keys(set).length === 0) {
       return this.buscarPorId(input.id);
     }

@@ -14,7 +14,8 @@ export type FiltrosListagemClinicas = {
  * UPDATE — o valor atual no banco permanece (evita lost update).
  *
  * `null` em `logoUrl` / `tema` é valor enviado (remove logo / restaura
- * padrão). Documento e status ficam de fora (imutável / `DesativarClinica`).
+ * padrão). Documento fiscal fica de fora (imutável). `status` entra só
+ * via `DesativarClinica` (soft-delete).
  */
 export type AtualizarClinicaParcialInput = {
   id: string;
@@ -23,6 +24,7 @@ export type AtualizarClinicaParcialInput = {
   logoUrl?: string | null;
   tema?: TemaClinica | null;
   slug?: string;
+  status?: StatusClinica;
 };
 
 export interface ClinicaRepositoryPort {

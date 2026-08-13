@@ -50,7 +50,13 @@ export class DesativarClinica {
     }
 
     const inativa = clinica.desativar();
-    await this.clinicaRepo.salvar(inativa);
+    const persistida = await this.clinicaRepo.atualizarParcial({
+      id: input.clinicaId,
+      status: inativa.status,
+    });
+    if (!persistida) {
+      throw new ClinicaNaoEncontradaError(input.clinicaId);
+    }
 
     const membros = await this.profissionalRepo.listarPorClinica(input.clinicaId);
     for (const membro of membros) {

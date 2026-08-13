@@ -81,4 +81,44 @@ describe("DesativarClinica", () => {
       "ativa",
     );
   });
+
+  it("não reverte nome, logo nem tema alterados concorrentemente ao desativar", async () => {
+    const ctx = await criarContextoAdminPlataforma();
+    const sut = new DesativarClinica(
+      ctx.clinicaRepo,
+      ctx.profissionalRepo,
+      ctx.usuarioPlataformaRepo,
+      ctx.auth,
+      ctx.auditoria,
+    );
+    const buscarOriginal = ctx.clinicaRepo.buscarPorId.bind(ctx.clinicaRepo);
+    const logoConcorrente =
+      "https://blob.vercel-storage.com/clinicas/alvo/logo.png";
+
+    ctx.clinicaRepo.buscarPorId = async (id: string) => {
+      const snapshot = await buscarOriginal(id);
+      if (snapshot && id === CLINICA_ALVO_ID) {
+        ctx.clinicaRepo.items.set(
+          id,
+          snapshot
+            .atualizarDadosCadastrais({ nome: "Nome Concorrente" })
+            .atualizarLogo(logoConcorrente)
+            .atualizarTema("verde"),
+        );
+      }
+      return snapshot;
+    };
+
+    await sut.executar({
+      solicitadoPorUsuarioPlataformaId: SUPER_ADMIN_ID,
+      clinicaId: CLINICA_ALVO_ID,
+      motivo: "Encerramento comercial",
+    });
+
+    const persistida = await buscarOriginal(CLINICA_ALVO_ID);
+    expect(persistida?.status).toBe("inativa");
+    expect(persistida?.nome).toBe("Nome Concorrente");
+    expect(persistida?.logoUrl).toBe(logoConcorrente);
+    expect(persistida?.tema).toBe("verde");
+  });
 });
