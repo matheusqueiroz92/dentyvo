@@ -43,7 +43,15 @@ export class AtualizarClinica {
       nome: input.nome,
       endereco: input.endereco,
     });
-    await this.clinicaRepo.salvar(atualizada);
-    return atualizada;
+
+    const persistida = await this.clinicaRepo.atualizarParcial({
+      id: input.clinicaId,
+      ...(input.nome !== undefined ? { nome: atualizada.nome } : {}),
+      ...(input.endereco !== undefined ? { endereco: atualizada.endereco } : {}),
+    });
+    if (!persistida) {
+      throw new ClinicaNaoEncontradaError(input.clinicaId);
+    }
+    return persistida;
   }
 }

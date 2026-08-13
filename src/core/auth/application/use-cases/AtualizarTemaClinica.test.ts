@@ -115,6 +115,32 @@ describe("AtualizarTemaClinica", () => {
     },
   );
 
+  it("não reverte nome alterado concorrentemente ao atualizar só o tema", async () => {
+    const { sut, clinicaRepo, usuario } = await seed("admin");
+    const buscarOriginal = clinicaRepo.buscarPorId.bind(clinicaRepo);
+
+    clinicaRepo.buscarPorId = async (id: string) => {
+      const snapshot = await buscarOriginal(id);
+      if (snapshot && id === "clinica-1") {
+        clinicaRepo.items.set(
+          id,
+          snapshot.atualizarDadosCadastrais({ nome: "Nome Concorrente" }),
+        );
+      }
+      return snapshot;
+    };
+
+    await sut.executar({
+      clinicaId: "clinica-1",
+      solicitadoPorUsuarioId: usuario.id,
+      tema: "verde",
+    });
+
+    const persistida = await buscarOriginal("clinica-1");
+    expect(persistida?.tema).toBe("verde");
+    expect(persistida?.nome).toBe("Nome Concorrente");
+  });
+
   it("não atualiza tema de outra clínica (isolamento de tenant)", async () => {
     const { sut, clinicaRepo, usuario } = await seed("admin");
 

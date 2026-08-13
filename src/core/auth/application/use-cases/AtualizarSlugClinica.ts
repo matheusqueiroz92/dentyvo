@@ -46,7 +46,15 @@ export class AtualizarSlugClinica {
     }
 
     const atualizada = clinica.atualizarSlug(slug);
-    await this.clinicaRepo.salvar(atualizada);
-    return atualizada;
+    const persistida = await this.clinicaRepo.atualizarParcial({
+      id: input.clinicaId,
+      slug: atualizada.slug,
+    });
+    if (!persistida) {
+      throw new DadosInvalidosError(
+        `Clínica não encontrada: ${input.clinicaId}.`,
+      );
+    }
+    return persistida;
   }
 }

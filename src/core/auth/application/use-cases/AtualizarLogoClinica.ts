@@ -40,7 +40,15 @@ export class AtualizarLogoClinica {
     }
 
     const atualizada = clinica.atualizarLogo(input.logoUrl);
-    await this.clinicaRepo.salvar(atualizada);
-    return atualizada;
+    const persistida = await this.clinicaRepo.atualizarParcial({
+      id: input.clinicaId,
+      logoUrl: atualizada.logoUrl,
+    });
+    if (!persistida) {
+      throw new DadosInvalidosError(
+        `Clínica não encontrada: ${input.clinicaId}.`,
+      );
+    }
+    return persistida;
   }
 }

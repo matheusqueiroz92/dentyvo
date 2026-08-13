@@ -3,6 +3,7 @@ import { and, eq, ilike } from "drizzle-orm";
 import { Slug } from "@/core/shared/Slug";
 
 import type {
+  AtualizarClinicaParcialInput,
   ClinicaRepositoryPort,
   FiltrosListagemClinicas,
 } from "../../application/ports/ClinicaRepositoryPort";
@@ -50,6 +51,34 @@ export class DrizzleClinicaRepository implements ClinicaRepositoryPort {
           tema: clinica.tema,
         },
       });
+  }
+
+  async atualizarParcial(
+    input: AtualizarClinicaParcialInput,
+  ): Promise<Clinica | null> {
+    const set: {
+      nome?: string;
+      endereco?: string;
+      logoUrl?: string | null;
+      tema?: string | null;
+      slug?: string;
+    } = {};
+    if (input.nome !== undefined) set.nome = input.nome;
+    if (input.endereco !== undefined) set.endereco = input.endereco;
+    if (input.logoUrl !== undefined) set.logoUrl = input.logoUrl;
+    if (input.tema !== undefined) set.tema = input.tema;
+    if (input.slug !== undefined) set.slug = input.slug;
+    if (Object.keys(set).length === 0) {
+      return this.buscarPorId(input.id);
+    }
+
+    const [row] = await this.db
+      .update(clinicaTable)
+      .set(set)
+      .where(eq(clinicaTable.id, input.id))
+      .returning();
+
+    return row ? toDomain(row) : null;
   }
 
   async buscarPorId(id: string): Promise<Clinica | null> {

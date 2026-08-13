@@ -9,6 +9,7 @@ import type { Profissional } from "../../domain/Profissional";
 import { Slug } from "@/core/shared/Slug";
 import type { AuthPort, UsuarioAuth } from "../ports/AuthPort";
 import type {
+  AtualizarClinicaParcialInput,
   ClinicaRepositoryPort,
   FiltrosListagemClinicas,
 } from "../ports/ClinicaRepositoryPort";
@@ -21,6 +22,33 @@ export class FakeClinicaRepository implements ClinicaRepositoryPort {
 
   async salvar(clinica: Clinica): Promise<void> {
     this.items.set(clinica.id, clinica);
+  }
+
+  async atualizarParcial(
+    input: AtualizarClinicaParcialInput,
+  ): Promise<Clinica | null> {
+    const atual = this.items.get(input.id);
+    if (!atual) return null;
+
+    let next = atual;
+    if (input.nome !== undefined || input.endereco !== undefined) {
+      next = next.atualizarDadosCadastrais({
+        ...(input.nome !== undefined ? { nome: input.nome } : {}),
+        ...(input.endereco !== undefined ? { endereco: input.endereco } : {}),
+      });
+    }
+    if (input.logoUrl !== undefined) {
+      next = next.atualizarLogo(input.logoUrl);
+    }
+    if (input.tema !== undefined) {
+      next = next.atualizarTema(input.tema);
+    }
+    if (input.slug !== undefined) {
+      next = next.atualizarSlug(input.slug);
+    }
+
+    this.items.set(input.id, next);
+    return next;
   }
 
   async buscarPorId(id: string): Promise<Clinica | null> {

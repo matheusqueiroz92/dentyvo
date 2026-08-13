@@ -3,6 +3,7 @@ export type {
   ConviteRepositoryPort,
 } from "./ConviteRepositoryPort";
 export type {
+  AtualizarClinicaParcialInput,
   ClinicaRepositoryPort,
   FiltrosListagemClinicas,
 } from "./ClinicaRepositoryPort";

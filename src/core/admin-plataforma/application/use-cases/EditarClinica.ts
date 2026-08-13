@@ -43,17 +43,24 @@ export class EditarClinica {
       nome: input.nome,
       endereco: input.endereco,
     });
-    await this.clinicaRepo.salvar(atualizada);
+    const persistida = await this.clinicaRepo.atualizarParcial({
+      id: input.clinicaId,
+      nome: atualizada.nome,
+      endereco: atualizada.endereco,
+    });
+    if (!persistida) {
+      throw new ClinicaNaoEncontradaError(input.clinicaId);
+    }
 
     await registrarAuditoriaPlataforma({
       auditoria: this.auditoria,
       solicitante,
-      clinicaId: atualizada.id,
+      clinicaId: persistida.id,
       acao: "escrita",
       recursoTipo: "clinica",
-      recursoId: atualizada.id,
+      recursoId: persistida.id,
     });
 
-    return atualizada;
+    return persistida;
   }
 }

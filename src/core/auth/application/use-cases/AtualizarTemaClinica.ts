@@ -38,7 +38,15 @@ export class AtualizarTemaClinica {
     }
 
     const atualizada = clinica.atualizarTema(input.tema);
-    await this.clinicaRepo.salvar(atualizada);
-    return atualizada;
+    const persistida = await this.clinicaRepo.atualizarParcial({
+      id: input.clinicaId,
+      tema: atualizada.tema,
+    });
+    if (!persistida) {
+      throw new DadosInvalidosError(
+        `Clínica não encontrada: ${input.clinicaId}.`,
+      );
+    }
+    return persistida;
   }
 }

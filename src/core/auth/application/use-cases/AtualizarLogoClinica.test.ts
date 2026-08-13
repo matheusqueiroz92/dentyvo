@@ -102,6 +102,32 @@ describe("AtualizarLogoClinica", () => {
     },
   );
 
+  it("não reverte nome alterado concorrentemente ao atualizar só o logo", async () => {
+    const { sut, clinicaRepo, usuario } = await seed("admin");
+    const buscarOriginal = clinicaRepo.buscarPorId.bind(clinicaRepo);
+
+    clinicaRepo.buscarPorId = async (id: string) => {
+      const snapshot = await buscarOriginal(id);
+      if (snapshot && id === "clinica-1") {
+        clinicaRepo.items.set(
+          id,
+          snapshot.atualizarDadosCadastrais({ nome: "Nome Concorrente" }),
+        );
+      }
+      return snapshot;
+    };
+
+    await sut.executar({
+      clinicaId: "clinica-1",
+      solicitadoPorUsuarioId: usuario.id,
+      logoUrl: LOGO_URL,
+    });
+
+    const persistida = await buscarOriginal("clinica-1");
+    expect(persistida?.logoUrl).toBe(LOGO_URL);
+    expect(persistida?.nome).toBe("Nome Concorrente");
+  });
+
   it("não atualiza logo de outra clínica (isolamento de tenant)", async () => {
     const { sut, clinicaRepo, usuario } = await seed("admin");
 

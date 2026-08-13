@@ -188,6 +188,34 @@ describe("AtualizarClinica", () => {
     ).rejects.toBeInstanceOf(ClinicaNaoEncontradaError);
   });
 
+  it("não reverte endereço alterado concorrentemente ao atualizar só o nome", async () => {
+    const { sut, clinicaRepo, usuario } = await seed("admin");
+    const buscarOriginal = clinicaRepo.buscarPorId.bind(clinicaRepo);
+
+    clinicaRepo.buscarPorId = async (id: string) => {
+      const snapshot = await buscarOriginal(id);
+      if (snapshot && id === "clinica-1") {
+        clinicaRepo.items.set(
+          id,
+          snapshot.atualizarDadosCadastrais({
+            endereco: "Rua Concorrente, 9",
+          }),
+        );
+      }
+      return snapshot;
+    };
+
+    await sut.executar({
+      clinicaId: "clinica-1",
+      solicitadoPorUsuarioId: usuario.id,
+      nome: "Clínica Renomeada",
+    });
+
+    const persistida = await buscarOriginal("clinica-1");
+    expect(persistida?.nome).toBe("Clínica Renomeada");
+    expect(persistida?.endereco).toBe("Rua Concorrente, 9");
+  });
+
   it("não atualiza clínica de outro tenant", async () => {
     const { sut, clinicaRepo, usuario } = await seed("admin");
 

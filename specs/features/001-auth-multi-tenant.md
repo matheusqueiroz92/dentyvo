@@ -269,7 +269,10 @@ documento fiscal (identidade do tenant).
   acima é a do pedido.
 - Ports: reuso de `ClinicaRepositoryPort`, `ProfissionalRepositoryPort`
   (ator), `AutorizacaoPort` / helper `assertPode(..., "editar_clinica")`.
-  **Sem** port nova.
+  **Sem** port nova. `AtualizarClinica` persiste via
+  `ClinicaRepositoryPort.atualizarParcial` (UPDATE seletivo das
+  colunas enviadas) — **não** via `salvar` (upsert da entidade
+  inteira), para não reverter edição concorrente de outro campo.
 
 ### Fora de escopo desta emenda
 - Alterar documento fiscal (qualquer ator, por esta via).
@@ -283,7 +286,9 @@ documento fiscal (identidade do tenant).
   rejeitados (P1).
 - **Aplicação:** admin sucesso (só nome, só endereço, ou ambos);
   dentista/recepção permissão negada; outro tenant não altera; contrato
-  de input sem documento (não é possível passar CPF/CNPJ neste use case).
+  de input sem documento (não é possível passar CPF/CNPJ neste use case);
+  atualizar só o nome não reverte endereço gravado concorrentemente
+  (lost update).
 - **Integração / contrato:** não exigidos além do padrão desta feature.
 
 ### Decisões aprovadas (emenda)
@@ -292,6 +297,7 @@ documento fiscal (identidade do tenant).
 |---|---|---|
 | P1 | Input com ambos omitidos | **Erro de validação:** pelo menos um de `nome` / `endereco` deve ser informado. |
 | P2 | Parciais vs. `EditarClinica` (009) | **Manter parciais.** Não alterar o contrato da 009. Campo omitido permanece o valor atual. |
+| P3 | Persistência | UPDATE seletivo só das colunas enviadas (`atualizarParcial`). Não reaproveitar `salvar` (upsert total a partir do snapshot em memória). |
 
 ---
 
