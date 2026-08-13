@@ -40,3 +40,9 @@ export type CodigoPlanoPromocional = keyof typeof PRECO_PROMOCIONAL_CENTAVOS;
  */
 export const MAX_RETRIES_RESERVA_VAGA_POSICAO =
   LIMITE_VAGAS_PROMOCIONAIS_LANCAMENTO;
+
+/**
+ * Histórico do painel (`ObterDetalhesAssinatura`, P5): cobranças mais
+ * recentes por `vencimento` desc, lidas do repositório local.
+ */
+export const LIMITE_HISTORICO_COBRANCA_PAINEL = 12;

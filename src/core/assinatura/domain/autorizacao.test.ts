@@ -15,6 +15,7 @@ import {
 
 const MATRIZ_ESPERADA: Record<AcaoAssinatura, readonly Papel[]> = {
   criar_assinatura: ["admin"],
+  obter_detalhes_assinatura: ["admin"],
 };
 
 function superAdmin() {
@@ -56,6 +57,12 @@ describe("autorização assinatura — RBAC de clínica (shared)", () => {
     expect(pode("admin", "criar_assinatura")).toBe(true);
     expect(pode("dentista", "criar_assinatura")).toBe(false);
     expect(pode("recepcao", "criar_assinatura")).toBe(false);
+  });
+
+  it("só admin da clínica pode obter_detalhes_assinatura; dentista e recepção são negados", () => {
+    expect(pode("admin", "obter_detalhes_assinatura")).toBe(true);
+    expect(pode("dentista", "obter_detalhes_assinatura")).toBe(false);
+    expect(pode("recepcao", "obter_detalhes_assinatura")).toBe(false);
   });
 
   it("conceder_acesso_manual não faz parte da matriz de AcaoAssinatura", () => {

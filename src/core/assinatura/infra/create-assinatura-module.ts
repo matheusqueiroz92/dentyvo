@@ -18,6 +18,7 @@ import {
   ReservarVagaPromocional,
   ResolverValorCobrancaAssinatura,
   VerificarAcessoAtivo,
+  ObterDetalhesAssinatura,
 } from "../application/use-cases";
 import {
   AsaasGatewayAdapter,
@@ -69,6 +70,10 @@ export function createAssinaturaModule(config: AssinaturaModuleConfig) {
     assinaturaRepo,
     planoRepo,
   );
+  const resolverValorCobrancaAssinatura = new ResolverValorCobrancaAssinatura(
+    assinaturaRepo,
+    planoRepo,
+  );
 
   return {
     assinaturaRepo,
@@ -88,10 +93,7 @@ export function createAssinaturaModule(config: AssinaturaModuleConfig) {
     ),
     reservarVagaPromocional,
     aplicarPrecoPromocional,
-    resolverValorCobrancaAssinatura: new ResolverValorCobrancaAssinatura(
-      assinaturaRepo,
-      planoRepo,
-    ),
+    resolverValorCobrancaAssinatura,
     migrarPrecoPosPromocao: new MigrarPrecoPosPromocao(
       assinaturaRepo,
       planoRepo,
@@ -108,6 +110,14 @@ export function createAssinaturaModule(config: AssinaturaModuleConfig) {
       auditoria,
     ),
     verificarAcessoAtivo: new VerificarAcessoAtivo(assinaturaRepo),
+    obterDetalhesAssinatura: new ObterDetalhesAssinatura(
+      assinaturaRepo,
+      planoRepo,
+      cobrancaRepo,
+      vagaRepo,
+      profissionalRepo,
+      resolverValorCobrancaAssinatura,
+    ),
     /**
      * Requer `EnviarAvisoAumentoPreco` já montado com a port 011.
      * O cron (Vercel) deve chamar o retorno deste factory.

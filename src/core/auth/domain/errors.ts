@@ -52,6 +52,15 @@ export class DocumentoClinicaDuplicadoError extends Error {
   }
 }
 
+export class ClinicaNaoEncontradaError extends Error {
+  readonly nome = "ClinicaNaoEncontradaError" as const;
+
+  constructor(readonly clinicaId: string) {
+    super("Clínica não encontrada.");
+    this.name = this.nome;
+  }
+}
+
 export class ProfissionalNaoEncontradoError extends Error {
   readonly nome = "ProfissionalNaoEncontradoError" as const;
 

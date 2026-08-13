@@ -233,6 +233,11 @@ Canais e tipo não criam canal ad hoc — só consumo da 011.
 - [ ] Conteúdo do aviso sem PHI (contrato `ConteudoNotificacao` da 011).
 - [ ] Não redefine `Notificacao` / `ConteudoNotificacao` — importa de
       `src/core/notificacao/domain` e consome `EnviarNotificacao` da 011.
+- [ ] Leitura do painel (`ObterDetalhesAssinatura`) inclui
+      `precoPromocionalAte?`, `migradaParaPrecoCheioEm?` e
+      `vagaPromocional?: { posicao }` sem mutar reserva, cópia promocional,
+      aviso ou migração. Ver seção *Emenda — ObterDetalhesAssinatura
+      (extensão 012)* (`aprovada`).
 
 ## Regras de negócio
 - No máximo **30** vagas promocionais de lançamento na plataforma (invariante
@@ -251,6 +256,8 @@ Canais e tipo não criam canal ad hoc — só consumo da 011.
   `chaveNegocio` na 011 (D7). Sem canal de e-mail ad hoc.
 - Contagem/reserva de vaga **não** pode depender de checagem em memória nem
   de `SELECT` + `INSERT` em duas operações separadas (D3).
+- `ObterDetalhesAssinatura` **não** reserva vaga, não edita a cópia
+  promocional (D6) e não dispara aviso/migração.
 
 ## Modelo de domínio envolvido
 Estende entidades já em `specs/02-domain-model.md` / módulo 010; o Arquiteto
@@ -297,6 +304,12 @@ etapa do Arquiteto)*
   (consome `EnviarNotificacao` da 011; hierarquia D7)
 - `ProcessarAvisosAumentoPrecoPendentes({ agora, limite? }) → { processados: number }`
   (job em lote: lista candidatas e chama `EnviarAvisoAumentoPreco`)
+- `ObterDetalhesAssinatura(clinicaId) → DetalhesAssinatura`
+  — **somente leitura**; caso de uso-base na emenda da **010** (`aprovada`).
+  Esta 012 acrescenta `precoPromocionalAte`, `migradaParaPrecoCheioEm` e
+  `vagaPromocional?: { posicao }`. **Não** toca mutação de status, reserva
+  de vaga, aviso nem migração de preço. Ver seção
+  *Emenda — ObterDetalhesAssinatura (extensão 012)*.
 
 Extensões possíveis em casos de uso **já existentes** da 010 (sem quebrar
 contrato público desnecessariamente):
@@ -338,8 +351,9 @@ módulo paralelo.
   (não UI pública); autenticação de worker via segredo de cron (padrão a
   alinhar com outros jobs do projeto).
 - Leitura no painel da clínica (status “você está no preço promocional até
-  dd/mm/aaaa”) — desejável no MVP desta feature; payload via server action
-  de status de assinatura existente ou extensão mínima.
+  dd/mm/aaaa” vs. “encerrada, já no preço cheio”) — via
+  `ObterDetalhesAssinatura` (emenda 010 + extensão nesta spec;
+  **aprovada**). Não criar server action paralela só de promoção.
 - Super-admin (009): visualizar se clínica tem vaga/promoção — nice-to-have;
   não bloqueia o núcleo.
 
@@ -357,6 +371,7 @@ módulo paralelo.
 - UI de marketing / landing de “restam N vagas” (débito futuro; contador
   interno basta no MVP).
 - Migrar `EmailPort` (001) ou outros produtores legados.
+- Mutação qualquer via `ObterDetalhesAssinatura` (emenda de leitura).
 
 ## Plano de testes
 - **Domínio:** elegibilidade de plano; cálculo de `precoPromocionalAte`
@@ -366,7 +381,9 @@ módulo paralelo.
 - **Aplicação (use case):** reserva com vagas disponíveis; esgotamento;
   idempotência por `clinicaId`; `EnviarAvisoAumentoPreco` no-op se flag
   setado (sem chamar 011); job em lote não duplica; `CriarAssinatura`
-  aplica ou não promoção.
+  aplica ou não promoção; `ObterDetalhesAssinatura` devolve campos
+  promocionais (incl. `migradaParaPrecoCheioEm`) sem chamar
+  reserva/migração/aviso.
 - **Integração (adapter):** dois `reservarAtomico` paralelos não criam 31ª
   vaga; `SELECT MAX`+`INSERT` separado **não** existe no adapter; segunda
   vaga da mesma clínica é rejeitada/idempotente.
@@ -384,5 +401,72 @@ módulo paralelo.
 | 003 — Prontuário / auditoria | já existe | `AuditoriaLogPort` opcional |
 | 009 — Admin plataforma | já existe | visualização cross-tenant (opcional nesta feature) |
 
-Spec **aprovada**. Próximo passo do fluxo SDD (Arquiteto de Domínio) fica a
-seu critério após revisar esta versão — **não iniciado nesta etapa**.
+## Emenda — ObterDetalhesAssinatura (extensão 012)
+
+### Status da emenda
+`aprovada` — **pronta para o Arquiteto de Domínio** (junto com a emenda
+homônima da **010**). Esta seção **não** duplica o caso de uso: só define
+o que a 012 acrescenta no retorno.
+
+A 012 já previa leitura no painel (“você está no preço promocional até
+dd/mm/aaaa”) como payload de status — agora isso tem nome:
+`ObterDetalhesAssinatura`.
+
+### O que esta spec acrescenta no retorno
+Além do núcleo 010 (`plano`, `status`, `dataProximaCobranca`, histórico):
+
+| Campo | Quando preencher | Quando null |
+|---|---|---|
+| `precoPromocionalAte` | Cópia operacional na `Assinatura` preenchida (D6) | Sem promoção (Full, cupom esgotado, trial) |
+| `migradaParaPrecoCheioEm` | Campo já persistido na `Assinatura` após `MigrarPrecoPosPromocao` (P10) | Ainda não migrada / nunca teve promoção |
+| `vagaPromocional.posicao` | Existe `VagaPromocional` para a clínica (`buscarPorClinica`) | Sem vaga |
+
+### Critérios de aceite (extensão)
+- [ ] Com vaga (cenário E1): retorno inclui `precoPromocionalAte` e
+      `vagaPromocional: { posicao }` (1..30) **iguais** à fonte de verdade
+      (`VagaPromocional` + cópia na assinatura). Não “corrigir” a cópia
+      neste GET (D6).
+- [ ] Sem vaga (E2 esgotado / E3 Full / trial): `precoPromocionalAte`
+      null, `migradaParaPrecoCheioEm` null e `vagaPromocional` null.
+- [ ] **P10:** o DTO inclui `migradaParaPrecoCheioEm: Date | null`
+      (campo já existente na entidade `Assinatura`). A UI usa o par
+      `precoPromocionalAte` + `migradaParaPrecoCheioEm` para distinguir
+      “promoção ainda ativa até X” de “promoção encerrada em X, já
+      migrada para preço cheio”. GET **não** apaga nem altera esses
+      campos. Devolver os valores persistidos mesmo após a migração
+      (`precoPromocionalAte` no passado + `migradaParaPrecoCheioEm`
+      preenchido). `vagaPromocional.posicao` se a vaga continuar
+      reservada (D5: cancelar / fim dos 12 meses **não** libera posição).
+- [ ] **Somente leitura:** não chama `reservarAtomico`,
+      `AplicarPrecoPromocionalNaAssinatura`, `MigrarPrecoPosPromocao`,
+      `EnviarAvisoAumentoPreco` nem `atualizarValorAssinatura`.
+- [ ] RBAC igual à 010 desta emenda: **admin** apenas.
+- [ ] Posição **não** é secretada: o admin da clínica que possui a vaga
+      pode ver o número (1..30). Não expor contador global “restam N
+      vagas” (já fora de escopo desta 012).
+- [ ] **P11:** assinatura `cancelada` com vaga: se `buscarPorClinica`
+      achar vaga, devolver `posicao`; `status` permanece `cancelada`.
+      Leitura não reativa nada.
+
+### Ports (só leitura, já existentes)
+- `VagaPromocionalRepositoryPort.buscarPorClinica(clinicaId)`
+- Campos promocionais já na `Assinatura` carregada pela 010
+  (`precoPromocionalAte`, `migradaParaPrecoCheioEm`)
+- `ResolverValorCobrancaAssinatura` (P8 da 010 — `origemValor` /
+  `valorEfetivoCentavos`) — continua sendo leitura
+
+### Fora de escopo desta emenda
+- Reciclar vagas, promoção Full, segundo aviso, landing “restam N”.
+- Qualquer escrita na vaga ou na cópia promocional.
+
+### Decisões aprovadas (emenda)
+
+| # | Tema | Decisão |
+|---|---|---|
+| P10 | Pós-migração / DTO | Incluir `migradaParaPrecoCheioEm: Date \| null` no DTO (campo já na `Assinatura`). Devolver `precoPromocionalAte` se persistido **e** `migradaParaPrecoCheioEm` para a UI não tratar data passada como promoção ainda vigente. Posição da vaga se ainda reservada (D5). GET não apaga campos. |
+| P11 | Cancelada com vaga (D5) | Se `buscarPorClinica` achar vaga, devolver `posicao`; `status` continua `cancelada`. Leitura não reativa. |
+
+P3–P9: spec **010**.
+
+Spec **012** (núcleo + esta emenda) `aprovada` — **pronta para o Arquiteto
+de Domínio**.

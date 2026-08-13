@@ -6,6 +6,16 @@ import { assertTemaClinica, type TemaClinica } from "./TemaClinica";
 
 export type StatusClinica = "ativa" | "inativa";
 
+/**
+ * Campos cadastrais editáveis da clínica (spec 001 — emenda `AtualizarClinica`).
+ * Documento fiscal **não** faz parte deste tipo (imutável após criação).
+ * Pelo menos um de `nome` / `endereco` deve ser informado.
+ */
+export type AtualizacaoDadosCadastraisClinica = {
+  nome?: string;
+  endereco?: string;
+};
+
 export type ClinicaProps = {
   id: string;
   nome: string;
@@ -83,12 +93,28 @@ export class Clinica {
     });
   }
 
-  atualizarDadosCadastrais(input: {
-    nome: string;
-    endereco: string;
-  }): Clinica {
-    const nome = input.nome.trim();
-    const endereco = input.endereco.trim();
+  /**
+   * Atualiza nome e/ou endereço. Documento, status, slug, logo e tema
+   * permanecem iguais (spec 001 — emenda `AtualizarClinica`).
+   *
+   * Pelo menos um campo deve ser informado (P1). Campo omitido preserva o
+   * valor atual. Campo informado vazio (após trim) é inválido.
+   */
+  atualizarDadosCadastrais(
+    input: AtualizacaoDadosCadastraisClinica,
+  ): Clinica {
+    const nomeInformado = input.nome !== undefined;
+    const enderecoInformado = input.endereco !== undefined;
+    if (!nomeInformado && !enderecoInformado) {
+      throw new DadosInvalidosError(
+        "Informe ao menos nome ou endereço para atualizar a clínica.",
+      );
+    }
+
+    const nome =
+      input.nome !== undefined ? input.nome.trim() : this.nome;
+    const endereco =
+      input.endereco !== undefined ? input.endereco.trim() : this.endereco;
     if (!nome) {
       throw new DadosInvalidosError("Nome da clínica é obrigatório.");
     }

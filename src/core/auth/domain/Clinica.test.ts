@@ -106,4 +106,82 @@ describe("Clinica", () => {
       );
     });
   });
+
+  describe("atualizarDadosCadastrais (emenda AtualizarClinica)", () => {
+    const logoUrl = "https://blob.vercel-storage.com/clinicas/cli-1/logo.png";
+
+    function clinicaComIdentidadeVisual() {
+      return clinicaBase()
+        .atualizarSlug("consultorio-silva-vc")
+        .atualizarLogo(logoUrl)
+        .atualizarTema("verde");
+    }
+
+    it("rejeita quando nome e endereço são omitidos", () => {
+      const clinica = clinicaBase();
+      expect(() => clinica.atualizarDadosCadastrais({})).toThrow(
+        DadosInvalidosError,
+      );
+      expect(clinica.nome).toBe("Consultório Silva");
+      expect(clinica.endereco).toBe("Rua A, 10");
+    });
+
+    it("atualiza só o nome e preserva o endereço existente", () => {
+      const atualizada = clinicaBase().atualizarDadosCadastrais({
+        nome: " Clínica Nova ",
+      });
+      expect(atualizada.nome).toBe("Clínica Nova");
+      expect(atualizada.endereco).toBe("Rua A, 10");
+    });
+
+    it("atualiza só o endereço e preserva o nome existente", () => {
+      const atualizada = clinicaBase().atualizarDadosCadastrais({
+        endereco: " Av. B, 20 ",
+      });
+      expect(atualizada.nome).toBe("Consultório Silva");
+      expect(atualizada.endereco).toBe("Av. B, 20");
+    });
+
+    it("rejeita string vazia de nome — não limpa o campo em silêncio", () => {
+      const clinica = clinicaBase();
+      expect(() => clinica.atualizarDadosCadastrais({ nome: "" })).toThrow(
+        DadosInvalidosError,
+      );
+      expect(() => clinica.atualizarDadosCadastrais({ nome: "   " })).toThrow(
+        DadosInvalidosError,
+      );
+      expect(clinica.nome).toBe("Consultório Silva");
+    });
+
+    it("rejeita string vazia de endereço — não limpa o campo em silêncio", () => {
+      const clinica = clinicaBase();
+      expect(() => clinica.atualizarDadosCadastrais({ endereco: "" })).toThrow(
+        DadosInvalidosError,
+      );
+      expect(clinica.endereco).toBe("Rua A, 10");
+    });
+
+    it("não altera documento, status, slug, logo nem tema", () => {
+      const clinica = clinicaComIdentidadeVisual();
+      const atualizada = clinica.atualizarDadosCadastrais({
+        nome: "Outro Nome",
+        endereco: "Outra Rua",
+      });
+
+      expect(atualizada.documento.equals(documento)).toBe(true);
+      expect(atualizada.status).toBe("ativa");
+      expect(atualizada.slug).toBe("consultorio-silva-vc");
+      expect(atualizada.logoUrl).toBe(logoUrl);
+      expect(atualizada.tema).toBe("verde");
+      expect(atualizada.id).toBe(clinica.id);
+    });
+
+    it("não reativa clínica inativa ao atualizar nome", () => {
+      const atualizada = clinicaBase()
+        .desativar()
+        .atualizarDadosCadastrais({ nome: "Nome Inativa" });
+      expect(atualizada.status).toBe("inativa");
+      expect(atualizada.nome).toBe("Nome Inativa");
+    });
+  });
 });

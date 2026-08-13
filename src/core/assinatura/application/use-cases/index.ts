@@ -26,6 +26,10 @@ export {
 } from "./MigrarPrecoPosPromocao";
 export { CasoDeUsoNaoImplementadoError } from "./nao-implementado";
 export {
+  ObterDetalhesAssinatura,
+  type ObterDetalhesAssinaturaInput,
+} from "./ObterDetalhesAssinatura";
+export {
   ProcessarAvisosAumentoPrecoPendentes,
   type ProcessarAvisosAumentoPrecoPendentesInput,
   type ProcessarAvisosAumentoPrecoPendentesResultado,

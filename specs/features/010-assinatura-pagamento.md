@@ -55,6 +55,8 @@ o pagamento.
       (via webhook), sem intervenção manual.
 - [ ] Painel da clínica mostra status da assinatura, próxima cobrança, e link
       para regularizar pagamento pendente.
+      *(caso de uso `ObterDetalhesAssinatura` — emenda **aprovada**; ver
+      seção no final desta spec + extensão promocional na 012.)*
 - [ ] Super-admin (spec 009) consegue visualizar status de assinatura de
       qualquer clínica e, em caso excepcional, conceder acesso manual
       (`acessoManualAte` + motivo) sem depender do gateway e sem sobrescrever
@@ -88,6 +90,9 @@ o pagamento.
   `permitido: true` com `motivo: acesso_manual`.
 - Ciclo de cobrança no MVP: apenas mensal.
 - Métodos de pagamento no MVP: apenas `pix` e `boleto`.
+- `ObterDetalhesAssinatura` é **somente leitura**: não altera
+  `Assinatura`/`Cobranca` nem chama mutação de gateway. Status continua
+  vindo só de webhook ou ação explícita de super-admin.
 
 ## Modelo de domínio envolvido
 `Assinatura`, `Plano`, `Cobranca`, `Clinica`.
@@ -115,6 +120,12 @@ Campos relevantes para esta feature (além do já definido em
       (super-admin; audita via `AuditoriaLogPort`)
 - `VerificarAcessoAtivo(clinicaId) → ResultadoAcesso`
       onde `ResultadoAcesso = { permitido: boolean; motivo: ...; ateData?: Date }`
+- `ObterDetalhesAssinatura(clinicaId) → DetalhesAssinatura`
+      — **somente leitura**; emenda **aprovada** (ver seção
+      *Emenda — ObterDetalhesAssinatura*). **Não** chama nem altera
+      `ProcessarWebhookPagamento`, transições de `Assinatura`/`Cobranca`,
+      `ConcederAcessoManual`, `MigrarPrecoPosPromocao` nem qualquer outra
+      mutação de status. Campos promocionais: extensão na spec **012**.
 
 ### Integração pendente (fora do escopo do Arquiteto/Implementador desta feature)
 Aplicar o guard (`VerificarAcessoAtivo`) nos casos de uso de **escrita** dos
@@ -133,7 +144,9 @@ sucesso, chamar `IniciarTrial(clinicaId)`. Não alterar `core/auth` nem acoplar
   - `criarAssinatura(...)` (ciclo mensal; métodos `pix` | `boleto`)
   - `cancelarAssinatura(...)`
   - `consultarCobranca(...)`
-  - `listarCobrancasDaAssinatura(...)` (opcional mas previsto para painel/sync)
+  - `listarCobrancasDaAssinatura(...)` (previsto para sync/ops — **não**
+    é a fonte do painel: `ObterDetalhesAssinatura` lê
+    `CobrancaRepositoryPort` local, P3)
 - `AssinaturaRepositoryPort`
 - `CobrancaRepositoryPort`
 - Reuso: `AuditoriaLogPort` (003) em `ConcederAcessoManual`
@@ -173,8 +186,9 @@ eventos/payloads do provedor → domínio ocorre **dentro do adapter**, nunca em
 - `POST /api/webhooks/pagamento` — boundary HTTP; o adapter Asaas valida o
   token do header, traduz o payload para o evento genérico da application e
   delega a `ProcessarWebhookPagamento`.
-- Server actions do painel da clínica: criar assinatura, consultar status /
-  próxima cobrança / link de regularização.
+- Server actions do painel da clínica: criar assinatura; consultar detalhes
+  (`ObterDetalhesAssinatura` — status / próxima cobrança / histórico /
+  link de regularização; DTO na emenda).
 - Server action / fluxo admin (009): `ConcederAcessoManual`.
 - Orquestração pós-cadastro em `src/actions`: `CriarClinicaComAdmin` →
   `IniciarTrial` (ver acima).
@@ -269,6 +283,11 @@ atual da 010.
   `motivo: trialing` durante trial; `motivo: acesso_manual` com override
   vigente.
 - Aplicação: `CriarAssinatura` com método `cartao` é rejeitado no MVP.
+- Aplicação (`ObterDetalhesAssinatura`): admin lê detalhes; dentista/
+  recepção permissão negada; **nenhuma** mutação de `Assinatura`/`Cobranca`
+  (spies de repos/gateway de escrita não são chamados). Histórico = até 12
+  cobranças locais por vencimento desc (P3/P5). Trial sem plano → `plano: null`
+  (P6). Sem assinatura → `AssinaturaNaoEncontradaError` (P7).
 - Integração (adapter Asaas): mapeamento correto de eventos do provedor →
   status do domínio; validação do header de autenticação do webhook.
 - Contrato/e2e (quando a etapa de integração pós-010 existir): bloqueio não
@@ -278,3 +297,148 @@ atual da 010.
 001 (auth multi-tenant / `CriarClinicaComAdmin`), 009 (super-admin, para
 concessão manual), 003 (`AuditoriaLogPort`). Schema novo, se necessário, em
 `db/schema/assinatura.ts` (não editar `db/schema/index.ts` nesta feature).
+
+## Emenda — ObterDetalhesAssinatura
+
+### Status da emenda
+`aprovada` — **pronta para o Arquiteto de Domínio** (junto com a extensão
+na spec **012**).
+
+Fecha o critério já aprovado do painel (“status, próxima cobrança, link
+para regularizar”) com um caso de uso nomeado de **somente leitura**.
+Campos da promoção de lançamento (`precoPromocionalAte`,
+`migradaParaPrecoCheioEm`, posição da `VagaPromocional`) são extensão na
+spec **012** — mesmo caso de uso, não um segundo.
+
+### User story
+Como admin da clínica, quero ver o plano, o status da assinatura, a
+próxima cobrança, o histórico recente e (se aplicável) o benefício
+promocional, para acompanhar o faturamento da plataforma sem poder
+alterar status por essa tela.
+
+### Critérios de aceite
+- [ ] Caso de uso `ObterDetalhesAssinatura(clinicaId) → DetalhesAssinatura`
+      no módulo `src/core/assinatura` (não duplicar em `core/auth`).
+- [ ] RBAC: **somente `admin`** da clínica da sessão. `dentista` e
+      `recepcao` recebem permissão negada. Super-admin continua no fluxo
+      009 (não é este caso de uso).
+- [ ] Escopo por `clinicaId` da sessão: admin não lê assinatura de outro
+      tenant.
+- [ ] **Somente leitura:** o caso de uso **não** persiste `Assinatura` nem
+      `Cobranca`, **não** chama métodos de mutação da
+      `AssinaturaGatewayPort` (`criarCliente`, `criarAssinatura`,
+      `cancelarAssinatura`, `atualizarValorAssinatura`), **não** dispara
+      `ProcessarWebhookPagamento`, `ConcederAcessoManual`,
+      `MigrarPrecoPosPromocao`, `ReservarVagaPromocional` nem qualquer
+      transição de status. Reexecução é idempotente por natureza (não
+      altera estado).
+- [ ] Retorno segue o **DTO aprovado** abaixo (P4), incluindo:
+      - `plano` (`nome`, `valorMensal`) ou `null` no trial (P6);
+      - `status` da `Assinatura`;
+      - `dataProximaCobranca`;
+      - `valorEfetivoCentavos` + `origemValor` (P8);
+      - `linkRegularizacao` (P9);
+      - até **12** `cobrancasRecentes` do repositório local (P3, P5);
+      - extensão 012: `precoPromocionalAte`, `migradaParaPrecoCheioEm`,
+        `vagaPromocional.posicao`.
+- [ ] Clínica sem `Assinatura` → `AssinaturaNaoEncontradaError` (P7).
+- [ ] Não redefine regras de trial, tolerância, webhook ou promoção —
+      só lê o estado já persistido.
+
+### Regras de negócio
+- Leitura do painel não é fonte de verdade de status: status continua
+  vindo só de webhook / super-admin / casos de uso de mutação já
+  existentes (regra 010).
+- Este caso de uso **não** é o guard `VerificarAcessoAtivo` (retorno
+  diferente: detalhes para UI, não `{ permitido, motivo }`).
+- Cobranças listadas são da **assinatura SaaS** (`Cobranca`), nunca
+  `CobrancaPaciente` (013).
+- Histórico: repositório local, até 12 itens, `vencimento` desc (P3/P5).
+
+### Ports (reuso — sem port nova de escrita)
+- `AssinaturaRepositoryPort` (buscar por `clinicaId`)
+- `PlanoRepositoryPort` (nome / valor do plano)
+- `CobrancaRepositoryPort.listarPorAssinaturaId` (histórico do painel —
+  P3; **não** chamar `AssinaturaGatewayPort.listarCobrancasDaAssinatura`
+  neste GET)
+- Extensão 012: `VagaPromocionalRepositoryPort.buscarPorClinica` (já
+  existe; só leitura)
+- `ResolverValorCobrancaAssinatura` (P8 — só leitura)
+- Ator: `ProfissionalRepositoryPort` + matriz de assinatura (nova ação
+  de leitura, ex. `obter_detalhes_assinatura`, **admin** apenas)
+
+### Contrato de API / Server Action
+- Server action autenticada (`admin`), `clinicaId` da sessão.
+- Delivery **não** implementa regra de negócio; só valida entrada e chama
+  o caso de uso.
+- Payload = DTO aprovado abaixo.
+
+### Fora de escopo desta emenda
+- Qualquer mutação de status / valor / vaga / gateway.
+- Sync forçada com o gateway no GET do painel (reconciliação continua
+  sendo webhook / job à parte).
+- Upgrade/downgrade, cartão, `ConcederAcessoManual`, impersonação 009.
+- Expor `acessoManualAte` / motivo no painel da clínica (dado de
+  cortesia do super-admin — fora do pedido).
+- `CobrancaPaciente` / financeiro 013.
+
+### Plano de testes
+- **Aplicação:** admin recebe o DTO; dentista/recepção permissão negada;
+  outro tenant não lê; repositórios/gateway de **escrita** não são
+  chamados (mesmo com cobrança vencida / promoção ativa).
+- **Aplicação:** trial (`plano: null`); assinatura paga; promoção 012
+  (com e sem vaga; migrada vs. vigente — `migradaParaPrecoCheioEm`);
+  histórico vazio vs. com itens (máx. 12); sem assinatura → erro P7.
+- **Domínio:** nenhum invariante novo de transição; no máximo helpers de
+  montagem do DTO, se o Arquiteto extrair.
+
+### Decisões aprovadas (emenda)
+
+| # | Tema | Decisão |
+|---|---|---|
+| P3 | Fonte do histórico | **Repositório local** (`CobrancaRepositoryPort.listarPorAssinaturaId`). Gateway `listarCobrancasDaAssinatura` fica para sync/ops, **não** para este GET. |
+| P4 | Formato do DTO | Ver **DTO aprovado** abaixo. |
+| P5 | Quantas cobranças | **12** mais recentes, `vencimento` **desc**. Menos de 12 → devolve as que existirem (não erro). |
+| P6 | Trial / sem `planoId` | `plano: null`; `status: "trialing"`; `dataProximaCobranca` como persistido (pode ser null); `cobrancasRecentes: []` se não houver `Cobranca`. |
+| P7 | Clínica sem `Assinatura` | `AssinaturaNaoEncontradaError` (não DTO vazio). |
+| P8 | `plano.valor` | **`valorMensal` = `Plano.valorMensal` (cheio).** Também `valorEfetivoCentavos` + `origemValor: "promocional" \| "cheio"` via `ResolverValorCobrancaAssinatura` (leitura). |
+| P9 | Link de regularização | `linkRegularizacao: string \| null` = `linkPagamento` da cobrança `pendente` ou `vencida` mais recente; null se não houver. |
+
+P10 e P11 (promoção / migração / cancelada com vaga): spec **012**.
+
+### DTO aprovado (P4 + extensão 012 / P10)
+
+```
+DetalhesAssinatura {
+  status: "trialing" | "ativa" | "inadimplente" | "cancelada"
+  dataProximaCobranca: Date | null
+  plano: { nome: string, valorMensal: number } | null
+  valorEfetivoCentavos: number | null   // null no trial sem plano
+  origemValor: "promocional" | "cheio" | null
+  precoPromocionalAte: Date | null      // 012; null se sem promoção
+  migradaParaPrecoCheioEm: Date | null  // 012 / P10; campo já na Assinatura
+  vagaPromocional: { posicao: number } | null  // 012; só se houver vaga
+  linkRegularizacao: string | null
+  cobrancasRecentes: Array<{
+    id: string
+    valor: number
+    metodo: "pix" | "boleto" | "cartao"
+    status: "pendente" | "paga" | "vencida" | "estornada"
+    vencimento: Date
+    pagaEm: Date | null
+    linkPagamento: string | null
+  }>  // máx. 12 (P5); sem ids de gateway
+}
+```
+
+`migradaParaPrecoCheioEm` permite à UI distinguir “promoção ainda ativa
+até `precoPromocionalAte`” de “promoção encerrada em
+`precoPromocionalAte`, já migrada para preço cheio em
+`migradaParaPrecoCheioEm`”. Sem esse campo, `precoPromocionalAte` sozinho
+pode ser lido como ainda vigente após a migração. Cópia 1:1 do campo já
+existente na entidade `Assinatura` (012) — este GET **não** apaga nem
+altera o valor.
+
+Não expor `gatewayAssinaturaId` / `gatewayCobrancaId` no painel da clínica.
+
+---

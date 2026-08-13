@@ -12,16 +12,23 @@ import { PermissaoNegadaError } from "@/core/shared/errors";
  * (via `CriarAssinatura`); jobs de aviso/migração são de sistema (como
  * webhook / `VerificarAcessoAtivo`).
  *
+ * `ObterDetalhesAssinatura` é **somente leitura** (`obter_detalhes_assinatura`,
+ * admin). Não muta status, gateway, vaga nem cobrança.
+ *
  * `IniciarTrial` é orquestrado por `src/actions` (sem RBAC de clínica).
  * `ProcessarWebhookPagamento` e `VerificarAcessoAtivo` são de sistema.
  * `ConcederAcessoManual` usa checagem de plataforma (abaixo).
  */
-export const ACOES_ASSINATURA = ["criar_assinatura"] as const;
+export const ACOES_ASSINATURA = [
+  "criar_assinatura",
+  "obter_detalhes_assinatura",
+] as const;
 
 export type AcaoAssinatura = (typeof ACOES_ASSINATURA)[number];
 
 const MATRIZ: Record<AcaoAssinatura, readonly Papel[]> = {
   criar_assinatura: ["admin"],
+  obter_detalhes_assinatura: ["admin"],
 };
 
 export const { pode, assertPode } = criarVerificadorAutorizacao(MATRIZ);

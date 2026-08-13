@@ -12,6 +12,11 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
   `logoUrl` (string | null — URL pública do logo; upload via Vercel Blob, ver
   `specs/01-architecture.md`), `tema` (`azul-padrao` | `verde` | `roxo` |
   `grafite` | null — null = padrão da UI; paletas com contraste WCAG 2.2 AA)
+- **Documento fiscal é imutável após criação** (identidade/deduplicação do
+  tenant — spec 001, emenda `AtualizarClinica`; mesma justificativa do CPF
+  em `AtualizarPaciente`). Admin da clínica atualiza só `nome` e/ou
+  `endereco` (pelo menos um). Correção de documento = fluxo separado
+  (suporte / 009). `EditarClinica` (009) também não altera documento.
 
 ### Profissional
 - id, clinicaId, nome, papel (`admin`|`dentista`|`recepcao`), cro (obrigatório
@@ -223,6 +228,9 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
   status (`pendente`|`paga`|`vencida`|`estornada`), vencimento, pagaEm
 - **Não confundir** com `CobrancaPaciente` (financeiro clínico — spec 013
   futura). `Cobranca` aqui é cobrança da **assinatura SaaS** da clínica.
+- Painel (`ObterDetalhesAssinatura`): até 12 mais recentes por `vencimento`
+  desc, lidas do repositório local (não gateway). Read-model em
+  `DetalhesAssinatura` — não é entidade persistida.
 
 ### CobrancaPaciente *(futuro / spec 013 — não implementado ainda)*
 - Nome reservado para a entidade de cobrança por atendimento ao paciente

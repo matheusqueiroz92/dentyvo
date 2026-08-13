@@ -3,6 +3,7 @@ export * from "./avisoAumentoPreco";
 export * from "./autorizacao";
 export * from "./Cobranca";
 export * from "./constants";
+export * from "./DetalhesAssinatura";
 export * from "./elegibilidadePromocional";
 export * from "./errors";
 export * from "./EventoCobranca";

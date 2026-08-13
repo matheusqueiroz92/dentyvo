@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import type { db as Db } from "@/db";
 import { cobranca as cobrancaTable } from "@/db/schema";
@@ -63,6 +63,7 @@ export class DrizzleCobrancaRepository implements CobrancaRepositoryPort {
   async listarPorAssinaturaId(assinaturaId: string): Promise<Cobranca[]> {
     const rows = await this.db.query.cobranca.findMany({
       where: eq(cobrancaTable.assinaturaId, assinaturaId),
+      orderBy: [desc(cobrancaTable.vencimento)],
     });
     return rows.map(toDomain);
   }

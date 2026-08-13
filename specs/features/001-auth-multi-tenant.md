@@ -50,6 +50,9 @@ permissão adequado.
 - [ ] Sessão expira automaticamente (TTL **7 dias**, renovável pelo BetterAuth)
       e o usuário pode revogar a própria sessão (logout). Admin pode encerrar
       sessões de um membro da própria clínica.
+- [ ] Admin atualiza nome e/ou endereço da própria clínica
+      (`AtualizarClinica`); documento fiscal (CPF/CNPJ) permanece imutável.
+      Ver seção *Emenda — AtualizarClinica* (`aprovada`).
 
 ### Matriz de permissões (MVP desta feature)
 
@@ -86,6 +89,10 @@ até concluir o aceite.
 - Documento fiscal da clínica: exatamente um entre `CPF` ou `CNPJ` (muitos
   consultórios do público-alvo inicial são autônomos sem CNPJ); o valor deve
   ser único na plataforma.
+- **Documento fiscal é imutável após o cadastro** (emenda `AtualizarClinica`):
+  mesma justificativa de `AtualizarPaciente` (002, decisão 13) — campo de
+  identidade/deduplicação; alteração livre arrisca mesclar o tenant errado.
+  Correção de documento errado = fluxo separado, fora desta emenda.
 - Verificação de e-mail **não é obrigatória no MVP** (o link do convite basta
   como prova fraca de posse do endereço). **Revisar antes do lançamento
   comercial** (impacto LGPD / abuso de cadastro).
@@ -111,6 +118,10 @@ até concluir o aceite.
 - `RemoverMembro(clinicaId, profissionalId, solicitadoPorUsuarioId) → void`
 - `RevogarSessoesDoMembro(clinicaId, profissionalId, solicitadoPorUsuarioId) → void`
 - `ObterContextoSessao() → { usuarioId, clinicaId, papel } | null`
+- `AtualizarClinica(clinicaId, nome?, endereco?) → Clinica`
+  — emenda **aprovada** (ver seção *Emenda — AtualizarClinica*). Documento
+  fiscal **não** entra no input. Pelo menos um de `nome`/`endereco` é
+  obrigatório (P1).
 
 Login/logout em si ficam no BetterAuth (handlers já existentes); a application
 consome a sessão via port (abaixo), sem reimplementar autenticação.
@@ -136,6 +147,7 @@ consome a sessão via port (abaixo), sem reimplementar autenticação.
 | Listar membros | Server Action (autenticada) | — (usa `clinicaId` da sessão) | lista de membros |
 | Alterar papel / remover | Server Action (autenticada, `admin`) | profissionalId, novoPapel? | ok / erro de domínio |
 | Revogar sessões | Server Action (autenticada, `admin` ou self-logout) | profissionalId? | ok |
+| Atualizar clínica (nome/endereço) | Server Action (autenticada, `admin`) | `nome?`, `endereco?` (pelo menos um; não inclui documento) | `Clinica` atualizada |
 
 Rotas de UI mínimas esperadas (delivery, sem regra de negócio):
 - `/cadastro` (clínica + admin)
@@ -165,7 +177,10 @@ Rotas de UI mínimas esperadas (delivery, sem regra de negócio):
 - **Aplicação:** `CriarClinicaComAdmin` cria tenant + admin com status `ativa`;
   `ConvidarUsuario` gera token com expiração de 72h (incl. convite de outro
   admin); `AceitarConvite` feliz / token inválido; operações admin vs recepção
-  respeitam matriz; isolamento por `clinicaId` nos use cases desta feature.
+  respeitam matriz; isolamento por `clinicaId` nos use cases desta feature;
+  `AtualizarClinica`: admin altera nome/endereço (pelo menos um); ambos
+  omitidos falham; dentista/recepção recebem permissão negada; contrato de
+  input sem documento.
 - **Integração (adapters):** repositório com `clinicaId` da sessão diferente do
   recurso alvo não retorna/altera dado de outro tenant; `EmailPort` fake
   recebe o convite; `AuthPort` integra com BetterAuth (criar usuário / ler
@@ -190,6 +205,95 @@ Rotas de UI mínimas esperadas (delivery, sem regra de negócio):
    (obrigatório), documento fiscal **CPF ou CNPJ** (exatamente um, valor único
    na plataforma — autônomos sem CNPJ são público-alvo inicial). Status inicial:
    `ativa` (assinatura/trial na 010).
+6. **`AtualizarClinica` (emenda):** ver seção abaixo — **aprovada**.
+
+## Emenda — AtualizarClinica
+
+### Status da emenda
+`aprovada` — **pronta para o Arquiteto de Domínio**.
+
+Fecha o gap da matriz já aprovada (“Editar dados cadastrais da clínica” =
+`admin` apenas) que ainda não tinha caso de uso intra-tenant. Não confundir
+com `EditarClinica` da spec **009** (ator `UsuarioPlataforma` / super-admin,
+cross-tenant). Logo, tema e slug já têm casos de uso próprios
+(`AtualizarLogoClinica`, `AtualizarTemaClinica`, `AtualizarSlugClinica`) —
+**fora** deste caso de uso.
+
+### User story
+Como admin da clínica, quero atualizar o nome e/ou o endereço cadastrais
+da minha clínica, para corrigir dados operacionais sem poder alterar o
+documento fiscal (identidade do tenant).
+
+### Critérios de aceite
+- [ ] Caso de uso `AtualizarClinica(clinicaId, nome?, endereco?) → Clinica`
+      no módulo `src/core/auth` (não em admin-plataforma).
+- [ ] RBAC: **somente `admin`**. `dentista` e `recepcao` recebem permissão
+      negada (mesma matriz já listada: “Editar dados cadastrais da clínica”).
+- [ ] Escopo por `clinicaId` da sessão: admin não atualiza outra clínica.
+      Clínica inexistente / outro tenant → erro de domínio (não vazamento).
+- [ ] Campos editáveis: **apenas** `nome` e `endereco` (parciais: cada um
+      opcional no input). **Pelo menos um** deve ser informado (P1); ambos
+      omitidos → erro de validação. Campo omitido permanece o valor atual
+      (P2). Validação de um campo **fornecido** segue as mesmas regras de
+      `CriarClinicaComAdmin` / entidade `Clinica` (não vazio após trim).
+- [ ] **Documento fiscal (CPF/CNPJ) é imutável** após a criação: o input
+      **não inclui** documento / `tipoDocumento` / valor. Não há caminho
+      neste caso de uso para alterar identidade do tenant.
+- [ ] Justificativa (espelha decisão 13 de `AtualizarPaciente` na 002):
+      documento é campo de **identidade/deduplicação** (único na
+      plataforma). Edição livre abriria risco de “corrigir” para o
+      CPF/CNPJ de outra clínica e **mesclar o tenant errado**. Correção
+      de documento informado errado = fluxo separado (suporte /
+      super-admin), **fora desta emenda**.
+- [ ] Fora deste caso de uso (já cobertos ou deliberadamente excluídos):
+      `status`, `logoUrl`, `tema`, `slug`, documento.
+- [ ] Distinto de `EditarClinica` (009): atores, módulo e superfície
+      diferentes; o invariante de documento imutável vale para a entidade
+      `Clinica` (009 já só envia nome/endereço — não reabrir 009 nesta
+      emenda).
+- [ ] Arquiteto: registrar no `specs/02-domain-model.md` que o documento
+      fiscal da `Clinica` é imutável após criação.
+
+### Regras de negócio
+- Documento fiscal da clínica não muda depois do cadastro (identidade do
+  tenant / unicidade na plataforma).
+- `AtualizarClinica` não altera status, logo, tema nem slug.
+- Nome/endereço fornecidos não podem ficar vazios (mesma invariante do
+  cadastro).
+- Pelo menos um de `nome` / `endereco` deve ser informado (P1).
+
+### Casos de uso / ports
+- `AtualizarClinica(clinicaId, nome?, endereco?) → Clinica`
+  — delivery autentica e passa `solicitadoPorUsuarioId` + `clinicaId` da
+  sessão (padrão dos demais use cases da 001); a assinatura de alto nível
+  acima é a do pedido.
+- Ports: reuso de `ClinicaRepositoryPort`, `ProfissionalRepositoryPort`
+  (ator), `AutorizacaoPort` / helper `assertPode(..., "editar_clinica")`.
+  **Sem** port nova.
+
+### Fora de escopo desta emenda
+- Alterar documento fiscal (qualquer ator, por esta via).
+- Fluxo de correção de CPF/CNPJ digitado errado (suporte / 009).
+- Logo, tema, slug, desativar clínica, multi-clínica.
+- Unificar com `EditarClinica` (009) — atores diferentes.
+
+### Plano de testes
+- **Domínio:** atualizar nome e/ou endereço preserva documento, status,
+  logo, tema e slug; nome/endereço vazios rejeitados; ambos omitidos
+  rejeitados (P1).
+- **Aplicação:** admin sucesso (só nome, só endereço, ou ambos);
+  dentista/recepção permissão negada; outro tenant não altera; contrato
+  de input sem documento (não é possível passar CPF/CNPJ neste use case).
+- **Integração / contrato:** não exigidos além do padrão desta feature.
+
+### Decisões aprovadas (emenda)
+
+| # | Tema | Decisão |
+|---|---|---|
+| P1 | Input com ambos omitidos | **Erro de validação:** pelo menos um de `nome` / `endereco` deve ser informado. |
+| P2 | Parciais vs. `EditarClinica` (009) | **Manter parciais.** Não alterar o contrato da 009. Campo omitido permanece o valor atual. |
+
+---
 
 ## Débito técnico conhecido
 
