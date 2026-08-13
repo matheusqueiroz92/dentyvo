@@ -17,10 +17,15 @@ export type StatusAssinaturaDashboardDTO = {
 
 export type NotificacaoDashboardDTO = {
   id: string;
+  /** Valor do catálogo (enum). A UI exibe o rótulo amigável, não este cru. */
+  tipo: string;
   titulo: string;
   mensagem: string;
   criadaEmIso: string;
   linkAcao: string | null;
+  planoNome: string | null;
+  dataReferenciaIso: string | null;
+  valorCentavos: number | null;
 };
 
 export type ResultadoBloco<T> =

@@ -1,6 +1,7 @@
 "use client";
 
 import { AbaAgendamentoOnline } from "@/components/configuracoes/AbaAgendamentoOnline";
+import { NotificacoesConfigTab } from "@/components/configuracoes/NotificacoesConfigTab";
 import {
   Tabs,
   TabsContent,
@@ -20,11 +21,11 @@ export function ConfiguracoesClient({ papel }: Props) {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
         <p className="text-sm text-muted-foreground">
-          Preferências da clínica e canais de agendamento.
+          Preferências da clínica, notificações e canais de agendamento.
         </p>
       </div>
 
-      <Tabs defaultValue={isAdmin ? "agendamento-online" : "geral"}>
+      <Tabs defaultValue={isAdmin ? "agendamento-online" : "notificacoes"}>
         <TabsList variant="line" className="h-auto w-full justify-start gap-1">
           {isAdmin ? (
             <TabsTrigger
@@ -34,6 +35,9 @@ export function ConfiguracoesClient({ papel }: Props) {
               Agendamento Online
             </TabsTrigger>
           ) : null}
+          <TabsTrigger value="notificacoes" className="min-h-11 px-3">
+            Notificações
+          </TabsTrigger>
           <TabsTrigger value="geral" className="min-h-11 px-3">
             Geral
           </TabsTrigger>
@@ -44,6 +48,10 @@ export function ConfiguracoesClient({ papel }: Props) {
             <AbaAgendamentoOnline />
           </TabsContent>
         ) : null}
+
+        <TabsContent value="notificacoes" className="pt-4">
+          <NotificacoesConfigTab />
+        </TabsContent>
 
         <TabsContent value="geral" className="pt-4">
           <p className="text-sm text-muted-foreground">
