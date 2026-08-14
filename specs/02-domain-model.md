@@ -20,7 +20,13 @@ termos (português), conforme `.cursor/rules/code-standards.mdc`.
 
 ### Profissional
 - id, clinicaId, nome, papel (`admin`|`dentista`|`recepcao`), cro (obrigatório
-  se `dentista`), especialidade (opcional), usuarioId (auth BetterAuth)
+  se `dentista`), especialidade (opcional), usuarioId (auth BetterAuth),
+  slug (único por clínica)
+- **O próprio profissional atualiza `nome`** (`AtualizarPerfilProprio`, spec
+  001) — qualquer papel, só a si. Slug **não** é regenerado a partir do
+  novo nome (`AtualizarSlugProfissional` permanece o fluxo de slug).
+  O mesmo caso de uso alinha `user.name` do BetterAuth via
+  `AuthPort.atualizarNome` (sucesso só com as duas escritas).
 
 ### Convite
 - id, clinicaId, email, papel (`admin`|`dentista`|`recepcao`), token, expiresAt

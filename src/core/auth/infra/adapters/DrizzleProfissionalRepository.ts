@@ -2,7 +2,10 @@ import { and, eq } from "drizzle-orm";
 
 import { Slug } from "@/core/shared/Slug";
 
-import type { ProfissionalRepositoryPort } from "../../application/ports/ProfissionalRepositoryPort";
+import type {
+  AtualizarProfissionalParcialInput,
+  ProfissionalRepositoryPort,
+} from "../../application/ports/ProfissionalRepositoryPort";
 import { assertPapel } from "../../domain/Papel";
 import { Profissional } from "../../domain/Profissional";
 import type { db as Db } from "@/db";
@@ -38,6 +41,29 @@ export class DrizzleProfissionalRepository implements ProfissionalRepositoryPort
           slug: profissional.slug,
         },
       });
+  }
+
+  async atualizarParcial(
+    input: AtualizarProfissionalParcialInput,
+  ): Promise<Profissional | null> {
+    const set: { nome?: string } = {};
+    if (input.nome !== undefined) set.nome = input.nome;
+    if (Object.keys(set).length === 0) {
+      return this.buscarPorId(input.clinicaId, input.id);
+    }
+
+    const [row] = await this.db
+      .update(profissionalTable)
+      .set(set)
+      .where(
+        and(
+          eq(profissionalTable.id, input.id),
+          eq(profissionalTable.clinicaId, input.clinicaId),
+        ),
+      )
+      .returning();
+
+    return row ? toDomain(row) : null;
   }
 
   async buscarPorId(

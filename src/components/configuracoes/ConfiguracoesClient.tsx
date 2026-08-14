@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
+
 import { AbaAgendamentoOnline } from "@/components/configuracoes/AbaAgendamentoOnline";
 import { AssinaturaConfigTab } from "@/components/configuracoes/AssinaturaConfigTab";
+import { ContaConfigTab } from "@/components/configuracoes/ContaConfigTab";
 import { GeralConfigTab } from "@/components/configuracoes/GeralConfigTab";
 import { NotificacoesConfigTab } from "@/components/configuracoes/NotificacoesConfigTab";
 import {
@@ -13,22 +16,31 @@ import {
 
 type Props = {
   papel: string;
+  nomeInicial: string;
+  abaInicial?: string;
 };
 
-export function ConfiguracoesClient({ papel }: Props) {
+export function ConfiguracoesClient({
+  papel,
+  nomeInicial,
+  abaInicial,
+}: Props) {
   const isAdmin = papel === "admin";
+  const abaPadrao =
+    abaInicial === "conta" ? "conta" : isAdmin ? "geral" : "notificacoes";
+  const [aba, setAba] = useState(abaPadrao);
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
         <p className="text-sm text-muted-foreground">
-          Preferências da clínica, assinatura, notificações e canais de
+          Preferências da clínica, conta, assinatura, notificações e canais de
           agendamento.
         </p>
       </div>
 
-      <Tabs defaultValue={isAdmin ? "geral" : "notificacoes"}>
+      <Tabs value={aba} onValueChange={setAba}>
         <TabsList variant="line" className="h-auto w-full justify-start gap-1">
           {isAdmin ? (
             <TabsTrigger value="geral" className="min-h-11 px-3">
@@ -48,6 +60,9 @@ export function ConfiguracoesClient({ papel }: Props) {
               Agendamento Online
             </TabsTrigger>
           ) : null}
+          <TabsTrigger value="conta" className="min-h-11 px-3">
+            Conta
+          </TabsTrigger>
           <TabsTrigger value="notificacoes" className="min-h-11 px-3">
             Notificações
           </TabsTrigger>
@@ -70,6 +85,10 @@ export function ConfiguracoesClient({ papel }: Props) {
             <AbaAgendamentoOnline />
           </TabsContent>
         ) : null}
+
+        <TabsContent value="conta" className="pt-4">
+          <ContaConfigTab nomeInicial={nomeInicial} />
+        </TabsContent>
 
         <TabsContent value="notificacoes" className="pt-4">
           <NotificacoesConfigTab />

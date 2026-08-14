@@ -73,4 +73,35 @@ export class BetterAuthAuthPort implements AuthPort {
       .delete(sessionTable)
       .where(eq(sessionTable.userId, usuarioId));
   }
+
+  /**
+   * Atualiza `user.name` via API nativa do BetterAuth (`auth.api.updateUser`)
+   * quando a sessão é do próprio usuário; senão usa o adapter interno
+   * (mesmo mecanismo que o endpoint `/update-user` persiste).
+   */
+  async atualizarNome(
+    usuarioId: string,
+    nome: string,
+  ): Promise<UsuarioAuth> {
+    const requestHeaders = await this.resolveHeaders();
+    const sessao = await auth.api.getSession({ headers: requestHeaders });
+
+    if (sessao?.user.id === usuarioId) {
+      await auth.api.updateUser({
+        body: { name: nome },
+        headers: requestHeaders,
+      });
+    } else {
+      const ctx = await auth.$context;
+      await ctx.internalAdapter.updateUser(usuarioId, { name: nome });
+    }
+
+    const row = await this.db.query.user.findFirst({
+      where: eq(userTable.id, usuarioId),
+    });
+    if (!row) {
+      throw new Error("Usuário não encontrado.");
+    }
+    return { id: row.id, email: row.email, nome: row.name };
+  }
 }

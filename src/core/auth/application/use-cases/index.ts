@@ -7,6 +7,10 @@ export {
   type AlterarPapelMembroInput,
 } from "./AlterarPapelMembro";
 export {
+  AtualizarPerfilProprio,
+  type AtualizarPerfilProprioInput,
+} from "./AtualizarPerfilProprio";
+export {
   AtualizarClinica,
   type AtualizarClinicaInput,
 } from "./AtualizarClinica";

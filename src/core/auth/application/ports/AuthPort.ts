@@ -22,4 +22,10 @@ export interface AuthPort {
   obterContextoSessao(): Promise<ContextoSessao | null>;
 
   revogarSessoesDoUsuario(usuarioId: string): Promise<void>;
+
+  /**
+   * Atualiza `user.name` no BetterAuth. Domain/application não importam a lib.
+   * Implementação concreta: adapter (`BetterAuthAuthPort`) — Implementador.
+   */
+  atualizarNome(usuarioId: string, nome: string): Promise<UsuarioAuth>;
 }

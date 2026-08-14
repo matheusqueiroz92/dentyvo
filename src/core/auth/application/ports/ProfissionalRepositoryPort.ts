@@ -1,7 +1,25 @@
 import type { Profissional } from "../../domain/Profissional";
 
+/**
+ * Patch seletivo do profissional. Campo omitido (`undefined`) não entra
+ * no UPDATE — o valor atual no banco permanece (evita lost update de
+ * slug/CRO/papel/especialidade). Mesmo padrão de `AtualizarClinicaParcialInput`.
+ */
+export type AtualizarProfissionalParcialInput = {
+  id: string;
+  clinicaId: string;
+  nome?: string;
+};
+
 export interface ProfissionalRepositoryPort {
   salvar(profissional: Profissional): Promise<void>;
+  /**
+   * UPDATE seletivo só das colunas enviadas. Não reaproveitar `salvar`
+   * (upsert da entidade inteira) para mutações parciais.
+   */
+  atualizarParcial(
+    input: AtualizarProfissionalParcialInput,
+  ): Promise<Profissional | null>;
   /** Escopado por tenant — nunca retornar membro de outra clínica. */
   buscarPorId(
     clinicaId: string,

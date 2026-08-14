@@ -87,3 +87,36 @@ export class ConviteNaoEncontradoError extends Error {
     this.name = this.nome;
   }
 }
+
+/**
+ * Tentativa de atualizar o perfil de outro usuário (spec 001 —
+ * emenda Perfil próprio). Autorização por identidade, não por papel.
+ */
+export class PerfilProprioNaoAutorizadoError extends Error {
+  readonly nome = "PerfilProprioNaoAutorizadoError" as const;
+
+  constructor(
+    readonly usuarioIdAlvo: string,
+    readonly usuarioIdAtor: string,
+  ) {
+    super("Só é possível atualizar o próprio nome.");
+    this.name = this.nome;
+  }
+}
+
+/**
+ * As duas escritas de nome (BetterAuth `user.name` e `Profissional.nome`)
+ * ficaram divergentes e a compensação da primeira também falhou.
+ * Retry do mesmo comando reconcilia. Ver decisão no caso de uso
+ * `AtualizarPerfilProprio`.
+ */
+export class PerfilProprioDessincronizadoError extends Error {
+  readonly nome = "PerfilProprioDessincronizadoError" as const;
+
+  constructor(readonly usuarioId: string) {
+    super(
+      "O nome da conta e o nome do profissional ficaram dessincronizados. Tente novamente.",
+    );
+    this.name = this.nome;
+  }
+}

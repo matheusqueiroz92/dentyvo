@@ -4,7 +4,7 @@ import {
 } from "@/core/shared/errors";
 import { Slug } from "@/core/shared/Slug";
 
-import { CroObrigatorioError } from "./errors";
+import { CroObrigatorioError, PerfilProprioNaoAutorizadoError } from "./errors";
 import type { Papel } from "./Papel";
 
 export type ProfissionalProps = {
@@ -101,6 +101,38 @@ export class Profissional {
       especialidade: this.especialidade,
       slug: this.slug,
     });
+  }
+
+  /**
+   * Atualiza o nome de exibição. Slug, papel, CRO e especialidade
+   * permanecem iguais (spec 001 — emenda Perfil próprio).
+   */
+  atualizarNome(nome: string): Profissional {
+    const normalizado = nome.trim();
+    if (!normalizado) {
+      throw new DadosInvalidosError("Nome do profissional é obrigatório.");
+    }
+
+    return Profissional.reconstituir({
+      id: this.id,
+      clinicaId: this.clinicaId,
+      usuarioId: this.usuarioId,
+      nome: normalizado,
+      papel: this.papel,
+      cro: this.cro,
+      especialidade: this.especialidade,
+      slug: this.slug,
+    });
+  }
+
+  /**
+   * Só o dono da credencial (`usuarioId`) altera o próprio perfil.
+   * Não é checagem de papel da clínica.
+   */
+  assertEhOProprioUsuario(usuarioId: string): void {
+    if (this.usuarioId !== usuarioId) {
+      throw new PerfilProprioNaoAutorizadoError(usuarioId, this.usuarioId);
+    }
   }
 
   /**

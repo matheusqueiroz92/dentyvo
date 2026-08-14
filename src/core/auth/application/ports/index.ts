@@ -9,5 +9,6 @@ export type {
 } from "./ClinicaRepositoryPort";
 export type { EmailConviteInput, EmailPort } from "./EmailPort";
 export type {
+  AtualizarProfissionalParcialInput,
   ProfissionalRepositoryPort,
 } from "./ProfissionalRepositoryPort";

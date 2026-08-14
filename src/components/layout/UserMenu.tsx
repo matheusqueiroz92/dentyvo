@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { LogOut, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -71,6 +71,14 @@ export function UserMenu({ nome, papel }: UserMenuProps) {
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={() => {
+            router.push("/configuracoes?aba=conta");
+          }}
+        >
+          <UserRound aria-hidden />
+          Minha conta
+        </DropdownMenuItem>
         <DropdownMenuItem
           variant="destructive"
           disabled={saindo}

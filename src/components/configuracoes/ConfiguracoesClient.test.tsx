@@ -17,54 +17,94 @@ vi.mock("./AssinaturaConfigTab", () => ({
   AssinaturaConfigTab: () => <div>aba-assinatura</div>,
 }));
 
+vi.mock("./ContaConfigTab", () => ({
+  ContaConfigTab: () => <div>aba-conta</div>,
+}));
+
 import { ConfiguracoesClient } from "./ConfiguracoesClient";
+
+function renderConfig(papel: string, abaInicial?: string) {
+  return render(
+    <ConfiguracoesClient
+      papel={papel}
+      nomeInicial="Ana"
+      abaInicial={abaInicial}
+    />,
+  );
+}
 
 describe("ConfiguracoesClient — abas e RBAC", () => {
   it.each(["admin", "recepcao", "dentista"] as const)(
     "exibe a aba Notificações para papel %s (sem restrição extra de RBAC)",
     (papel) => {
-      render(<ConfiguracoesClient papel={papel} />);
+      renderConfig(papel);
       expect(
         screen.getByRole("tab", { name: "Notificações" }),
       ).toBeInTheDocument();
     },
   );
 
+  it.each(["admin", "recepcao", "dentista"] as const)(
+    "exibe a aba Conta para papel %s",
+    (papel) => {
+      renderConfig(papel);
+      expect(screen.getByRole("tab", { name: "Conta" })).toBeInTheDocument();
+    },
+  );
+
+  it("abre a aba Conta quando abaInicial é conta", () => {
+    renderConfig("admin", "conta");
+    expect(screen.getByRole("tab", { name: "Conta" })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+  });
+
   it("restringe Agendamento Online a admin", () => {
-    const { rerender } = render(<ConfiguracoesClient papel="recepcao" />);
+    const { rerender } = renderConfig("recepcao");
     expect(
       screen.queryByRole("tab", { name: "Agendamento Online" }),
     ).not.toBeInTheDocument();
 
-    rerender(<ConfiguracoesClient papel="admin" />);
+    rerender(
+      <ConfiguracoesClient papel="admin" nomeInicial="Ana" />,
+    );
     expect(
       screen.getByRole("tab", { name: "Agendamento Online" }),
     ).toBeInTheDocument();
   });
 
   it("restringe a aba Geral a admin", () => {
-    const { rerender } = render(<ConfiguracoesClient papel="recepcao" />);
+    const { rerender } = renderConfig("recepcao");
     expect(screen.queryByRole("tab", { name: "Geral" })).not.toBeInTheDocument();
 
-    rerender(<ConfiguracoesClient papel="dentista" />);
+    rerender(
+      <ConfiguracoesClient papel="dentista" nomeInicial="Ana" />,
+    );
     expect(screen.queryByRole("tab", { name: "Geral" })).not.toBeInTheDocument();
 
-    rerender(<ConfiguracoesClient papel="admin" />);
+    rerender(
+      <ConfiguracoesClient papel="admin" nomeInicial="Ana" />,
+    );
     expect(screen.getByRole("tab", { name: "Geral" })).toBeInTheDocument();
   });
 
   it("restringe a aba Assinatura a admin", () => {
-    const { rerender } = render(<ConfiguracoesClient papel="recepcao" />);
+    const { rerender } = renderConfig("recepcao");
     expect(
       screen.queryByRole("tab", { name: "Assinatura" }),
     ).not.toBeInTheDocument();
 
-    rerender(<ConfiguracoesClient papel="dentista" />);
+    rerender(
+      <ConfiguracoesClient papel="dentista" nomeInicial="Ana" />,
+    );
     expect(
       screen.queryByRole("tab", { name: "Assinatura" }),
     ).not.toBeInTheDocument();
 
-    rerender(<ConfiguracoesClient papel="admin" />);
+    rerender(
+      <ConfiguracoesClient papel="admin" nomeInicial="Ana" />,
+    );
     expect(screen.getByRole("tab", { name: "Assinatura" })).toBeInTheDocument();
   });
 });

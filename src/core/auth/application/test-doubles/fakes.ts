@@ -15,7 +15,10 @@ import type {
 } from "../ports/ClinicaRepositoryPort";
 import type { ConviteRepositoryPort } from "../ports/ConviteRepositoryPort";
 import type { EmailPort, EmailConviteInput } from "../ports/EmailPort";
-import type { ProfissionalRepositoryPort } from "../ports/ProfissionalRepositoryPort";
+import type {
+  AtualizarProfissionalParcialInput,
+  ProfissionalRepositoryPort,
+} from "../ports/ProfissionalRepositoryPort";
 
 export class FakeClinicaRepository implements ClinicaRepositoryPort {
   readonly items = new Map<string, Clinica>();
@@ -94,6 +97,20 @@ export class FakeProfissionalRepository implements ProfissionalRepositoryPort {
 
   async salvar(profissional: Profissional): Promise<void> {
     this.items.set(profissional.id, profissional);
+  }
+
+  async atualizarParcial(
+    input: AtualizarProfissionalParcialInput,
+  ): Promise<Profissional | null> {
+    const atual = this.items.get(input.id);
+    if (!atual || atual.clinicaId !== input.clinicaId) return null;
+
+    let next = atual;
+    if (input.nome !== undefined) {
+      next = next.atualizarNome(input.nome);
+    }
+    this.items.set(input.id, next);
+    return next;
   }
 
   async buscarPorId(
@@ -237,6 +254,15 @@ export class FakeAuthPort implements AuthPort {
     if (this.sessao?.contexto.usuarioId === usuarioId) {
       this.sessao = null;
     }
+  }
+
+  async atualizarNome(usuarioId: string, nome: string): Promise<UsuarioAuth> {
+    const usuario = this.usuarios.get(usuarioId);
+    if (!usuario) {
+      throw new Error("Usuário não encontrado.");
+    }
+    usuario.nome = nome;
+    return { id: usuario.id, nome: usuario.nome, email: usuario.email };
   }
 }
 
