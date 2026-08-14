@@ -75,7 +75,9 @@ escopo; pare e sinalize.
 substituir `CasoDeUsoNaoImplementadoError` pelo corpo real dos use cases.
 **Checklist final (etapa só concluída após o último item):**
 1. Rode `npm run test` e `npm run lint` e confirme tudo verde.
-2. Se houver schema novo: `npm run db:generate` e `node scripts/migrate.mjs`.
+2. Se houver schema novo: `npm run db:generate` e `node scripts/migrate.mjs`
+   (exige `DATABASE_URL_MIGRATIONS` — conexão direta, sem pooler Neon; ver
+   `.env.example`).
 3. Rode `git status` para confirmar o que mudou, `git add .`, `git commit`
    com mensagem descritiva da feature, e `git push` — **antes** de considerar
    a etapa do Implementador concluída (e antes de iniciar a próxima feature).
