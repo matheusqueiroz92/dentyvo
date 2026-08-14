@@ -2,8 +2,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+const push = vi.fn();
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ push }),
 }));
 
 import { PacientesTable } from "./PacientesTable";
@@ -51,5 +53,21 @@ describe("PacientesTable", () => {
     expect(
       screen.getByText("Nenhum paciente cadastrado"),
     ).toBeInTheDocument();
+  });
+
+  it("abre o caminho informado ao clicar em Abrir", async () => {
+    const user = userEvent.setup();
+    render(
+      <PacientesTable
+        pacientes={pacientes}
+        caminhoDoPaciente={(id) => `/pacientes/${id}?aba=prontuario`}
+        rotuloAcao="Abrir prontuário"
+      />,
+    );
+
+    await user.click(
+      screen.getAllByRole("button", { name: "Abrir prontuário" })[0]!,
+    );
+    expect(push).toHaveBeenCalledWith("/pacientes/p1?aba=prontuario");
   });
 });

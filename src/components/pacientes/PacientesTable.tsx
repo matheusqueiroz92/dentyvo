@@ -36,6 +36,10 @@ import {
 } from "@/lib/pacientes/formatacao";
 import type { PacienteDTO } from "@/lib/pacientes/types";
 
+function caminhoPadraoDoPaciente(id: string) {
+  return `/pacientes/${id}`;
+}
+
 type PacientesTableProps = {
   pacientes: PacienteDTO[];
   carregando?: boolean;
@@ -43,6 +47,8 @@ type PacientesTableProps = {
   onRetry?: () => void;
   onNovo?: () => void;
   listaVaziaSemFiltro?: boolean;
+  caminhoDoPaciente?: (id: string) => string;
+  rotuloAcao?: string;
 };
 
 export function PacientesTable({
@@ -52,6 +58,8 @@ export function PacientesTable({
   onRetry,
   onNovo,
   listaVaziaSemFiltro = false,
+  caminhoDoPaciente = caminhoPadraoDoPaciente,
+  rotuloAcao = "Abrir",
 }: PacientesTableProps) {
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([
@@ -147,16 +155,16 @@ export function PacientesTable({
               variant="ghost"
               onClick={(e) => {
                 e.stopPropagation();
-                router.push(`/pacientes/${row.original.id}`);
+                router.push(caminhoDoPaciente(row.original.id));
               }}
             >
-              Abrir
+              {rotuloAcao}
             </Button>
           </div>
         ),
       },
     ],
-    [cpfRevelados, router],
+    [caminhoDoPaciente, cpfRevelados, rotuloAcao, router],
   );
 
   const table = useReactTable({
@@ -288,7 +296,7 @@ export function PacientesTable({
                 <TableRow
                   key={row.id}
                   className="cursor-pointer"
-                  onClick={() => router.push(`/pacientes/${row.original.id}`)}
+                  onClick={() => router.push(caminhoDoPaciente(row.original.id))}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell

@@ -9,6 +9,7 @@ export { EmitirReceitaModal } from "./EmitirReceitaModal";
 export { EvolucaoTimeline } from "./EvolucaoTimeline";
 export { OrcamentosLista } from "./OrcamentosLista";
 export { ProntuarioTab } from "./ProntuarioTab";
+export { ProntuariosPageClient } from "./ProntuariosPageClient";
 export { ReceitasLista } from "./ReceitasLista";
 export { RegistrarEvolucaoModal } from "./RegistrarEvolucaoModal";
 export { RetificarEvolucaoModal } from "./RetificarEvolucaoModal";

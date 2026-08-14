@@ -58,7 +58,6 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/prontuarios",
         label: "Prontuários",
         icon: ClipboardPlus,
-        emConstrucao: true,
       },
     ],
   },

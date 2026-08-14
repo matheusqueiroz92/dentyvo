@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { ProntuarioTab } from "@/components/prontuario";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Papel } from "@/core/auth/domain/Papel";
+import { abaDetalhePacienteDaQuery } from "@/lib/pacientes/aba";
 import { formatarCpfCompleto } from "@/lib/pacientes/cpf";
 import {
   formatarDataNascimento,
@@ -25,9 +27,12 @@ export function PacienteDetalheClient({
   paciente: pacienteInicial,
   papel,
 }: PacienteDetalheClientProps) {
+  const searchParams = useSearchParams();
   const [paciente, setPaciente] = useState(pacienteInicial);
   const [editarOpen, setEditarOpen] = useState(false);
-  const [aba, setAba] = useState("dados");
+  const [aba, setAba] = useState(() =>
+    abaDetalhePacienteDaQuery(searchParams.get("aba")),
+  );
   const podeAcessarClinico = papel === "admin" || papel === "dentista";
   /** Specs 006/006b: receituário e atestado só para dentista (admin precisa CRO). */
   const podeReceituario = papel === "dentista";
