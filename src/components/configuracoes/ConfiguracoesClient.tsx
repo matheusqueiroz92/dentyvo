@@ -1,6 +1,7 @@
 "use client";
 
 import { AbaAgendamentoOnline } from "@/components/configuracoes/AbaAgendamentoOnline";
+import { AssinaturaConfigTab } from "@/components/configuracoes/AssinaturaConfigTab";
 import { GeralConfigTab } from "@/components/configuracoes/GeralConfigTab";
 import { NotificacoesConfigTab } from "@/components/configuracoes/NotificacoesConfigTab";
 import {
@@ -22,7 +23,8 @@ export function ConfiguracoesClient({ papel }: Props) {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
         <p className="text-sm text-muted-foreground">
-          Preferências da clínica, notificações e canais de agendamento.
+          Preferências da clínica, assinatura, notificações e canais de
+          agendamento.
         </p>
       </div>
 
@@ -31,6 +33,11 @@ export function ConfiguracoesClient({ papel }: Props) {
           {isAdmin ? (
             <TabsTrigger value="geral" className="min-h-11 px-3">
               Geral
+            </TabsTrigger>
+          ) : null}
+          {isAdmin ? (
+            <TabsTrigger value="assinatura" className="min-h-11 px-3">
+              Assinatura
             </TabsTrigger>
           ) : null}
           {isAdmin ? (
@@ -49,6 +56,12 @@ export function ConfiguracoesClient({ papel }: Props) {
         {isAdmin ? (
           <TabsContent value="geral" className="pt-4">
             <GeralConfigTab />
+          </TabsContent>
+        ) : null}
+
+        {isAdmin ? (
+          <TabsContent value="assinatura" className="pt-4">
+            <AssinaturaConfigTab />
           </TabsContent>
         ) : null}
 

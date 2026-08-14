@@ -13,6 +13,10 @@ vi.mock("./GeralConfigTab", () => ({
   GeralConfigTab: () => <div>aba-geral</div>,
 }));
 
+vi.mock("./AssinaturaConfigTab", () => ({
+  AssinaturaConfigTab: () => <div>aba-assinatura</div>,
+}));
+
 import { ConfiguracoesClient } from "./ConfiguracoesClient";
 
 describe("ConfiguracoesClient — abas e RBAC", () => {
@@ -47,5 +51,20 @@ describe("ConfiguracoesClient — abas e RBAC", () => {
 
     rerender(<ConfiguracoesClient papel="admin" />);
     expect(screen.getByRole("tab", { name: "Geral" })).toBeInTheDocument();
+  });
+
+  it("restringe a aba Assinatura a admin", () => {
+    const { rerender } = render(<ConfiguracoesClient papel="recepcao" />);
+    expect(
+      screen.queryByRole("tab", { name: "Assinatura" }),
+    ).not.toBeInTheDocument();
+
+    rerender(<ConfiguracoesClient papel="dentista" />);
+    expect(
+      screen.queryByRole("tab", { name: "Assinatura" }),
+    ).not.toBeInTheDocument();
+
+    rerender(<ConfiguracoesClient papel="admin" />);
+    expect(screen.getByRole("tab", { name: "Assinatura" })).toBeInTheDocument();
   });
 });
