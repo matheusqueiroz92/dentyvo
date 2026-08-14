@@ -1,6 +1,7 @@
 "use client";
 
 import { AbaAgendamentoOnline } from "@/components/configuracoes/AbaAgendamentoOnline";
+import { GeralConfigTab } from "@/components/configuracoes/GeralConfigTab";
 import { NotificacoesConfigTab } from "@/components/configuracoes/NotificacoesConfigTab";
 import {
   Tabs,
@@ -25,8 +26,13 @@ export function ConfiguracoesClient({ papel }: Props) {
         </p>
       </div>
 
-      <Tabs defaultValue={isAdmin ? "agendamento-online" : "notificacoes"}>
+      <Tabs defaultValue={isAdmin ? "geral" : "notificacoes"}>
         <TabsList variant="line" className="h-auto w-full justify-start gap-1">
+          {isAdmin ? (
+            <TabsTrigger value="geral" className="min-h-11 px-3">
+              Geral
+            </TabsTrigger>
+          ) : null}
           {isAdmin ? (
             <TabsTrigger
               value="agendamento-online"
@@ -38,10 +44,13 @@ export function ConfiguracoesClient({ papel }: Props) {
           <TabsTrigger value="notificacoes" className="min-h-11 px-3">
             Notificações
           </TabsTrigger>
-          <TabsTrigger value="geral" className="min-h-11 px-3">
-            Geral
-          </TabsTrigger>
         </TabsList>
+
+        {isAdmin ? (
+          <TabsContent value="geral" className="pt-4">
+            <GeralConfigTab />
+          </TabsContent>
+        ) : null}
 
         {isAdmin ? (
           <TabsContent value="agendamento-online" className="pt-4">
@@ -51,12 +60,6 @@ export function ConfiguracoesClient({ papel }: Props) {
 
         <TabsContent value="notificacoes" className="pt-4">
           <NotificacoesConfigTab />
-        </TabsContent>
-
-        <TabsContent value="geral" className="pt-4">
-          <p className="text-sm text-muted-foreground">
-            Demais configurações da clínica estarão disponíveis em breve.
-          </p>
         </TabsContent>
       </Tabs>
     </div>

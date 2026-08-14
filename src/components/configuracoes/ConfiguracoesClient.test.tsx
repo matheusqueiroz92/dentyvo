@@ -9,9 +9,13 @@ vi.mock("./NotificacoesConfigTab", () => ({
   NotificacoesConfigTab: () => <div>aba-notificacoes</div>,
 }));
 
+vi.mock("./GeralConfigTab", () => ({
+  GeralConfigTab: () => <div>aba-geral</div>,
+}));
+
 import { ConfiguracoesClient } from "./ConfiguracoesClient";
 
-describe("ConfiguracoesClient — aba Notificações", () => {
+describe("ConfiguracoesClient — abas e RBAC", () => {
   it.each(["admin", "recepcao", "dentista"] as const)(
     "exibe a aba Notificações para papel %s (sem restrição extra de RBAC)",
     (papel) => {
@@ -32,5 +36,16 @@ describe("ConfiguracoesClient — aba Notificações", () => {
     expect(
       screen.getByRole("tab", { name: "Agendamento Online" }),
     ).toBeInTheDocument();
+  });
+
+  it("restringe a aba Geral a admin", () => {
+    const { rerender } = render(<ConfiguracoesClient papel="recepcao" />);
+    expect(screen.queryByRole("tab", { name: "Geral" })).not.toBeInTheDocument();
+
+    rerender(<ConfiguracoesClient papel="dentista" />);
+    expect(screen.queryByRole("tab", { name: "Geral" })).not.toBeInTheDocument();
+
+    rerender(<ConfiguracoesClient papel="admin" />);
+    expect(screen.getByRole("tab", { name: "Geral" })).toBeInTheDocument();
   });
 });
