@@ -25,6 +25,7 @@ import {
 import {
   emitirAtestadoFormSchema,
   valoresIniciaisAtestado,
+  type EmitirAtestadoFormInput,
   type EmitirAtestadoFormValues,
 } from "@/lib/atestado/schema";
 
@@ -41,7 +42,11 @@ export function EmitirAtestadoModal({
   salvando,
   onSalvar,
 }: EmitirAtestadoModalProps) {
-  const form = useForm<EmitirAtestadoFormValues>({
+  const form = useForm<
+    EmitirAtestadoFormInput,
+    unknown,
+    EmitirAtestadoFormValues
+  >({
     resolver: zodResolver(emitirAtestadoFormSchema),
     defaultValues: valoresIniciaisAtestado(hojeIsoLocal()),
   });

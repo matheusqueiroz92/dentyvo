@@ -25,7 +25,8 @@ export const emitirAtestadoFormSchema = z.object({
     .min(1, "Informe ao menos 1 dia de afastamento."),
 });
 
-export type EmitirAtestadoFormValues = z.infer<typeof emitirAtestadoFormSchema>;
+export type EmitirAtestadoFormInput = z.input<typeof emitirAtestadoFormSchema>;
+export type EmitirAtestadoFormValues = z.output<typeof emitirAtestadoFormSchema>;
 
 export function valoresIniciaisAtestado(
   dataInicio = "",
