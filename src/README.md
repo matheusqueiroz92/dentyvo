@@ -1,10 +1,8 @@
 # src/
 
-Código-fonte seguindo:
-
-- `specs/01-architecture.md` (estrutura de pastas obrigatória)
-- `.cursor/rules/*.mdc` (regras aplicadas automaticamente)
-- `skills/hexagonal-architecture/SKILL.md` (padrão de implementação de módulo)
+Código-fonte. Visão geral do repo: [`README.md`](../README.md).
+Mapa de camadas e módulos: [`docs/README.md`](../docs/README.md).
+Regras estruturais: [`specs/01-architecture.md`](../specs/01-architecture.md).
 
 ```
 src/
@@ -13,7 +11,7 @@ src/
 ├── components/   # ui/ (shadcn) e domain/ (clínicos)
 ├── core/         # módulos hexagonais (domain / application / infra)
 ├── db/           # Drizzle schema + migrations
-└── lib/          # auth, tokens, utilitários
+└── lib/          # auth, Swagger, utilitários
 ```
 
-Não implemente features de negócio sem spec aprovada em `specs/features/`.
+Não implemente feature de negócio sem spec aprovada em `specs/features/`.
