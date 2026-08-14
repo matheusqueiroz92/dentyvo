@@ -59,6 +59,16 @@ export class DrizzleConviteRepository implements ConviteRepositoryPort {
     });
     return row ? toDomain(row) : null;
   }
+
+  async listarPendentesPorClinica(clinicaId: string): Promise<Convite[]> {
+    const rows = await this.db.query.convite.findMany({
+      where: and(
+        eq(conviteTable.clinicaId, clinicaId),
+        isNull(conviteTable.aceitoEm),
+      ),
+    });
+    return rows.map(toDomain);
+  }
 }
 
 function toDomain(row: {

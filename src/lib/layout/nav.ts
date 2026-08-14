@@ -5,6 +5,7 @@ import {
   ClipboardPlus,
   LayoutDashboard,
   Settings,
+  Users,
   UsersRound,
 } from "lucide-react";
 
@@ -49,6 +50,11 @@ export const NAV_GROUPS: NavGroup[] = [
         label: "Pacientes",
         icon: UsersRound,
       },
+      {
+        href: "/profissionais",
+        label: "Profissionais",
+        icon: Users,
+      },
     ],
   },
   {
@@ -83,6 +89,7 @@ const TITULOS: Record<string, string> = {
   "/dashboard": "Visão geral",
   "/agenda": "Agenda",
   "/pacientes": "Pacientes",
+  "/profissionais": "Profissionais",
   "/prontuarios": "Prontuários",
   "/configuracoes": "Configurações",
   "/ajuda": "Ajuda e suporte",

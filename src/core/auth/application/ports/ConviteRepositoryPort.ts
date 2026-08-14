@@ -7,4 +7,6 @@ export interface ConviteRepositoryPort {
     clinicaId: string,
     email: string,
   ): Promise<Convite | null>;
+  /** Convites ainda não aceitos da clínica (pendentes ou expirados). */
+  listarPendentesPorClinica(clinicaId: string): Promise<Convite[]>;
 }

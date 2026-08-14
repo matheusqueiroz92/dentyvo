@@ -160,6 +160,12 @@ export class FakeConviteRepository implements ConviteRepositoryPort {
       ) ?? null
     );
   }
+
+  async listarPendentesPorClinica(clinicaId: string): Promise<Convite[]> {
+    return [...this.items.values()].filter(
+      (c) => c.clinicaId === clinicaId && c.estaPendente(),
+    );
+  }
 }
 
 type SessaoFake = {

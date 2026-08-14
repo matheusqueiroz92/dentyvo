@@ -13,11 +13,22 @@ describe("NAV_GROUPS", () => {
       "Ajuda e suporte",
     );
   });
+
+  it("inclui Profissionais no grupo principal", () => {
+    const principal = NAV_GROUPS.find((grupo) => grupo.id === "principal");
+    expect(principal?.items.map((item) => item.href)).toEqual([
+      "/dashboard",
+      "/agenda",
+      "/pacientes",
+      "/profissionais",
+    ]);
+  });
 });
 
 describe("tituloDaRota", () => {
   it("usa o título da página de ajuda", () => {
     expect(tituloDaRota("/ajuda")).toBe("Ajuda e suporte");
+    expect(tituloDaRota("/profissionais")).toBe("Profissionais");
   });
 });
 
