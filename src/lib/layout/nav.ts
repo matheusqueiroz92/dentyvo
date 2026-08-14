@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   CalendarDays,
+  CircleHelp,
   ClipboardPlus,
   LayoutDashboard,
   Settings,
@@ -69,6 +70,11 @@ export const NAV_GROUPS: NavGroup[] = [
         label: "Configurações",
         icon: Settings,
       },
+      {
+        href: "/ajuda",
+        label: "Ajuda e suporte",
+        icon: CircleHelp,
+      },
     ],
   },
 ];
@@ -79,6 +85,7 @@ const TITULOS: Record<string, string> = {
   "/pacientes": "Pacientes",
   "/prontuarios": "Prontuários",
   "/configuracoes": "Configurações",
+  "/ajuda": "Ajuda e suporte",
 };
 
 export function tituloDaRota(pathname: string): string {

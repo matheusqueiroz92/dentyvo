@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { CONTATO_EMAIL } from "@/lib/contato/canais";
+
 export function Footer() {
   const ano = new Intl.DateTimeFormat("pt-BR", { year: "numeric" }).format(
     new Date(),
@@ -60,10 +62,10 @@ export function Footer() {
           <ul className="mt-3 space-y-2 text-sm text-primary-foreground/80">
             <li>
               <a
-                href="mailto:contato@dentyvo.com.br"
+                href={`mailto:${CONTATO_EMAIL}`}
                 className="hover:text-primary-foreground"
               >
-                contato@dentyvo.com.br
+                {CONTATO_EMAIL}
               </a>
             </li>
             <li>Brasil</li>

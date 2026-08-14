@@ -1,45 +1,13 @@
-"use client";
-
-import { Mail, MessageCircle } from "lucide-react";
-import type { FormEvent } from "react";
-
+import { CanaisSuporte } from "@/components/contato/CanaisSuporte";
+import { ContatoForm } from "@/components/contato/ContatoForm";
 import { SectionReveal } from "@/components/marketing/SectionReveal";
-import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
-import { cn } from "@/lib/cn";
-
-const CONTATO_EMAIL = "contato@dentyvo.com.br";
-
-/** Número comercial a confirmar antes do lançamento. */
-const WHATSAPP_COMERCIAL = {
-  url: "https://wa.me/5511999999999",
-  label: "WhatsApp comercial",
-} as const;
-
-const fieldClassName = cn(
-  "h-11 w-full rounded-[var(--radius-md)] border border-input bg-card px-3",
-  "text-sm text-foreground shadow-[var(--shadow-sm)]",
-  "placeholder:text-muted-foreground",
-  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-  "disabled:cursor-not-allowed disabled:opacity-50",
-);
-
-const labelClassName =
-  "text-[13px] font-medium leading-[18px] text-foreground";
 
 /**
  * Contato da landing — antes do rodapé.
- *
- * TODO(contato-backend): conectar o envio real quando existir backend/spec
- * de formulário de contato (ainda não modelado em specs/features).
- * Por enquanto o formulário é apenas visual e o submit não envia dados.
+ * O envio reaproveita `ContatoForm` (mailto comercial), o mesmo da área logada.
  */
 export function ContactSection() {
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    // TODO(contato-backend): chamar server action / use case de contato.
-  }
-
   return (
     <SectionReveal
       id="contato"
@@ -65,48 +33,7 @@ export function ContactSection() {
               mensagem ou fale direto pelos canais abaixo.
             </p>
 
-            <ul className="mt-8 space-y-4">
-              <li>
-                <a
-                  href={`mailto:${CONTATO_EMAIL}`}
-                  className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-card px-4 py-3 text-sm text-foreground shadow-(--shadow-sm) hover:border-primary/30"
-                >
-                  <span className="brand-gradient flex size-9 shrink-0 items-center justify-center rounded-md text-primary-foreground">
-                    <Mail className="size-4.5" aria-hidden strokeWidth={1.75} />
-                  </span>
-                  <span>
-                    <span className="block text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-                      E-mail
-                    </span>
-                    <span className="font-medium">{CONTATO_EMAIL}</span>
-                  </span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href={WHATSAPP_COMERCIAL.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex min-h-11 items-center gap-3 rounded-md border border-border bg-card px-4 py-3 text-sm text-foreground shadow-(--shadow-sm) hover:border-primary/30"
-                >
-                  <span className="brand-gradient flex size-9 shrink-0 items-center justify-center rounded-md text-primary-foreground">
-                    <MessageCircle
-                      className="size-4.5"
-                      aria-hidden
-                      strokeWidth={1.75}
-                    />
-                  </span>
-                  <span>
-                    <span className="block text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
-                      WhatsApp
-                    </span>
-                    <span className="font-medium">
-                      {WHATSAPP_COMERCIAL.label}
-                    </span>
-                  </span>
-                </a>
-              </li>
-            </ul>
+            <CanaisSuporte className="mt-8" />
 
             <div className="mt-6">
               <ButtonLink
@@ -128,63 +55,9 @@ export function ContactSection() {
               Contato geral ou comercial. Responderemos pelo e-mail informado.
             </p>
 
-            <form
-              className="mt-6 space-y-5"
-              onSubmit={handleSubmit}
-              noValidate
-            >
-              <div className="space-y-1.5">
-                <label htmlFor="contato-nome" className={labelClassName}>
-                  Nome
-                </label>
-                <input
-                  id="contato-nome"
-                  name="nome"
-                  type="text"
-                  autoComplete="name"
-                  placeholder="Seu nome"
-                  className={fieldClassName}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="contato-email" className={labelClassName}>
-                  E-mail
-                </label>
-                <input
-                  id="contato-email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  inputMode="email"
-                  placeholder="voce@clinica.com.br"
-                  className={fieldClassName}
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="contato-mensagem" className={labelClassName}>
-                  Mensagem
-                </label>
-                <textarea
-                  id="contato-mensagem"
-                  name="mensagem"
-                  rows={5}
-                  placeholder="Como podemos ajudar?"
-                  className={cn(
-                    fieldClassName,
-                    "h-auto min-h-30 resize-y py-2.5",
-                  )}
-                />
-              </div>
-
-              <Button type="submit" variant="primary" size="lg" className="min-h-11 w-full sm:w-auto">
-                Enviar mensagem
-              </Button>
-              <p className="text-xs leading-4.5 text-muted-foreground">
-                O envio ainda não está conectado ao servidor — em breve.
-              </p>
-            </form>
+            <div className="mt-6">
+              <ContatoForm variante="landing" />
+            </div>
           </div>
         </div>
       </div>

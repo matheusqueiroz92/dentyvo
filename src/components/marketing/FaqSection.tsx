@@ -1,43 +1,6 @@
+import { FaqAccordion } from "@/components/contato/FaqAccordion";
 import { SectionReveal } from "@/components/marketing/SectionReveal";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-
-const faqs = [
-  {
-    pergunta: "Preciso instalar algum programa?",
-    resposta:
-      "Não, a Dentyvo funciona inteiramente pelo navegador, sem instalação.",
-  },
-  {
-    pergunta: "Como funciona o período de teste?",
-    resposta:
-      "14 dias gratuitos, sem necessidade de cartão de crédito para começar.",
-  },
-  {
-    pergunta: "A secretária virtual do WhatsApp substitui minha recepcionista?",
-    resposta:
-      "Não, ela trabalha junto com sua equipe, atendendo automaticamente fora do horário ou quando não há ninguém disponível.",
-  },
-  {
-    pergunta: "Meus dados e os dos meus pacientes estão seguros?",
-    resposta:
-      "Sim, seguimos princípios de proteção de dados de saúde (LGPD), com controle de acesso e auditoria completos.",
-  },
-  {
-    pergunta: "Posso mudar de plano depois?",
-    resposta:
-      "Sim, você pode fazer upgrade ou downgrade a qualquer momento pelo painel.",
-  },
-  {
-    pergunta: "Como funciona a promoção de lançamento?",
-    resposta:
-      "As 30 primeiras clínicas garantem desconto nos planos Básico e Médio pelos primeiros 12 meses.",
-  },
-] as const;
+import { FAQS_LANDING } from "@/lib/ajuda/faq";
 
 export function FaqSection() {
   return (
@@ -61,18 +24,7 @@ export function FaqSection() {
           </h2>
         </div>
 
-        <Accordion
-          type="single"
-          collapsible
-          className="mt-10 rounded-lg border border-border bg-background px-4 shadow-(--shadow-sm) sm:px-5"
-        >
-          {faqs.map((item, index) => (
-            <AccordionItem key={item.pergunta} value={`faq-${index}`}>
-              <AccordionTrigger>{item.pergunta}</AccordionTrigger>
-              <AccordionContent>{item.resposta}</AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        <FaqAccordion items={FAQS_LANDING} className="mt-10" />
       </div>
     </SectionReveal>
   );
