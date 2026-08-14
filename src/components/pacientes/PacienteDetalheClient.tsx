@@ -44,7 +44,10 @@ export function PacienteDetalheClient({
     <main className="flex flex-col gap-6">
       <PacienteDetalheHeader paciente={paciente} />
 
-      <Tabs value={aba} onValueChange={setAba}>
+      <Tabs
+        value={aba}
+        onValueChange={(valor) => setAba(abaDetalhePacienteDaQuery(valor))}
+      >
         <TabsList variant="line">
           <TabsTrigger value="dados" className="min-h-11 px-3 sm:min-h-8">
             Dados gerais
