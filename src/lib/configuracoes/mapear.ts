@@ -8,6 +8,7 @@ export function clinicaParaDtoGeral(clinica: Clinica): ClinicaGeralDTO {
     nome: clinica.nome,
     endereco: clinica.endereco,
     status: clinica.status,
+    tema: clinica.tema,
     documento: {
       tipo: clinica.documento.tipo,
       valor: clinica.documento.valor,

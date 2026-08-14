@@ -4,14 +4,17 @@ import { z } from "zod";
 
 import {
   AtualizarClinica,
+  AtualizarTemaClinica,
   ObterContextoSessao,
 } from "@/core/auth/application/use-cases";
+import { TEMAS_CLINICA, type TemaClinica } from "@/core/auth/domain/TemaClinica";
 import { ClinicaNaoEncontradaError } from "@/core/auth/domain/errors";
 import { createAuthModule } from "@/core/auth/infra/create-auth-module";
 import { clinicaParaDtoGeral } from "@/lib/configuracoes/mapear";
 import { MENSAGEM_PELO_MENOS_UM_CAMPO } from "@/lib/configuracoes/schema";
 import type { ClinicaGeralDTO } from "@/lib/configuracoes/types";
 import { actionClient } from "@/lib/safe-action";
+import { temaClinicaOuPadrao } from "@/lib/tema-clinica";
 
 async function exigirSessao() {
   const auth = createAuthModule();
@@ -63,4 +66,24 @@ export const atualizarClinicaAction = actionClient
         : {}),
     });
     return clinicaParaDtoGeral(clinica);
+  });
+
+const atualizarTemaClinicaSchema = z.object({
+  tema: z.enum(TEMAS_CLINICA),
+});
+
+export const atualizarTemaClinicaAction = actionClient
+  .inputSchema(atualizarTemaClinicaSchema)
+  .action(async ({ parsedInput }): Promise<{ tema: TemaClinica }> => {
+    const { auth, ctx } = await exigirSessao();
+    const uc = new AtualizarTemaClinica(
+      auth.clinicaRepo,
+      auth.profissionalRepo,
+    );
+    const clinica = await uc.executar({
+      clinicaId: ctx.clinicaId,
+      solicitadoPorUsuarioId: ctx.usuarioId,
+      tema: parsedInput.tema,
+    });
+    return { tema: temaClinicaOuPadrao(clinica.tema) };
   });

@@ -7,11 +7,14 @@ const consultar = vi.fn();
 vi.mock("@/actions/configuracoes-clinica", () => ({
   consultarClinicaAction: () => consultar(),
   atualizarClinicaAction: vi.fn(),
+  atualizarTemaClinicaAction: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }));
+
+import { TemaClinicaProvider } from "@/components/layout/tema-clinica-context";
 
 import { GeralConfigTab } from "./GeralConfigTab";
 
@@ -20,8 +23,17 @@ const clinica = {
   nome: "Clínica Um",
   endereco: "Rua A, 1",
   status: "ativa" as const,
+  tema: "azul-padrao" as const,
   documento: { tipo: "cnpj" as const, valor: "11222333000181" },
 };
+
+function renderGeral() {
+  return render(
+    <TemaClinicaProvider temaInicial="azul-padrao">
+      <GeralConfigTab />
+    </TemaClinicaProvider>,
+  );
+}
 
 describe("GeralConfigTab", () => {
   beforeEach(() => {
@@ -33,7 +45,7 @@ describe("GeralConfigTab", () => {
       data: { papel: "admin", clinica },
     });
 
-    render(<GeralConfigTab />);
+    renderGeral();
 
     expect(
       await screen.findByText("Clínica Um"),
@@ -58,7 +70,7 @@ describe("GeralConfigTab", () => {
       },
     });
 
-    render(<GeralConfigTab />);
+    renderGeral();
 
     expect(await screen.findByText("390.533.447-05")).toBeInTheDocument();
     expect(screen.getByText("CPF")).toBeInTheDocument();
@@ -70,7 +82,7 @@ describe("GeralConfigTab", () => {
     });
     const user = userEvent.setup();
 
-    render(<GeralConfigTab />);
+    renderGeral();
     await screen.findByText("Clínica Um");
     await user.click(screen.getByRole("button", { name: "Editar" }));
 
@@ -85,7 +97,7 @@ describe("GeralConfigTab", () => {
       data: { papel: "dentista", clinica },
     });
 
-    render(<GeralConfigTab />);
+    renderGeral();
 
     expect(
       await screen.findByText(
@@ -93,6 +105,35 @@ describe("GeralConfigTab", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Tema visual" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("exibe o seletor de tema para admin, com o tema atual destacado", async () => {
+    consultar.mockResolvedValue({
+      data: {
+        papel: "admin",
+        clinica: { ...clinica, tema: "verde" },
+      },
+    });
+
+    render(
+      <TemaClinicaProvider temaInicial="verde">
+        <GeralConfigTab />
+      </TemaClinicaProvider>,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Tema visual" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Verde/i })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(
+      screen.queryByRole("dialog"),
+    ).not.toBeInTheDocument();
   });
 
   it("exibe erro quando a consulta falha", async () => {
@@ -100,7 +141,7 @@ describe("GeralConfigTab", () => {
       serverError: { mensagem: "Sessão expirada. Faça login novamente." },
     });
 
-    render(<GeralConfigTab />);
+    renderGeral();
 
     await waitFor(() => {
       expect(

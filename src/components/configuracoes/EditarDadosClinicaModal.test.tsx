@@ -20,6 +20,7 @@ const clinica: ClinicaGeralDTO = {
   nome: "Clínica Um",
   endereco: "Rua A, 1",
   status: "ativa",
+  tema: "azul-padrao",
   documento: { tipo: "cnpj", valor: "11222333000181" },
 };
 

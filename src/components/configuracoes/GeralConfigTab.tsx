@@ -4,9 +4,11 @@ import { useEffect, useState, useTransition } from "react";
 
 import { consultarClinicaAction } from "@/actions/configuracoes-clinica";
 import { EditarDadosClinicaModal } from "@/components/configuracoes/EditarDadosClinicaModal";
+import { SeletorTemaClinica } from "@/components/configuracoes/SeletorTemaClinica";
 import { StatusClinicaBadge } from "@/components/configuracoes/StatusClinicaBadge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   formatarDocumentoFiscal,
@@ -120,6 +122,10 @@ export function GeralConfigTab() {
           </dd>
         </div>
       </dl>
+
+      <Separator />
+
+      <SeletorTemaClinica temaInicial={clinica.tema} />
 
       <EditarDadosClinicaModal
         open={editarAberto}

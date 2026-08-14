@@ -12,6 +12,10 @@ import { useSidebarRecolhida } from "@/hooks/use-sidebar-recolhida";
 import type { ContextoAppLayout } from "@/lib/layout/types";
 
 import { Sidebar } from "./Sidebar";
+import {
+  TemaClinicaProvider,
+  useTemaClinica,
+} from "./tema-clinica-context";
 import { Topbar } from "./Topbar";
 
 type AppShellProps = {
@@ -20,12 +24,21 @@ type AppShellProps = {
 };
 
 export function AppShell({ contexto, children }: AppShellProps) {
+  return (
+    <TemaClinicaProvider temaInicial={contexto.clinicaTema}>
+      <AppShellChrome contexto={contexto}>{children}</AppShellChrome>
+    </TemaClinicaProvider>
+  );
+}
+
+function AppShellChrome({ contexto, children }: AppShellProps) {
   const { recolhida, toggleRecolhida } = useSidebarRecolhida();
   const [mobileAberto, setMobileAberto] = useState(false);
+  const { tema } = useTemaClinica();
 
   return (
     <div
-      data-tema-clinica={contexto.clinicaTema}
+      data-tema-clinica={tema}
       className="flex min-h-full bg-background text-foreground"
     >
       {/* Tablet+ : sidebar fixa recolhível; mobile (<640): drawer */}
