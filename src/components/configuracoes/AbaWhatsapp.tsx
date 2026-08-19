@@ -16,6 +16,7 @@ import {
   iniciarConexaoWhatsappAction,
   obterStatusWhatsappAction,
 } from "@/actions/whatsapp";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,6 +83,7 @@ export function AbaWhatsapp() {
   const [status, setStatus] = useState<StatusWhatsappDTO | null>(null);
   const [papel, setPapel] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [erroConexao, setErroConexao] = useState<string | null>(null);
   const [conectando, setConectando] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -106,13 +108,16 @@ export function AbaWhatsapp() {
 
   async function conectar() {
     setConectando(true);
+    setErroConexao(null);
     try {
       const inicio = await iniciarConexaoWhatsappAction();
       if (inicio.serverError) {
+        setErroConexao(inicio.serverError.mensagem);
         toast.error(inicio.serverError.mensagem);
         return;
       }
       if (!inicio.data) {
+        setErroConexao("Não foi possível iniciar a conexão.");
         toast.error("Não foi possível iniciar a conexão.");
         return;
       }
@@ -121,6 +126,7 @@ export function AbaWhatsapp() {
 
       const conclusao = await concluirConexaoWhatsappAction({ codigoOAuth });
       if (conclusao.serverError) {
+        setErroConexao(conclusao.serverError.mensagem);
         toast.error(conclusao.serverError.mensagem);
         return;
       }
@@ -129,15 +135,16 @@ export function AbaWhatsapp() {
       if (conclusao.data) {
         setStatus(conclusao.data);
       }
-    } catch (erroConexao) {
-      if (erroConexao instanceof EmbeddedSignupCanceladoError) {
+    } catch (erroConexaoCapturado) {
+      if (erroConexaoCapturado instanceof EmbeddedSignupCanceladoError) {
         toast.info("Conexão cancelada. Nenhuma alteração foi feita.");
       } else {
-        toast.error(
-          erroConexao instanceof Error
-            ? erroConexao.message
-            : "Falha inesperada ao conectar.",
-        );
+        const mensagem =
+          erroConexaoCapturado instanceof Error
+            ? erroConexaoCapturado.message
+            : "Falha inesperada ao conectar.";
+        setErroConexao(mensagem);
+        toast.error(mensagem);
       }
     } finally {
       setConectando(false);
@@ -243,6 +250,14 @@ export function AbaWhatsapp() {
             </dl>
           ) : null}
         </div>
+
+        {erroConexao ? (
+          <Alert variant="destructive">
+            <AlertTriangle className="size-4" aria-hidden />
+            <AlertTitle>Não foi possível conectar o WhatsApp</AlertTitle>
+            <AlertDescription>{erroConexao}</AlertDescription>
+          </Alert>
+        ) : null}
 
         <div className="flex flex-wrap gap-2">
           <Button

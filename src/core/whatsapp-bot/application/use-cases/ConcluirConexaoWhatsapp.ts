@@ -4,7 +4,10 @@ import type { ProfissionalRepositoryPort } from "@/core/auth/application/ports/P
 import { DadosInvalidosError } from "@/core/shared/errors";
 
 import { ClinicWhatsappAccount } from "../../domain/ClinicWhatsappAccount";
-import { CodigoOAuthInvalidoError } from "../../domain/errors";
+import {
+  CodigoOAuthInvalidoError,
+  MultiplosNumerosNoWabaNaoSuportadoError,
+} from "../../domain/errors";
 import type { ClinicWhatsappAccountRepositoryPort } from "../ports/ClinicWhatsappAccountRepositoryPort";
 import type { CriptografiaPort } from "../ports/CriptografiaPort";
 import type { MetaGraphApiPort } from "../ports/MetaGraphApiPort";
@@ -17,13 +20,17 @@ export type ConcluirConexaoWhatsappInput = {
 };
 
 /**
- * Troca o código OAuth por token de longa duração, persiste a conta
- * `conectado` (token criptografado) e inscreve o webhook (spec 008).
+ * Troca o código OAuth por token de longa duração, inscreve o webhook e só
+ * então persiste a conta `conectado` (token criptografado) — spec 008.
  *
  * Assinatura: `ConcluirConexaoWhatsapp(clinicaId, codigoOAuth) → ClinicWhatsappAccount`
  *
  * Código inválido: não deixa a conta em `conectado`; se já existir registro,
  * permanece/volta a `pendente` e lança `CodigoOAuthInvalidoError`.
+ * WABA com vários números: lança `MultiplosNumerosNoWabaNaoSuportadoError`
+ * sem alterar uma conexão anterior.
+ * Falha em `inscreverWebhook`: não persiste `conectado`; reconexão mantém o
+ * estado anterior.
  */
 export class ConcluirConexaoWhatsapp {
   constructor(
@@ -61,6 +68,9 @@ export class ConcluirConexaoWhatsapp {
     try {
       troca = await this.metaGraph.trocarCodigoPorToken(codigoOAuth);
     } catch (erro) {
+      if (erro instanceof MultiplosNumerosNoWabaNaoSuportadoError) {
+        throw erro;
+      }
       const pendente = existente.marcarPendente();
       await this.contaRepo.salvar(pendente);
       if (erro instanceof CodigoOAuthInvalidoError) {

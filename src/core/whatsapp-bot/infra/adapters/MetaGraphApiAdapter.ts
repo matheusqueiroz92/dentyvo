@@ -1,4 +1,7 @@
-import { CodigoOAuthInvalidoError } from "../../domain/errors";
+import {
+  CodigoOAuthInvalidoError,
+  MultiplosNumerosNoWabaNaoSuportadoError,
+} from "../../domain/errors";
 import type {
   MetaGraphApiPort,
   ResultadoRenovacaoTokenMeta,
@@ -206,7 +209,14 @@ export class MetaGraphApiAdapter implements MetaGraphApiPort {
           `Falha ao listar phone numbers do WABA ${wabaId}.`,
       );
     }
-    const phoneNumberId = json.data?.[0]?.id;
+    const numeros = (json.data ?? []).filter(
+      (item): item is { id: string } =>
+        typeof item.id === "string" && item.id.trim().length > 0,
+    );
+    if (numeros.length > 1) {
+      throw new MultiplosNumerosNoWabaNaoSuportadoError(wabaId, numeros.length);
+    }
+    const phoneNumberId = numeros[0]?.id;
     if (!phoneNumberId) {
       throw new Error(`WABA ${wabaId} não possui phone_number_id.`);
     }

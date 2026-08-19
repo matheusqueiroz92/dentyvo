@@ -41,3 +41,17 @@ export class TokenWhatsappInvalidoError extends Error {
     this.name = this.nome;
   }
 }
+
+export class MultiplosNumerosNoWabaNaoSuportadoError extends Error {
+  readonly nome = "MultiplosNumerosNoWabaNaoSuportadoError" as const;
+
+  constructor(
+    readonly wabaId: string,
+    readonly quantidade: number,
+  ) {
+    super(
+      "A conta WhatsApp Business conectada tem mais de um número. A clínica precisa deixar apenas um número associado a essa conta no Meta Business Manager e tentar conectar de novo.",
+    );
+    this.name = this.nome;
+  }
+}
