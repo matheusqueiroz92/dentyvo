@@ -21,6 +21,10 @@ vi.mock("./ContaConfigTab", () => ({
   ContaConfigTab: () => <div>aba-conta</div>,
 }));
 
+vi.mock("./AbaWhatsapp", () => ({
+  AbaWhatsapp: () => <div>aba-whatsapp</div>,
+}));
+
 import { ConfiguracoesClient } from "./ConfiguracoesClient";
 
 function renderConfig(papel: string, abaInicial?: string) {
@@ -87,6 +91,40 @@ describe("ConfiguracoesClient — abas e RBAC", () => {
       <ConfiguracoesClient papel="admin" nomeInicial="Ana" />,
     );
     expect(screen.getByRole("tab", { name: "Geral" })).toBeInTheDocument();
+  });
+
+  it("restringe a aba WhatsApp a admin", () => {
+    const { rerender } = renderConfig("recepcao");
+    expect(
+      screen.queryByRole("tab", { name: "WhatsApp" }),
+    ).not.toBeInTheDocument();
+
+    rerender(<ConfiguracoesClient papel="dentista" nomeInicial="Ana" />);
+    expect(
+      screen.queryByRole("tab", { name: "WhatsApp" }),
+    ).not.toBeInTheDocument();
+
+    rerender(<ConfiguracoesClient papel="admin" nomeInicial="Ana" />);
+    expect(screen.getByRole("tab", { name: "WhatsApp" })).toBeInTheDocument();
+  });
+
+  it("abre a aba WhatsApp quando abaInicial é whatsapp", () => {
+    renderConfig("admin", "whatsapp");
+    expect(screen.getByRole("tab", { name: "WhatsApp" })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
+  });
+
+  it("ignora abaInicial de aba restrita quando o papel não é admin", () => {
+    renderConfig("recepcao", "whatsapp");
+    expect(
+      screen.queryByRole("tab", { name: "WhatsApp" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Notificações" })).toHaveAttribute(
+      "data-state",
+      "active",
+    );
   });
 
   it("restringe a aba Assinatura a admin", () => {

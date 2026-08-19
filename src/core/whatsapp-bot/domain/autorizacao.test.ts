@@ -14,6 +14,7 @@ const MATRIZ_ESPERADA: Record<AcaoWhatsapp, readonly Papel[]> = {
   iniciar_conexao_whatsapp: ["admin"],
   concluir_conexao_whatsapp: ["admin"],
   desconectar_whatsapp: ["admin"],
+  ver_status_whatsapp: ["admin"],
 };
 
 describe("matriz de autorização do módulo whatsapp-bot (spec 008)", () => {
@@ -39,6 +40,10 @@ describe("matriz de autorização do módulo whatsapp-bot (spec 008)", () => {
       expect(pode("dentista", acao)).toBe(false);
       expect(pode("recepcao", acao)).toBe(false);
     }
+  });
+
+  it("expõe a leitura de status como ação própria da matriz", () => {
+    expect(ACOES_WHATSAPP).toContain("ver_status_whatsapp");
   });
 
   it("renovar token não faz parte da matriz de papéis de clínica (é job)", () => {

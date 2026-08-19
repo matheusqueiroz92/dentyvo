@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { AbaAgendamentoOnline } from "@/components/configuracoes/AbaAgendamentoOnline";
+import { AbaWhatsapp } from "@/components/configuracoes/AbaWhatsapp";
 import { AssinaturaConfigTab } from "@/components/configuracoes/AssinaturaConfigTab";
 import { ContaConfigTab } from "@/components/configuracoes/ContaConfigTab";
 import { GeralConfigTab } from "@/components/configuracoes/GeralConfigTab";
@@ -20,23 +21,39 @@ type Props = {
   abaInicial?: string;
 };
 
+/** Abas exclusivas de admin — deep link é ignorado para os outros papéis. */
+const ABAS_DE_ADMIN = ["geral", "assinatura", "agendamento-online", "whatsapp"];
+const ABAS_ABERTAS = ["conta", "notificacoes"];
+
+function resolverAbaInicial(abaInicial: string | undefined, isAdmin: boolean) {
+  const padrao = isAdmin ? "geral" : "notificacoes";
+  if (!abaInicial) {
+    return padrao;
+  }
+  if (ABAS_ABERTAS.includes(abaInicial)) {
+    return abaInicial;
+  }
+  if (isAdmin && ABAS_DE_ADMIN.includes(abaInicial)) {
+    return abaInicial;
+  }
+  return padrao;
+}
+
 export function ConfiguracoesClient({
   papel,
   nomeInicial,
   abaInicial,
 }: Props) {
   const isAdmin = papel === "admin";
-  const abaPadrao =
-    abaInicial === "conta" ? "conta" : isAdmin ? "geral" : "notificacoes";
-  const [aba, setAba] = useState(abaPadrao);
+  const [aba, setAba] = useState(() => resolverAbaInicial(abaInicial, isAdmin));
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
         <p className="text-sm text-muted-foreground">
-          Preferências da clínica, conta, assinatura, notificações e canais de
-          agendamento.
+          Preferências da clínica, conta, assinatura, notificações, WhatsApp e
+          canais de agendamento.
         </p>
       </div>
 
@@ -58,6 +75,11 @@ export function ConfiguracoesClient({
               className="min-h-11 px-3"
             >
               Agendamento Online
+            </TabsTrigger>
+          ) : null}
+          {isAdmin ? (
+            <TabsTrigger value="whatsapp" className="min-h-11 px-3">
+              WhatsApp
             </TabsTrigger>
           ) : null}
           <TabsTrigger value="conta" className="min-h-11 px-3">
@@ -83,6 +105,12 @@ export function ConfiguracoesClient({
         {isAdmin ? (
           <TabsContent value="agendamento-online" className="pt-4">
             <AbaAgendamentoOnline />
+          </TabsContent>
+        ) : null}
+
+        {isAdmin ? (
+          <TabsContent value="whatsapp" className="pt-4">
+            <AbaWhatsapp />
           </TabsContent>
         ) : null}
 

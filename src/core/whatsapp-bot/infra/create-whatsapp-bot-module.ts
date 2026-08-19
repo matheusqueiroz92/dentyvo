@@ -5,12 +5,15 @@ import {
   ConcluirConexaoWhatsapp,
   DesconectarWhatsapp,
   IniciarConexaoWhatsapp,
+  ObterStatusConexaoWhatsapp,
   RenovarTokenWhatsapp,
+  RotearEventoWhatsapp,
 } from "../application/use-cases";
 import {
   AesGcmCriptografiaAdapter,
   DrizzleClinicWhatsappAccountRepository,
   MetaGraphApiAdapter,
+  MetaWebhookAdapter,
 } from "./adapters";
 
 export type WhatsappBotModuleConfig = {
@@ -55,11 +58,34 @@ export function createWhatsappBotModule(config: WhatsappBotModuleConfig) {
       profissionalRepo,
     ),
     desconectarWhatsapp: new DesconectarWhatsapp(contaRepo, profissionalRepo),
+    obterStatusConexaoWhatsapp: new ObterStatusConexaoWhatsapp(
+      contaRepo,
+      profissionalRepo,
+    ),
     renovarTokenWhatsapp: new RenovarTokenWhatsapp(
       contaRepo,
       metaGraph,
       criptografia,
     ),
+  };
+}
+
+/**
+ * Composition root do webhook (Meta → plataforma).
+ *
+ * Deliberadamente separado de `createWhatsappBotModule`: o webhook só precisa
+ * de `META_APP_SECRET` (assinatura) e `META_WEBHOOK_VERIFY_TOKEN` (handshake).
+ * Exigir `META_EMBEDDED_SIGNUP_CONFIG_ID` aqui faria uma configuração ausente
+ * do fluxo de conexão derrubar o recebimento de mensagens de quem já conectou.
+ */
+export function createWhatsappWebhookModuleFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  const contaRepo = new DrizzleClinicWhatsappAccountRepository(db);
+
+  return {
+    webhook: MetaWebhookAdapter.fromEnv(env),
+    rotearEventoWhatsapp: new RotearEventoWhatsapp(contaRepo),
   };
 }
 

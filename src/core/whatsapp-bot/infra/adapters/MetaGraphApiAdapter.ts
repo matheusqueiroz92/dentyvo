@@ -5,7 +5,8 @@ import type {
   ResultadoTrocaCodigoMeta,
 } from "../../application/ports/MetaGraphApiPort";
 
-const GRAPH_API_VERSION_PADRAO = "v21.0";
+/** Default único da versão da Graph API — servidor e SDK do browser partilham. */
+export const GRAPH_API_VERSION_PADRAO = "v21.0";
 /** Fallback quando a Meta não devolve `expires_in` (token de negócio de longa duração). */
 const EXPIRACAO_PADRAO_MS = 60 * 24 * 60 * 60 * 1000;
 

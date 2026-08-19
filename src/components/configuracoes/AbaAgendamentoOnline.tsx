@@ -13,6 +13,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  previewUrlPublica,
+  urlPublicaAbsoluta,
+} from "@/lib/agendamento-publico/url-publica";
 
 type Dados = Awaited<
   NonNullable<
@@ -20,15 +24,11 @@ type Dados = Awaited<
   >
 >;
 
-function previewUrl(path: string): string {
-  return `dentyvo.com${path}`;
-}
-
 async function copiarPath(path: string) {
-  const absolute =
-    typeof window !== "undefined"
-      ? `${window.location.origin}${path}`
-      : `https://dentyvo.com${path}`;
+  const absolute = urlPublicaAbsoluta(
+    path,
+    typeof window !== "undefined" ? window.location.origin : undefined,
+  );
   await navigator.clipboard.writeText(absolute);
   toast.success("Link copiado");
 }
@@ -168,7 +168,7 @@ export function AbaAgendamentoOnline() {
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
           <Link2 className="size-4 text-muted-foreground" aria-hidden />
           <code className="min-w-0 flex-1 truncate tabular-nums text-xs">
-            {previewUrl(pathClinica)}
+            {previewUrlPublica(pathClinica)}
           </code>
           <Button
             type="button"
@@ -232,7 +232,7 @@ export function AbaAgendamentoOnline() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <code className="min-w-0 flex-1 truncate tabular-nums">
-                    {previewUrl(pathProf)}
+                    {previewUrlPublica(pathProf)}
                   </code>
                   <Button
                     type="button"
