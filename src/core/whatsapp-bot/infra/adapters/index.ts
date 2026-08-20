@@ -11,4 +11,5 @@ export {
   MetaWebhookAdapter,
   type MetaWebhookAdapterConfig,
   VerificacaoWebhookInvalidaError,
+  WebhookWhatsappNaoConfiguradoError,
 } from "./MetaWebhookAdapter";

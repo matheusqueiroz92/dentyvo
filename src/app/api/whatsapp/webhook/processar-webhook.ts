@@ -1,6 +1,7 @@
-import type {
+import {
   MetaWebhookAdapter,
   VerificacaoWebhookInvalidaError,
+  WebhookWhatsappNaoConfiguradoError,
 } from "@/core/whatsapp-bot/infra/adapters";
 import type { RotearEventoWhatsappOutput } from "@/core/whatsapp-bot/application/use-cases";
 
@@ -22,7 +23,27 @@ export type ProcessarEventoWebhookInput = {
 /**
  * Handshake `GET` de verificação da Callback URL (Meta App Dashboard).
  * Responde o `hub.challenge` em texto plano, ou 403 se a verificação falha.
+ *
+ * Ausência de `META_WEBHOOK_VERIFY_TOKEN` não vira crash opaco: log explícito
+ * e HTTP 500 tratado (a Meta não deve interpretar como token errado / 403).
  */
+export function executarHandshakeGet(
+  url: URL,
+  env: NodeJS.ProcessEnv = process.env,
+): Response {
+  let webhook: MetaWebhookAdapter;
+  try {
+    webhook = MetaWebhookAdapter.fromEnvParaHandshake(env);
+  } catch (erro) {
+    if (erro instanceof WebhookWhatsappNaoConfiguradoError) {
+      console.error("[whatsapp:webhook]", erro.message);
+      return new Response(null, { status: 500 });
+    }
+    throw erro;
+  }
+  return responderHandshakeWebhook(webhook, url);
+}
+
 export function responderHandshakeWebhook(
   webhook: MetaWebhookAdapter,
   url: URL,
@@ -60,7 +81,11 @@ export async function processarEventoWebhook(
 ): Promise<Response> {
   try {
     input.webhook.validarAssinatura(input.rawBody, input.assinatura);
-  } catch {
+  } catch (erro) {
+    if (erro instanceof WebhookWhatsappNaoConfiguradoError) {
+      console.error("[whatsapp:webhook]", erro.message);
+      return new Response(null, { status: 500 });
+    }
     console.warn("[whatsapp:webhook] assinatura inválida; payload descartado");
     return new Response(null, { status: 401 });
   }

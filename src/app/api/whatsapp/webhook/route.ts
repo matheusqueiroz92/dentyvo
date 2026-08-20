@@ -1,9 +1,12 @@
 import { createWhatsappWebhookModuleFromEnv } from "@/core/whatsapp-bot/infra/create-whatsapp-bot-module";
-import { META_WEBHOOK_SIGNATURE_HEADER } from "@/core/whatsapp-bot/infra/adapters";
+import {
+  META_WEBHOOK_SIGNATURE_HEADER,
+  WebhookWhatsappNaoConfiguradoError,
+} from "@/core/whatsapp-bot/infra/adapters";
 
 import {
+  executarHandshakeGet,
   processarEventoWebhook,
-  responderHandshakeWebhook,
 } from "./processar-webhook";
 
 /** `node:crypto` (HMAC da assinatura) exige runtime Node, não Edge. */
@@ -64,17 +67,24 @@ export const dynamic = "force-dynamic";
  *         description: Falha interna — a Meta deve reentregar o evento
  */
 export async function GET(request: Request): Promise<Response> {
-  const { webhook } = createWhatsappWebhookModuleFromEnv();
-  return responderHandshakeWebhook(webhook, new URL(request.url));
+  return executarHandshakeGet(new URL(request.url));
 }
 
 export async function POST(request: Request): Promise<Response> {
-  const { webhook, rotearEventoWhatsapp } =
-    createWhatsappWebhookModuleFromEnv();
+  let modulo;
+  try {
+    modulo = createWhatsappWebhookModuleFromEnv();
+  } catch (erro) {
+    if (erro instanceof WebhookWhatsappNaoConfiguradoError) {
+      console.error("[whatsapp:webhook]", erro.message);
+      return new Response(null, { status: 500 });
+    }
+    throw erro;
+  }
 
   return processarEventoWebhook({
-    webhook,
-    rotear: rotearEventoWhatsapp,
+    webhook: modulo.webhook,
+    rotear: modulo.rotearEventoWhatsapp,
     rawBody: await request.text(),
     assinatura: request.headers.get(META_WEBHOOK_SIGNATURE_HEADER),
   });

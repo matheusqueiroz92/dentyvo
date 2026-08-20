@@ -6,6 +6,7 @@ import type { MockInstance } from "vitest";
 import { MetaWebhookAdapter } from "@/core/whatsapp-bot/infra/adapters";
 
 import {
+  executarHandshakeGet,
   processarEventoWebhook,
   responderHandshakeWebhook,
 } from "./processar-webhook";
@@ -88,6 +89,59 @@ describe("responderHandshakeWebhook", () => {
     const res = responderHandshakeWebhook(
       webhook,
       urlDeHandshake({ "hub.mode": "subscribe" }),
+    );
+
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("executarHandshakeGet — configuração de ambiente", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("sem META_WEBHOOK_VERIFY_TOKEN responde 500 tratado, loga a variável e não lança", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = executarHandshakeGet(
+      urlDeHandshake({
+        "hub.mode": "subscribe",
+        "hub.verify_token": "qualquer",
+        "hub.challenge": "teste123",
+      }),
+      { META_APP_SECRET: APP_SECRET },
+    );
+
+    expect(res.status).toBe(500);
+    expect(error).toHaveBeenCalledWith(
+      "[whatsapp:webhook]",
+      expect.stringContaining("META_WEBHOOK_VERIFY_TOKEN não configurada"),
+    );
+  });
+
+  it("com token correto ecoa o challenge mesmo sem META_APP_SECRET", async () => {
+    const res = executarHandshakeGet(
+      urlDeHandshake({
+        "hub.mode": "subscribe",
+        "hub.verify_token": VERIFY_TOKEN,
+        "hub.challenge": "teste123",
+      }),
+      { META_WEBHOOK_VERIFY_TOKEN: VERIFY_TOKEN },
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("teste123");
+    expect(res.headers.get("content-type")).toMatch(/text\/plain/);
+  });
+
+  it("com token divergente responde 403, não 500", () => {
+    const res = executarHandshakeGet(
+      urlDeHandshake({
+        "hub.mode": "subscribe",
+        "hub.verify_token": "token-errado",
+        "hub.challenge": "teste123",
+      }),
+      { META_WEBHOOK_VERIFY_TOKEN: VERIFY_TOKEN },
     );
 
     expect(res.status).toBe(403);

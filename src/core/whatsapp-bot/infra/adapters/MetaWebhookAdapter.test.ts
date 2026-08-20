@@ -7,6 +7,7 @@ import {
   META_WEBHOOK_SIGNATURE_HEADER,
   MetaWebhookAdapter,
   VerificacaoWebhookInvalidaError,
+  WebhookWhatsappNaoConfiguradoError,
 } from "./MetaWebhookAdapter";
 
 const APP_SECRET = "app-secret-de-teste";
@@ -25,13 +26,44 @@ function assinar(rawBody: string, secret = APP_SECRET) {
 
 describe("MetaWebhookAdapter", () => {
   describe("construtor", () => {
-    it("exige appSecret e verifyToken", () => {
-      expect(
-        () => new MetaWebhookAdapter({ appSecret: " ", verifyToken: VERIFY_TOKEN }),
-      ).toThrow(/META_APP_SECRET/);
+    it("exige verifyToken com erro nomeado (não TypeError)", () => {
       expect(
         () => new MetaWebhookAdapter({ appSecret: APP_SECRET, verifyToken: "" }),
-      ).toThrow(/META_WEBHOOK_VERIFY_TOKEN/);
+      ).toThrow(WebhookWhatsappNaoConfiguradoError);
+      expect(
+        () => new MetaWebhookAdapter({ appSecret: APP_SECRET, verifyToken: " " }),
+      ).toThrow(/META_WEBHOOK_VERIFY_TOKEN não configurada/);
+    });
+
+    it("permite appSecret vazio — o handshake GET não usa HMAC", () => {
+      expect(
+        () =>
+          new MetaWebhookAdapter({ appSecret: "", verifyToken: VERIFY_TOKEN }),
+      ).not.toThrow();
+    });
+  });
+
+  describe("fromEnv / fromEnvParaHandshake", () => {
+    it("fromEnvParaHandshake falha alto se META_WEBHOOK_VERIFY_TOKEN estiver ausente", () => {
+      expect(() =>
+        MetaWebhookAdapter.fromEnvParaHandshake({
+          META_APP_SECRET: APP_SECRET,
+        }),
+      ).toThrow(/META_WEBHOOK_VERIFY_TOKEN não configurada/);
+    });
+
+    it("fromEnvParaHandshake não exige META_APP_SECRET", () => {
+      expect(() =>
+        MetaWebhookAdapter.fromEnvParaHandshake({
+          META_WEBHOOK_VERIFY_TOKEN: VERIFY_TOKEN,
+        }),
+      ).not.toThrow();
+    });
+
+    it("fromEnv (POST) exige secret e verify token", () => {
+      expect(() =>
+        MetaWebhookAdapter.fromEnv({ META_WEBHOOK_VERIFY_TOKEN: VERIFY_TOKEN }),
+      ).toThrow(/META_APP_SECRET não configurada/);
     });
   });
 

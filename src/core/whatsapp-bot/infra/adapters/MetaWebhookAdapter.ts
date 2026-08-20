@@ -23,6 +23,16 @@ export class AssinaturaWebhookInvalidaError extends Error {
   }
 }
 
+/** Falha alta e explícita — variável de ambiente ausente, não crash opaco. */
+export class WebhookWhatsappNaoConfiguradoError extends Error {
+  readonly nome = "WebhookWhatsappNaoConfiguradoError" as const;
+
+  constructor(variavel: string) {
+    super(`${variavel} não configurada`);
+    this.name = this.nome;
+  }
+}
+
 export type MetaWebhookAdapterConfig = {
   /** `META_APP_SECRET` — chave do HMAC que a Meta usa para assinar o payload. */
   appSecret: string;
@@ -58,23 +68,33 @@ export class MetaWebhookAdapter {
   private readonly verifyToken: string;
 
   constructor(config: MetaWebhookAdapterConfig) {
-    const appSecret = config.appSecret.trim();
+    this.appSecret = config.appSecret.trim();
     const verifyToken = config.verifyToken.trim();
-    if (!appSecret) {
-      throw new Error("META_APP_SECRET é obrigatório para MetaWebhookAdapter.");
-    }
     if (!verifyToken) {
-      throw new Error(
-        "META_WEBHOOK_VERIFY_TOKEN é obrigatório para MetaWebhookAdapter.",
-      );
+      throw new WebhookWhatsappNaoConfiguradoError("META_WEBHOOK_VERIFY_TOKEN");
     }
-    this.appSecret = appSecret;
     this.verifyToken = verifyToken;
   }
 
-  static fromEnv(env: NodeJS.ProcessEnv = process.env): MetaWebhookAdapter {
+  /**
+   * Handshake GET: só precisa do verify token. `META_APP_SECRET` entra no POST.
+   */
+  static fromEnvParaHandshake(
+    env: NodeJS.ProcessEnv = process.env,
+  ): MetaWebhookAdapter {
     return new MetaWebhookAdapter({
       appSecret: env.META_APP_SECRET ?? "",
+      verifyToken: env.META_WEBHOOK_VERIFY_TOKEN ?? "",
+    });
+  }
+
+  static fromEnv(env: NodeJS.ProcessEnv = process.env): MetaWebhookAdapter {
+    const appSecret = env.META_APP_SECRET?.trim() ?? "";
+    if (!appSecret) {
+      throw new WebhookWhatsappNaoConfiguradoError("META_APP_SECRET");
+    }
+    return new MetaWebhookAdapter({
+      appSecret,
       verifyToken: env.META_WEBHOOK_VERIFY_TOKEN ?? "",
     });
   }
@@ -106,6 +126,9 @@ export class MetaWebhookAdapter {
     rawBody: string,
     headerValue: string | null | undefined,
   ): void {
+    if (!this.appSecret) {
+      throw new WebhookWhatsappNaoConfiguradoError("META_APP_SECRET");
+    }
     const header = headerValue?.trim() ?? "";
     if (!header.startsWith(PREFIXO_ASSINATURA)) {
       throw new AssinaturaWebhookInvalidaError();
