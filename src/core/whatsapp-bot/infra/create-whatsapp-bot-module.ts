@@ -20,7 +20,7 @@ export type WhatsappBotModuleConfig = {
   metaAppId: string;
   metaAppSecret: string;
   embeddedSignupConfigId: string;
-  /** Opcional; default lido de `META_GRAPH_API_VERSION` / v21.0 no adapter. */
+  /** Opcional; default lido de `META_GRAPH_API_VERSION` / `GRAPH_API_VERSION_PADRAO` (`v26.0`) no adapter. */
   graphApiVersion?: string;
 };
 

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { MultiplosNumerosNoWabaNaoSuportadoError } from "../../domain/errors";
-import { MetaGraphApiAdapter } from "./MetaGraphApiAdapter";
+import {
+  GRAPH_API_VERSION_PADRAO,
+  MetaGraphApiAdapter,
+} from "./MetaGraphApiAdapter";
 
 const APP_ID = "app-id-teste";
 const APP_SECRET = "app-secret-teste";
@@ -32,12 +35,13 @@ function fetchPorCaminho(respostas: Record<string, JsonResponse>) {
 function respostasComNumeros(
   numeros: Array<{ id: string }>,
 ): Record<string, JsonResponse> {
+  const prefixo = `/${GRAPH_API_VERSION_PADRAO}`;
   return {
-    "/v21.0/oauth/access_token": {
+    [`${prefixo}/oauth/access_token`]: {
       ok: true,
       json: { access_token: TOKEN, expires_in: 60 * 24 * 60 * 60 },
     },
-    "/v21.0/debug_token": {
+    [`${prefixo}/debug_token`]: {
       ok: true,
       json: {
         data: {
@@ -48,7 +52,7 @@ function respostasComNumeros(
         },
       },
     },
-    [`/v21.0/${WABA_ID}/phone_numbers`]: {
+    [`${prefixo}/${WABA_ID}/phone_numbers`]: {
       ok: true,
       json: { data: numeros },
     },
@@ -62,6 +66,12 @@ function criarAdapter(fetchFn: typeof fetch) {
     fetchFn,
   });
 }
+
+describe("GRAPH_API_VERSION_PADRAO", () => {
+  it("fixa a versão corrente da Graph API (changelog Meta, 2026-08)", () => {
+    expect(GRAPH_API_VERSION_PADRAO).toBe("v26.0");
+  });
+});
 
 describe("MetaGraphApiAdapter.trocarCodigoPorToken — phone_number_id", () => {
   it("usa o único número do WABA", async () => {

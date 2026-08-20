@@ -8,15 +8,28 @@ import type {
   ResultadoTrocaCodigoMeta,
 } from "../../application/ports/MetaGraphApiPort";
 
-/** Default único da versão da Graph API — servidor e SDK do browser partilham. */
-export const GRAPH_API_VERSION_PADRAO = "v21.0";
+/**
+ * Versão da Graph API usada pelo servidor e pelo SDK JS do Embedded Signup
+ * quando `META_GRAPH_API_VERSION` não está definida.
+ *
+ * Fonte: changelog oficial da Meta
+ * (https://developers.facebook.com/docs/graph-api/changelog) — `v26.0` é a
+ * versão corrente em 2026-08-19 (lançada em 29/07/2026). `v21.0` expira em
+ * 21/01/2027 e não deve ser o default.
+ *
+ * Cada versão tem ciclo de vida de ~2 anos definido pela Meta (uma versão
+ * deixa de ser usável dois anos após o lançamento da seguinte). Não é valor
+ * para fixar e esquecer: revisar o changelog periodicamente e avançar o
+ * default com folga, antes da data "Available Until".
+ */
+export const GRAPH_API_VERSION_PADRAO = "v26.0";
 /** Fallback quando a Meta não devolve `expires_in` (token de negócio de longa duração). */
 const EXPIRACAO_PADRAO_MS = 60 * 24 * 60 * 60 * 1000;
 
 export type MetaGraphApiAdapterConfig = {
   appId: string;
   appSecret: string;
-  /** Ex.: `v21.0`. Default: `v21.0`. */
+  /** Ex.: `v26.0`. Default: `GRAPH_API_VERSION_PADRAO`. */
   graphApiVersion?: string;
   /** Injeção para testes; default = `globalThis.fetch`. */
   fetchFn?: typeof fetch;

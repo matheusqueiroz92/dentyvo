@@ -53,7 +53,7 @@ describe("AbaWhatsapp — fluxo Conectar", () => {
       data: {
         appId: "app-1",
         configurationId: "cfg-1",
-        graphApiVersion: "v21.0",
+        graphApiVersion: "v26.0",
       },
     });
     abrirPopup.mockResolvedValue("codigo-oauth");
