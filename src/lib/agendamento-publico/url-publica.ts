@@ -1,12 +1,10 @@
-type EnvPublico = Pick<NodeJS.ProcessEnv, "NEXT_PUBLIC_APP_URL">;
-
 /**
  * Origem canônica da aplicação (`NEXT_PUBLIC_APP_URL`).
  * Sem host hardcoded: o domínio de produção muda (hoje o app vive em
  * `*.vercel.app`; depois `dentyvo.com.br`) só via variável de ambiente.
  */
 export function origemPublicaDaApp(
-  env: EnvPublico = process.env,
+  env: NodeJS.ProcessEnv = process.env,
 ): string | null {
   const bruto = env.NEXT_PUBLIC_APP_URL?.trim() ?? "";
   if (!bruto) {
@@ -19,7 +17,7 @@ export function origemPublicaDaApp(
 /** Rótulo compacto (sem esquema) para exibir links copiáveis na UI. */
 export function previewUrlPublica(
   path: string,
-  env: EnvPublico = process.env,
+  env: NodeJS.ProcessEnv = process.env,
 ): string {
   const origem = origemPublicaDaApp(env);
   if (!origem) {
@@ -36,7 +34,7 @@ export function previewUrlPublica(
 export function urlPublicaAbsoluta(
   path: string,
   origem?: string,
-  env: EnvPublico = process.env,
+  env: NodeJS.ProcessEnv = process.env,
 ): string {
   const base = removerBarraFinal(origem ?? "") || origemPublicaDaApp(env);
   if (!base) {
