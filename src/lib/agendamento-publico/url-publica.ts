@@ -1,17 +1,50 @@
-/** Domínio de produção da plataforma. */
-export const DOMINIO_PUBLICO = "dentyvo.com.br";
+type EnvPublico = Pick<NodeJS.ProcessEnv, "NEXT_PUBLIC_APP_URL">;
+
+/**
+ * Origem canônica da aplicação (`NEXT_PUBLIC_APP_URL`).
+ * Sem host hardcoded: o domínio de produção muda (hoje o app vive em
+ * `*.vercel.app`; depois `dentyvo.com.br`) só via variável de ambiente.
+ */
+export function origemPublicaDaApp(
+  env: EnvPublico = process.env,
+): string | null {
+  const bruto = env.NEXT_PUBLIC_APP_URL?.trim() ?? "";
+  if (!bruto) {
+    return null;
+  }
+  const comEsquema = /^https?:\/\//i.test(bruto) ? bruto : `https://${bruto}`;
+  return removerBarraFinal(comEsquema);
+}
 
 /** Rótulo compacto (sem esquema) para exibir links copiáveis na UI. */
-export function previewUrlPublica(path: string): string {
-  return `${DOMINIO_PUBLICO}${path}`;
+export function previewUrlPublica(
+  path: string,
+  env: EnvPublico = process.env,
+): string {
+  const origem = origemPublicaDaApp(env);
+  if (!origem) {
+    return path;
+  }
+  return `${origem.replace(/^https?:\/\//i, "")}${path}`;
 }
 
 /**
- * URL absoluta do link público. Prefere a origem real do browser para que
- * preview/staging copiem o próprio host, e só recorre ao domínio de produção
- * quando não há origem (ex.: render no servidor).
+ * URL absoluta do link público.
+ * Prioridade: `origem` explícita → `NEXT_PUBLIC_APP_URL`. Sem os dois,
+ * devolve só o caminho — nunca inventa um domínio de produção.
  */
-export function urlPublicaAbsoluta(path: string, origem?: string): string {
-  const base = origem?.trim() || `https://${DOMINIO_PUBLICO}`;
+export function urlPublicaAbsoluta(
+  path: string,
+  origem?: string,
+  env: EnvPublico = process.env,
+): string {
+  const base = removerBarraFinal(origem ?? "") || origemPublicaDaApp(env);
+  if (!base) {
+    return path;
+  }
   return `${base}${path}`;
+}
+
+function removerBarraFinal(valor: string): string {
+  return valor.trim().replace(/\/+$/, "");
 }

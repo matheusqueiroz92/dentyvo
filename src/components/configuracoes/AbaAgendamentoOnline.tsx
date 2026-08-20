@@ -25,10 +25,7 @@ type Dados = Awaited<
 >;
 
 async function copiarPath(path: string) {
-  const absolute = urlPublicaAbsoluta(
-    path,
-    typeof window !== "undefined" ? window.location.origin : undefined,
-  );
+  const absolute = urlPublicaAbsoluta(path);
   await navigator.clipboard.writeText(absolute);
   toast.success("Link copiado");
 }

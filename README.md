@@ -52,6 +52,8 @@ está em [`.env.example`](.env.example). Mínimo para o app subir:
 - `DATABASE_URL_MIGRATIONS` — conexão **direta** (sem pooler), usada pelo
   Drizzle Kit e por `node scripts/migrate.mjs`
 - `BETTER_AUTH_SECRET` e `BETTER_AUTH_URL` (em local, em geral `http://localhost:3000`)
+- `NEXT_PUBLIC_APP_URL` — origem pública dos links absolutos (hoje
+  `https://dentyvo-three.vercel.app`; depois o domínio próprio)
 
 Opcional conforme o fluxo: Google OAuth, Meta WhatsApp, Asaas, Blob, Upstash,
 Turnstile. Sem Turnstile, o CAPTCHA do link público só faz bypass em
